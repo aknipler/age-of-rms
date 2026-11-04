@@ -156,7 +156,7 @@ export type EditIntent =
    */
   | {
       kind: "appendArg";
-      node: AttributeNode;
+      node: AttributeNode | DirectiveNode;
       value: ArgValueInput;
       /**
        * Which argument position this value is for. Omitted means the next

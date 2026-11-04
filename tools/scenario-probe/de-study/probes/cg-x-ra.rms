@@ -1,0 +1,946 @@
+/* Created by Captain Kniples the Fourth */
+/* For AUS/NZ TG tournament 2nd half of 2025 */
+/* Created 2025 July */
+/* This is a 4v4 map only */
+
+
+/* ifs only */
+if MAPSIZE_MINI			/* */
+elseif MAPSIZE_TINY		/* 2 */
+elseif MAPSIZE_SMALL		/* 3 */
+elseif MAPSIZE_MEDIUM		/* 4 */
+elseif MAPSIZE_NORMAL		/* 6 */
+elseif MAPSIZE_LARGE		/* 8 */
+elseif MAPSIZE_HUGE		/* */
+elseif MAPSIZE_GIANT		/* */
+elseif MAPSIZE_MASSIVE		/* */
+elseif MAPSIZE_ENORMOUS		/* */
+elseif MAPSIZE_COLOSSAL		/* */
+elseif MAPSIZE_INCREDIBLE	/* */
+elseif MAPSIZE_MONSTROUS	
+elseif MAPSIZE_LUDICROUS	
+else
+endif
+
+/* default sizes */
+if MAPSIZE_MINI			#const MAPSIZE 80 /* */
+elseif MAPSIZE_TINY		#const MAPSIZE 120 /* 2 */
+elseif MAPSIZE_SMALL		#const MAPSIZE 144 /* 3 */
+elseif MAPSIZE_MEDIUM		#const MAPSIZE 168 /* 4 */
+elseif MAPSIZE_NORMAL		#const MAPSIZE 200 /* 6 */
+elseif MAPSIZE_LARGE		#const MAPSIZE 220 /* 8 */
+elseif MAPSIZE_HUGE		#const MAPSIZE 240 /* */
+elseif MAPSIZE_GIANT		#const MAPSIZE 252 /* */
+elseif MAPSIZE_MASSIVE		#const MAPSIZE 276 /* */
+elseif MAPSIZE_ENORMOUS		#const MAPSIZE 300 /* */
+elseif MAPSIZE_COLOSSAL		#const MAPSIZE 320 /* */
+elseif MAPSIZE_INCREDIBLE	#const MAPSIZE 360 /* */
+elseif MAPSIZE_MONSTROUS	#const MAPSIZE 400 
+elseif MAPSIZE_LUDICROUS	#const MAPSIZE 480 
+else				#const MAPSIZE 260 
+endif
+
+/* for area scaling */
+#const MAPAREA (MAPSIZE * MAPSIZE)
+
+
+/* #define DEBUGGING */
+
+
+/* math constants */
+#const HOLE_FOREST_BORDERS 24
+#const FOREST_BORDERS 34
+#const NEUTRAL_BORDERS 21
+#const PL_LAND_TILES (MAPAREA / 200)
+#const PL_LAND_ZONE_AVOID 12
+#const FOREST_ZONE_AVOID 6
+/* #const FOREST_HOLE_LAND_DISTANCE 22 */
+#const FOREST_HOLE_ZONE_AVOID 5
+#const PL_BASE_SIZE 7
+#const CENTER_HOLE_TILES 60
+#const CENTER_HOLE_BASE_SIZE 4
+#const CENTER_HOLE_SPACING 9
+#const CENTER_HOLD_DIST_TO_NEUTRAL 9
+#const CENTER_HOLD_DIST_TO_PL 18
+#const LAND_BACKSTOPPER_TILES (MAPAREA / 77)
+#const NEUTRAL_BORDER_FUZZ 12
+#const FOREST_BORDER_FUZZ 25
+#const LAND_BACKSTOPPER_BASE_SIZE 6
+#const FOREST_SIZE_PERCENT 100
+#const FOREST_CL_FACTOR 30
+#const FOREST_BASE_SIZE 5
+
+/* actor areas */
+#const ACT_AREA_SCOUT 3032
+
+
+/* terrains */
+#const PL_TERRAIN 60 /* jungle grass */
+#const BASE_TERRAIN 56 /* rain forest */
+#const BASE_TERRAIN_MASK 0
+#const BASE_TERRAIN_MASK2 12
+#const CENTER_FOREST_TERRAIN 17 /* jungle themed, the actual trees */
+#const TERR_UNDERBRUSH 62 /* jungle leaves, no layering */
+#const CENTER_HOLE_TERRAIN 77 /* different underbrush jungle */
+#const CENTER_HOLE_TERRAIN_MASK 77 /* jungle underbrush */
+#const CENTER_NONBUILDABLE_TERRAIN 40
+#const CENTER_NONBUILDABLE_TERRAIN_MASK 40 /* 71 */
+#const TERR_NEUTRAL 60 /* jungle grass */
+#const TERR_NEUTRAL_MASK1 77 /* jungle underbrush */
+#const TERR_NEUTRAL_MASK2 83 /* rainforest */
+
+#const TEMP_PL_TERRAIN 6 /* jungle grass */
+#const BASE_TERRAIN_TEMP 3
+#const TERR_TEMP_CENTER_NONBUILDABLE 25
+#const TEMP_CENTER_FOREST_TERRAIN 24
+
+
+/* objects */
+#const ONGRID_PLACEHOLDER 1613
+
+#const MAKE_CENTER_HOLE_TERRAIN 1639
+#const MAKE_FOREST_TERRAIN 1650
+#const CENTER_FOREST_OBJS 414 /* jungle theme */
+
+#const STRAGGLER_TREES 414 /* jungle stragglers */
+#const ONGRID_PLACEHOLDER_LAND 1544
+#const HUNTABLE 1896 /* argali */
+#const HERDABLE 1060 /* goat */
+#const LURABLE 48 /* boar */
+#const BERRIES 1059 /* orange bush */
+
+
+/* cosmetic objects */
+#const GRASS_PATCH 301
+
+#const BONFIRE 304
+#const FENCE_RUBBLE 1065
+#const PLANT_JUNGLE 1351
+#const PLANT_UNDERBRUSH_TROPICAL 1352
+#const PLANT_UNDERBRUSH 1353
+#const PLANT_RAINFOREST 1354
+#const PLANT_UNDERBRUSH_RAINFOREST 1355
+#const GRASS_GREEN 1358
+#const GRASS_DRY 1359
+#const PLANT_BUSH_GREEN 1360
+#const PLANT_SHRUB_GREEN 1362
+#const PLANT_SHRUB_DRY 1363
+#const PLANT_WEEDS 1364
+#const PLANT_DEAD 1365
+#const PLANT_FLOWERS 1366
+
+
+/* Make it so that fence rubble does not disappear */
+effect_amount GAIA_SET_ATTRIBUTE FENCE_RUBBLE ATTR_STORAGE_VALUE 30000
+
+/* Make it so that the forests can't be quickly removed by players using building foundations */
+/* used for making the pathways to the holes */
+effect_percent SET_ATTRIBUTE MAKE_CENTER_HOLE_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_CENTER_HOLE_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_CENTER_HOLE_TERRAIN ATTR_FOUNDATION_TERRAIN CENTER_HOLE_TERRAIN_MASK /* jungle underbrush */
+effect_amount SET_ATTRIBUTE MAKE_CENTER_HOLE_TERRAIN ATTR_FOG_FLAG 0 
+effect_amount SET_ATTRIBUTE MAKE_CENTER_HOLE_TERRAIN ATTR_HITPOINTS 0  /* No health */
+/* effect_amount SET_ATTRIBUTE MAKE_CENTER_HOLE_TERRAIN ATTR_STANDING_GRAPHIC 11202 So that if seen in a start of game revealer, the artifact it leaves is much harder to see */  
+
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_FOUNDATION_TERRAIN 77 /* jungle underbrush */ 
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_STANDING_GRAPHIC 12263  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_FOG_FLAG 0  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_HITPOINTS 0  /* No health */
+
+
+/* make it so that flags disappear at the start of the game */
+effect_amount SET_ATTRIBUTE FLAG_B ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE FLAG_C ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE FLAG_D ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER_LAND ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER ATTR_HITPOINTS 0
+
+<PLAYER_SETUP>
+grouped_by_team
+/* direct_placement */
+behavior_version 1
+
+
+
+<LAND_GENERATION>
+
+base_terrain BASE_TERRAIN_TEMP
+/* base_terrain CENTER_FOREST_TERRAIN */
+
+create_player_lands 
+{
+    terrain_type TEMP_PL_TERRAIN
+    circle_radius 19
+    base_size 7
+    land_percent 0
+}
+/* 
+/* player lands */
+/* create_land { land_position 74 26 zone 4  terrain_type FOREST number_of_tiles 0 base_size 11 other_zone_avoidance_distance  PL_LAND_ZONE_AVOID } */
+create_land { land_position 72 51 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 7 0 0 else assign_to AT_TEAM 1 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+create_land { land_position 65 58 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+create_land { land_position 58 65 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 3 0 0 else assign_to AT_TEAM 1 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+create_land { land_position 51 72 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+/* create_land { land_position 26 74 zone 3  terrain_type FOREST number_of_tiles 0 base_size 11 other_zone_avoidance_distance  PL_LAND_ZONE_AVOID } */
+create_land { land_position 28 49 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+create_land { land_position 35 42 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+create_land { land_position 42 35 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  }
+create_land { land_position 49 28 zone 1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif terrain_type PL_TERRAIN number_of_tiles PL_LAND_TILES base_size PL_BASE_SIZE other_zone_avoidance_distance  PL_LAND_ZONE_AVOID  } */
+
+/* center stopper */
+/* create_land { land_position 50 50 zone 4 terrain_type ICE land_percent 0 base_size 5 } */
+
+/* holes in forest */
+/* create_land {  zone 2 terrain_type CENTER_NONBUILDABLE_TERRAIN number_of_tiles CENTER_HOLE_TILES base_size CENTER_HOLE_BASE_SIZE clumping_factor 30 border_fuzziness 100 bottom_border HOLE_FOREST_BORDERS top_border HOLE_FOREST_BORDERS right_border HOLE_FOREST_BORDERS left_border HOLE_FOREST_BORDERS other_zone_avoidance_distance FOREST_HOLE_ZONE_AVOID }
+create_land {  zone 3 terrain_type CENTER_NONBUILDABLE_TERRAIN number_of_tiles CENTER_HOLE_TILES base_size CENTER_HOLE_BASE_SIZE clumping_factor 30 border_fuzziness 100 bottom_border HOLE_FOREST_BORDERS top_border HOLE_FOREST_BORDERS right_border HOLE_FOREST_BORDERS left_border HOLE_FOREST_BORDERS other_zone_avoidance_distance FOREST_HOLE_ZONE_AVOID }
+create_land {  zone 4 terrain_type CENTER_NONBUILDABLE_TERRAIN number_of_tiles CENTER_HOLE_TILES base_size CENTER_HOLE_BASE_SIZE clumping_factor 30 border_fuzziness 100 bottom_border HOLE_FOREST_BORDERS top_border HOLE_FOREST_BORDERS right_border HOLE_FOREST_BORDERS left_border HOLE_FOREST_BORDERS other_zone_avoidance_distance FOREST_HOLE_ZONE_AVOID } */
+
+/* forests */
+create_land { zone 2 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE generate_mode 1 bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR }
+create_land { zone 2 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE generate_mode 1 bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR }
+create_land { zone 2 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE generate_mode 1 bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR }
+create_land { zone 2 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE generate_mode 1 bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR }
+create_land { zone 2 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE generate_mode 1 bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR }
+create_land { zone 2 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE generate_mode 1 bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR }
+/* create_land { zone 3 terrain_type TEMP_CENTER_FOREST_TERRAIN land_percent FOREST_SIZE_PERCENT base_size FOREST_BASE_SIZE bottom_border FOREST_BORDERS top_border FOREST_BORDERS right_border FOREST_BORDERS left_border FOREST_BORDERS border_fuzziness FOREST_BORDER_FUZZ other_zone_avoidance_distance  FOREST_ZONE_AVOID clumping_factor FOREST_CL_FACTOR } */
+
+/* neutral space */
+create_land { min_placement_distance 25 zone 2 terrain_type TERR_NEUTRAL land_percent 100 base_size 1 bottom_border NEUTRAL_BORDERS top_border NEUTRAL_BORDERS right_border NEUTRAL_BORDERS left_border NEUTRAL_BORDERS border_fuzziness NEUTRAL_BORDER_FUZZ }
+create_land { min_placement_distance 25 zone 2 terrain_type TERR_NEUTRAL land_percent 100 base_size 1 bottom_border NEUTRAL_BORDERS top_border NEUTRAL_BORDERS right_border NEUTRAL_BORDERS left_border NEUTRAL_BORDERS border_fuzziness NEUTRAL_BORDER_FUZZ }
+
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 2
+{
+  base_terrain          BASE_TERRAIN 
+  number_of_tiles       365      
+  number_of_clumps      3   
+  spacing               0         
+  enable_balanced_elevation   
+  set_scale_by_groups  
+}
+
+
+
+/* 
+
+<CLIFF_GENERATION>
+if TINY_MAP
+  min_number_of_cliffs  12
+  max_number_of_cliffs  14     /* These do not scale by map size. Instead you have to do an if structure, included as an example */
+elseif SMALL_MAP
+  min_number_of_cliffs  16
+  max_number_of_cliffs  18     /* These do not scale by map size. Instead you have to do an if structure, included as an example */
+else 
+  min_number_of_cliffs  21
+  max_number_of_cliffs  23 
+endif
+min_length_of_cliff     5
+max_length_of_cliff     7
+cliff_curliness         20       /* higher values are meant to make the cliffs more curly */
+min_distance_cliffs     6      minimum distance between two different cliffs
+
+ */
+
+
+
+
+
+
+
+
+
+<TERRAIN_GENERATION>
+
+
+/* create forest clearings */
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TEMP_CENTER_FOREST_TERRAIN number_of_tiles CENTER_HOLE_TILES number_of_clumps 1 clumping_factor 25 spacing_to_other_terrain_types CENTER_HOLE_SPACING spacing_to_specific_terrain TERR_NEUTRAL CENTER_HOLD_DIST_TO_NEUTRAL spacing_to_specific_terrain TEMP_PL_TERRAIN CENTER_HOLD_DIST_TO_PL }
+create_terrain TERR_TEMP_CENTER_NONBUILDABLE { base_terrain TEMP_CENTER_FOREST_TERRAIN number_of_tiles CENTER_HOLE_TILES number_of_clumps 1 clumping_factor 25 spacing_to_other_terrain_types CENTER_HOLE_SPACING spacing_to_specific_terrain TERR_NEUTRAL CENTER_HOLD_DIST_TO_NEUTRAL spacing_to_specific_terrain TEMP_PL_TERRAIN CENTER_HOLD_DIST_TO_PL } 
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TERR_TEMP_CENTER_NONBUILDABLE land_percent 100 number_of_clumps 4056 }
+create_terrain TERR_TEMP_CENTER_NONBUILDABLE { base_terrain TEMP_CENTER_FOREST_TERRAIN number_of_tiles CENTER_HOLE_TILES number_of_clumps 1 clumping_factor 25 spacing_to_other_terrain_types CENTER_HOLE_SPACING spacing_to_specific_terrain TERR_NEUTRAL CENTER_HOLD_DIST_TO_NEUTRAL spacing_to_specific_terrain TEMP_PL_TERRAIN CENTER_HOLD_DIST_TO_PL }
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TERR_TEMP_CENTER_NONBUILDABLE land_percent 100 number_of_clumps 4056 }
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TERR_TEMP_CENTER_NONBUILDABLE land_percent 100 number_of_clumps 4056 }
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TERR_TEMP_CENTER_NONBUILDABLE land_percent 100 number_of_clumps 4056 }
+
+/* remove fuzzy border trees obstructing the center */
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+/* repeat */
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+
+/* one more time for good luck */
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain TERR_NEUTRAL { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 terrain_mask 2 spacing_to_other_terrain_types 1 }
+
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain TEMP_CENTER_FOREST_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN_TEMP { base_layer BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+
+/* create trees in the center */
+create_terrain TERR_UNDERBRUSH { base_terrain TEMP_CENTER_FOREST_TERRAIN land_percent 100 spacing_to_other_terrain_types 1 number_of_clumps 4056 } 
+create_terrain TERR_UNDERBRUSH { base_terrain TEMP_CENTER_FOREST_TERRAIN land_percent 100 spacing_to_other_terrain_types 1 number_of_clumps 4056 } 
+create_terrain CENTER_FOREST_TERRAIN { base_terrain TERR_UNDERBRUSH number_of_tiles 1020 number_of_clumps 4056 } /* 1600 */ /* this is the reason why there are LEAVES in the center, the jungle terrain has foundation LEAVES */
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TEMP_CENTER_FOREST_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TEMP_CENTER_FOREST_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TEMP_CENTER_FOREST_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain CENTER_NONBUILDABLE_TERRAIN { base_terrain TEMP_CENTER_FOREST_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+/* turn clearings into buildable terrain */
+create_terrain CENTER_HOLE_TERRAIN { base_terrain CENTER_NONBUILDABLE_TERRAIN number_of_tiles 4056 number_of_clumps 4056 spacing_to_other_terrain_types 1 }
+
+
+
+
+
+
+
+
+create_terrain BASE_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN { base_terrain BASE_TERRAIN_TEMP land_percent 100 number_of_clumps 4056 } 
+
+create_terrain PL_TERRAIN { base_terrain TEMP_PL_TERRAIN land_percent 100 number_of_clumps 4056 }
+create_terrain PL_TERRAIN { base_terrain TEMP_PL_TERRAIN land_percent 100 number_of_clumps 4056 }
+create_terrain PL_TERRAIN { base_terrain TEMP_PL_TERRAIN land_percent 100 number_of_clumps 4056 }
+create_terrain PL_TERRAIN { base_terrain TEMP_PL_TERRAIN land_percent 100 number_of_clumps 4056 }
+create_terrain PL_TERRAIN { base_terrain TEMP_PL_TERRAIN land_percent 100 number_of_clumps 4056 }
+
+
+
+
+/* open land masking */
+create_terrain TERR_NEUTRAL_MASK1 { base_terrain TERR_NEUTRAL land_percent 1 number_of_clumps 30 terrain_mask 1 }
+create_terrain TERR_NEUTRAL_MASK1 { base_terrain TERR_NEUTRAL land_percent 1 number_of_clumps 85 terrain_mask 1 }
+create_terrain TERR_NEUTRAL_MASK1 { base_terrain TERR_NEUTRAL land_percent 3 number_of_clumps 15 terrain_mask 1 }
+
+create_terrain TERR_NEUTRAL_MASK2 { base_terrain TERR_NEUTRAL land_percent 1 number_of_clumps 30 terrain_mask 1 }
+create_terrain TERR_NEUTRAL_MASK2 { base_terrain TERR_NEUTRAL land_percent 1 number_of_clumps 85 terrain_mask 1 }
+create_terrain TERR_NEUTRAL_MASK2 { base_terrain TERR_NEUTRAL land_percent 3 number_of_clumps 15 terrain_mask 1 }
+
+/* rocky forest */
+create_terrain CENTER_NONBUILDABLE_TERRAIN_MASK { base_terrain CENTER_NONBUILDABLE_TERRAIN number_of_tiles 2600 number_of_clumps 200 terrain_mask 1 }
+create_terrain CENTER_NONBUILDABLE_TERRAIN_MASK { base_terrain CENTER_NONBUILDABLE_TERRAIN number_of_tiles 2600 number_of_clumps 200 terrain_mask 1 }
+create_terrain CENTER_NONBUILDABLE_TERRAIN_MASK { base_terrain CENTER_NONBUILDABLE_TERRAIN number_of_tiles 2600 number_of_clumps 200 terrain_mask 1 }
+
+
+/* nice base_terrian masking */
+create_terrain BASE_TERRAIN_MASK2 { base_terrain BASE_TERRAIN land_percent 1 number_of_clumps 17 terrain_mask 1 }
+create_terrain BASE_TERRAIN_MASK { base_terrain BASE_TERRAIN land_percent 1 number_of_clumps 17 terrain_mask 1 }
+create_terrain BASE_TERRAIN_MASK { base_terrain BASE_TERRAIN land_percent 1 number_of_clumps 35 terrain_mask 1 }
+create_terrain BASE_TERRAIN_MASK2 { base_terrain BASE_TERRAIN land_percent 1 number_of_clumps 35 terrain_mask 1 }
+
+
+
+
+
+<CONNECTION_GENERATION>
+/* create_connect_all_lands */
+create_connect_to_nonplayer_land
+{
+  replace_terrain CENTER_FOREST_TERRAIN CENTER_NONBUILDABLE_TERRAIN 
+  replace_terrain TERR_UNDERBRUSH CENTER_NONBUILDABLE_TERRAIN 
+  /* replace_terrain PL_TERRAIN CENTER_HOLE_TERRAIN  */
+  terrain_cost CENTER_FOREST_TERRAIN 11
+  terrain_cost CENTER_HOLE_TERRAIN 2
+  terrain_cost TERR_UNDERBRUSH 4
+  terrain_cost TERR_NEUTRAL 10
+  terrain_cost PL_TERRAIN 2
+  terrain_cost CENTER_NONBUILDABLE_TERRAIN 3 /* this is only around the center holes */
+  terrain_cost BASE_TERRAIN 0
+  terrain_size CENTER_NONBUILDABLE_TERRAIN 1 1
+  /* terrain_size PL_TERRAIN 1 0 */
+}
+
+
+
+
+
+
+
+
+<OBJECTS_GENERATION>
+
+
+/* Player resources */ 
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players     0
+  terrain_to_place_on PL_TERRAIN
+  actor_area 9000
+  actor_area_radius 0
+}
+
+
+create_object VILLAGER
+{
+  set_place_for_every_player
+  min_distance_to_players           5
+  max_distance_to_players           6
+  terrain_to_place_on PL_TERRAIN
+}
+create_object SCOUT
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_players           9
+  terrain_to_place_on PL_TERRAIN
+  actor_area                        ACT_AREA_SCOUT
+  actor_area_radius                 4
+}
+
+
+create_object  FLAG_C
+/* create_object  ONGRID_PLACEHOLDER_LAND */
+{
+    number_of_objects                   4056
+    terrain_to_place_on                 CENTER_HOLE_TERRAIN
+    set_gaia_object_only
+    temp_min_distance_group_placement 1
+    actor_area                        3040
+    actor_area_radius                 2
+    if DEBUGGING 
+        second_object FLAG_C
+    endif 
+}
+/* #define DEBUGGING */
+
+/* make sure that actor areas for the internal forests work properly */
+create_object  FLAG_B
+{
+    number_of_objects                 4056
+    terrain_to_place_on               TERR_UNDERBRUSH
+    set_gaia_object_only
+    actor_area                        3030
+    actor_area_radius                 1
+    /* second_object FLAG_B */
+    if DEBUGGING 
+        second_object FLAG_B
+    endif 
+    resource_delta -100
+}
+
+create_object_group PATCHY_FOREST
+{
+    add_object CENTER_FOREST_OBJS 40
+    add_object FLAG_D 30
+    add_object FLAG_C 30
+    /* add_object ONGRID_PLACEHOLDER_LAND 30
+    add_object ONGRID_PLACEHOLDER 30 */
+}
+
+
+
+
+
+
+/* initial cosmetics */
+        /* center hole */
+        create_object PLANT_UNDERBRUSH_TROPICAL { number_of_objects 1 number_of_groups rnd(2,4) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_HOLE_TERRAIN set_circular_placement }
+        create_object PLANT_UNDERBRUSH { number_of_objects 1 number_of_groups rnd(1,3) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_HOLE_TERRAIN set_circular_placement }
+        create_object PLANT_RAINFOREST { number_of_objects 1 number_of_groups rnd(2,5) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_HOLE_TERRAIN set_circular_placement }
+        create_object FLOWER_BED { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_HOLE_TERRAIN avoid_forest_zone 1 }
+        create_object PLANTS { number_of_objects 3 number_of_groups rnd(3,4) terrain_to_place_on CENTER_HOLE_TERRAIN group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_1 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_HOLE_TERRAIN temp_min_distance_group_placement 4 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_2 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_HOLE_TERRAIN temp_min_distance_group_placement 4 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_3 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_HOLE_TERRAIN temp_min_distance_group_placement 4 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_4 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_HOLE_TERRAIN temp_min_distance_group_placement 4 set_circular_placement avoid_forest_zone 1 }
+
+        /* cosmetics under the trees */
+        create_object    DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(4,7) set_scale_by_groups terrain_to_place_on CENTER_FOREST_TERRAIN temp_min_distance_group_placement 2 set_circular_placement }   
+        create_object    DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(35,45) set_scale_by_groups terrain_to_place_on BASE_TERRAIN temp_min_distance_group_placement 2 set_circular_placement } 
+
+
+        /* cosmetics in the pathways that will be created */
+        create_object GRASS_PATCH { terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN number_of_groups rnd(2,4) set_scale_by_groups number_of_objects 2 group_variance 1 temp_min_distance_group_placement 2 set_gaia_object_only }
+
+        create_object PLANT_BUSH_GREEN { number_of_objects 2 number_of_groups rnd(8,12) set_scale_by_groups group_variance 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement avoid_forest_zone 1 }
+        create_object PLANT_SHRUB_GREEN { number_of_objects 2 number_of_groups rnd(12,16) set_scale_by_groups group_variance 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement avoid_forest_zone 1 }
+        create_object PLANT_SHRUB_DRY { number_of_objects 1 number_of_groups rnd(3,6) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object PLANT_WEEDS { number_of_objects 1 number_of_groups rnd(12,16) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object PLANT_FLOWERS { number_of_objects 1 number_of_groups rnd(12,16) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement  avoid_forest_zone 1 }
+        create_object GRASS_GREEN { number_of_objects 2 number_of_groups rnd(23,31) set_scale_by_groups group_variance 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement  }
+
+
+        create_object PLANT_JUNGLE { number_of_objects 1 number_of_groups rnd(4,6) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object PLANT_UNDERBRUSH_TROPICAL { number_of_objects 1 number_of_groups rnd(16,22) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement avoid_forest_zone 1 }
+        create_object PLANT_UNDERBRUSH { number_of_objects 1 number_of_groups rnd(7,9) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object PLANT_RAINFOREST { number_of_objects 1 number_of_groups rnd(4,6) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object PLANT_UNDERBRUSH_RAINFOREST { number_of_objects 1 number_of_groups rnd(6,8) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(3,5) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN set_circular_placement }
+        create_object FLOWER_BED { number_of_objects 1 number_of_groups rnd(2,3) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN avoid_forest_zone 1 }
+
+        create_object PLANTS { number_of_objects 3 number_of_groups rnd(10,15) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+
+        create_object FLOWERS_1 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_2 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_3 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+        create_object FLOWERS_4 { number_of_objects 1 number_of_groups rnd(1,2) set_scale_by_groups terrain_to_place_on CENTER_NONBUILDABLE_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+/* end CH cosmetics */
+
+
+
+/* this should be patchy forest but it isnt working */ 
+/* for some reason, the actor area is not activating when the patchy forest is the placeholder objects */
+create_object  MAKE_FOREST_TERRAIN
+{
+    number_of_objects                 4056
+    terrain_to_place_on               CENTER_NONBUILDABLE_TERRAIN
+    avoid_forest_zone                 5
+    set_gaia_object_only
+    avoid_actor_area 3040
+    actor_area                        3030
+    actor_area_radius                 1
+    second_object PATCHY_FOREST
+    if DEBUGGING 
+        second_object FLAG_B
+    endif 
+}
+
+
+create_object MAKE_CENTER_HOLE_TERRAIN 
+{
+    number_of_objects                 4056
+    terrain_to_place_on               CENTER_NONBUILDABLE_TERRAIN
+    avoid_forest_zone                 1
+    set_gaia_object_only
+    if DEBUGGING 
+        second_object FLAG_A
+    endif 
+    avoid_actor_area                  3030
+}
+
+create_object MAKE_CENTER_HOLE_TERRAIN 
+{
+    number_of_objects                 4056
+    terrain_to_place_on               CENTER_NONBUILDABLE_TERRAIN
+    avoid_forest_zone                 1
+    set_gaia_object_only
+    avoid_actor_area                  3030
+    if DEBUGGING 
+        second_object FLAG_A
+    endif 
+}
+
+if HUGE_MAP
+    create_actor_area 141 12 9101 14
+    create_actor_area 208 79 9101 14
+endif
+
+/* create_object FLAG_A 
+{
+  number_of_groups                  4056
+  set_gaia_object_only
+  avoid_actor_area 9101
+} */
+
+
+
+create_object HUNTABLE 
+{
+  number_of_objects                 rnd(4,5)
+  number_of_groups                  3
+  temp_min_distance_group_placement 12
+  terrain_to_place_on               CENTER_HOLE_TERRAIN
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  8023
+}
+/* Large gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  number_of_objects                 7
+  min_distance_to_players           9
+  max_distance_to_players           14
+  min_distance_group_placement      4
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 3
+  group_placement_radius            1
+  actor_area                        9999
+  avoid_actor_area                  9998
+  avoid_actor_area                  9997
+  actor_area_radius                 7
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  start_random
+    percent_chance 50 find_closest_to_map_edge
+    percent_chance 50 find_closest_to_map_center #define GOLD_TOWARDS_CENTER
+  end_random
+}
+create_object STONE
+{
+  set_place_for_every_player
+  number_of_objects                 5
+  min_distance_to_players           9
+  max_distance_to_players           15
+  min_distance_group_placement      4
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  group_placement_radius            1
+  avoid_actor_area                  9999
+  avoid_actor_area                  9998
+  avoid_actor_area                  9997
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  if GOLD_TOWARDS_CENTER
+    find_closest_to_map_edge
+  else
+    start_random
+        percent_chance 50 find_closest_to_map_edge
+        percent_chance 50 find_closest_to_map_center
+    end_random
+  endif
+  actor_area                        9997
+  actor_area_radius                 7
+}
+
+/* Small gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  number_of_objects                 4
+  min_distance_to_players           14
+  max_distance_to_players           22
+  terrain_to_place_on               TERR_NEUTRAL
+  min_distance_group_placement      3
+  group_placement_radius            1
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 1
+  avoid_actor_area                  9999
+  avoid_actor_area                  9998
+  avoid_actor_area                  9997
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  actor_area                        9998
+  actor_area_radius                 4
+}
+
+create_object HERDABLE 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 2
+  number_of_objects                 3
+  min_distance_to_players           7
+  max_distance_to_players           8
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+   actor_area                        6103
+  actor_area_radius                 1
+}
+create_object HERDABLE 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_other_zones       1
+  set_circular_placement
+  set_tight_grouping
+  find_closest
+   actor_area_to_place_in            6103
+  terrain_to_place_on PL_TERRAIN
+}
+create_object HERDABLE 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 2
+  
+  number_of_objects                 2
+  number_of_groups                  2
+  min_distance_to_players           13
+  max_distance_to_players           18
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 11
+    start_random
+        percent_chance 50 find_closest_to_map_edge
+        percent_chance 50 find_closest_to_map_center
+    end_random
+  set_circular_placement
+  set_tight_grouping
+  /* set_gaia_object_only */
+  avoid_actor_area ACT_AREA_SCOUT
+ }
+
+
+create_object LURABLE 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 2
+  
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           13
+  max_distance_to_players           19
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 11
+    start_random
+        percent_chance 50 find_closest_to_map_edge
+        percent_chance 50 find_closest_to_map_center
+    end_random
+  set_circular_placement
+  set_gaia_object_only
+ }
+create_object HUNTABLE 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 2
+  
+  number_of_objects                 3
+  min_distance_to_players           14
+  max_distance_to_players           24
+  min_distance_group_placement      1
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+ }
+
+create_object BERRIES 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 2
+  terrain_to_place_on               TERR_NEUTRAL
+  
+  number_of_objects                 rnd(5,7)
+  min_distance_to_players           12
+  max_distance_to_players           18
+  min_distance_group_placement      4
+  group_placement_radius            2
+  start_random
+    percent_chance 50 find_closest_to_map_edge
+    percent_chance 50 find_closest_to_map_center
+  end_random
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  9998
+   /* avoid_actor_area                  9999
+  avoid_actor_area                  9997 */
+  actor_area                        9996
+  actor_area_radius                 5
+} 
+create_object STRAGGLER_TREES 
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           4
+  max_distance_to_players           5
+  min_distance_group_placement      3
+  set_gaia_object_only
+}
+create_object STRAGGLER_TREES 
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  number_of_groups                  3
+  min_distance_to_players           6
+  max_distance_to_players           8
+  temp_min_distance_group_placement 3
+  set_gaia_object_only
+}
+
+
+/* stop neutral res spawning in back of teams bases */
+create_object STRAGGLER_TREES 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 2
+  number_of_groups                  4
+  min_distance_to_players           14
+  max_distance_to_players           20
+  temp_min_distance_group_placement 5
+  find_closest_to_map_edge
+  set_circular_placement
+  set_gaia_object_only
+  actor_area 200
+  actor_area_radius 13
+}
+
+/* neutral res */
+create_object GOLD 
+{
+  avoid_forest_zone                 5
+  
+  number_of_objects                 rnd(5,7)
+  number_of_groups                  rnd(5,7)
+  min_distance_to_players           28
+  temp_min_distance_group_placement 13
+  min_distance_group_placement      3
+  group_placement_radius            1
+  avoid_actor_area 200
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  terrain_to_place_on TERR_NEUTRAL
+  actor_area 201
+  actor_area_radius 6
+} 
+
+create_object STONE 
+{
+  avoid_forest_zone                 5
+  
+  number_of_objects                 rnd(4,6)
+  number_of_groups                  rnd(4,5)
+  min_distance_to_players           28
+  temp_min_distance_group_placement 16
+  min_distance_group_placement      3
+  group_placement_radius            1
+  avoid_actor_area 200
+  avoid_actor_area 201
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  terrain_to_place_on TERR_NEUTRAL
+} 
+
+
+
+create_object RELIC 
+{
+  number_of_objects                 1
+  number_of_groups                  3
+  min_distance_group_placement      1
+  temp_min_distance_group_placement 8
+  terrain_to_place_on               CENTER_HOLE_TERRAIN
+  set_gaia_object_only
+  avoid_actor_area 200
+  avoid_actor_area                  1212
+  avoid_actor_area                  8023
+  actor_area 300
+  actor_area_radius 9
+}  
+create_object RELIC 
+{
+  number_of_objects                 4
+  min_distance_group_placement      1
+  temp_min_distance_group_placement 22
+  avoid_forest_zone                 3
+  min_distance_to_players           28
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area 200
+  avoid_actor_area 300
+  avoid_actor_area                  1212
+}  
+
+create_object STRAGGLER_TREES 
+{
+  number_of_objects                 rnd(14,20)
+  min_distance_to_players           24
+  avoid_forest_zone                 2
+  terrain_to_place_on               TERR_NEUTRAL
+  temp_min_distance_group_placement 3
+  set_gaia_object_only
+}
+
+/* ************* COSMETICS ************* */
+
+create_object SKELETON 
+{ 
+  terrain_to_place_on               CENTER_HOLE_TERRAIN
+  number_of_objects                 rnd(3,7)
+  set_gaia_object_only
+}
+
+
+create_object DLC_ANIMALSKELETON 
+{ 
+  number_of_objects                 rnd(2,7)
+  min_distance_to_players           25
+  set_gaia_object_only
+}
+
+
+
+create_object BIRD_A {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+create_object BIRD_B {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+
+
+
+/* Other cosmetics */
+create_object GRASS_PATCH { terrain_to_place_on CENTER_FOREST_TERRAIN number_of_groups rnd(2,4) set_scale_by_groups number_of_objects 2 group_variance 1 temp_min_distance_group_placement 2 set_gaia_object_only }
+create_object GRASS_PATCH { terrain_to_place_on TERR_NEUTRAL number_of_groups rnd(300,320) set_scale_by_groups number_of_objects 2 group_variance 1 temp_min_distance_group_placement 2 set_gaia_object_only }
+create_object GRASS_PATCH { terrain_to_place_on BASE_TERRAIN number_of_groups rnd(14,18) set_scale_by_groups number_of_objects 3 group_variance 2 set_gaia_object_only } 
+create_object BIRD_A { number_of_objects rnd(3,5) set_scaling_to_map_size }
+create_object BIRD_B { number_of_objects rnd(3,5) set_scaling_to_map_size }
+
+create_object PLANT_BUSH_GREEN { number_of_objects 2 number_of_groups rnd(25,35) set_scale_by_groups group_variance 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_SHRUB_GREEN { number_of_objects 2 number_of_groups rnd(33,44) set_scale_by_groups group_variance 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_SHRUB_DRY { number_of_objects 1 number_of_groups rnd(9,15) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_WEEDS { number_of_objects 1 number_of_groups rnd(33,44) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_FLOWERS { number_of_objects 1 number_of_groups rnd(33,44) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object GRASS_GREEN { number_of_objects 2 number_of_groups rnd(110,122) set_scale_by_groups group_variance 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+
+
+create_object PLANT_JUNGLE { number_of_objects 1 number_of_groups rnd(17,22) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_UNDERBRUSH_TROPICAL { number_of_objects 1 number_of_groups rnd(16,22) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_UNDERBRUSH { number_of_objects 1 number_of_groups rnd(7,9) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_RAINFOREST { number_of_objects 1 number_of_groups rnd(17,23) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object PLANT_UNDERBRUSH_RAINFOREST { number_of_objects 1 number_of_groups rnd(6,8) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(10,20) set_scale_by_groups temp_min_distance_group_placement 2 terrain_to_place_on TERR_NEUTRAL set_circular_placement }
+create_object DLC_BUDDHA_STATUE_C { terrain_to_place_on CENTER_HOLE_TERRAIN min_distance_to_players 15 set_circular_placement }
+create_object FLOWER_BED { number_of_objects 1 number_of_groups rnd(2,8) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL avoid_forest_zone 1 }
+create_object OLD_STONE_HEAD { number_of_objects 1 number_of_groups rnd(1,2) terrain_to_place_on TERR_NEUTRAL set_circular_placement avoid_forest_zone 1 }
+
+
+
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(10,15) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(8,14) terrain_to_place_on CENTER_FOREST_TERRAIN group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(8,14) terrain_to_place_on BASE_TERRAIN group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object SIGN { number_of_objects 1 number_of_groups rnd(0,2) terrain_to_place_on TERR_NEUTRAL min_distance_to_players 24 temp_min_distance_group_placement 32 set_circular_placement avoid_forest_zone 2 }
+
+create_object FLOWERS_1 { number_of_objects 1 number_of_groups rnd(3,4) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_2 { number_of_objects 1 number_of_groups rnd(3,4) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_3 { number_of_objects 1 number_of_groups rnd(3,4) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_4 { number_of_objects 1 number_of_groups rnd(3,4) set_scale_by_groups terrain_to_place_on TERR_NEUTRAL max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+
+/* forest cosmetics */
+create_object FENCE_RUBBLE { number_of_objects 2 number_of_groups rnd(6,8) group_variance 1 set_scale_by_groups terrain_to_place_on CENTER_FOREST_TERRAIN temp_min_distance_group_placement 3 set_circular_placement }

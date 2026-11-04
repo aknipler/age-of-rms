@@ -152,6 +152,14 @@ export function auditConstants(parse: ParseResult): ConstantUsage[] {
 export interface UndefinedReference {
   name: string;
   spans: Span[];
+  /**
+   * Any of its RMS0202 diagnostics is info, the parser's softening for a name
+   * an include file the app could not read might define. In the app those
+   * diagnostics already come from the parser worker with the include files
+   * resolved, so only an install-less run softens (include-resolution-design
+   * Sec.7), and this tool needs no capability of its own to read them.
+   */
+  softened: boolean;
 }
 
 /**
@@ -179,10 +187,11 @@ export function findUndefinedReferences(
     const name = tokenByStart.get(diag.span.start)?.text ?? "?";
     let entry = byName.get(name);
     if (!entry) {
-      entry = { name, spans: [] };
+      entry = { name, spans: [], softened: false };
       byName.set(name, entry);
     }
     entry.spans.push(diag.span);
+    if (diag.severity === "info") entry.softened = true;
   }
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -298,7 +307,9 @@ export function buildConstantsAuditOutput(
       kind: "table",
       columns: ["Name", "Referenced at", "Times"],
       rows: undefinedRefs.map((u) => [
-        u.name,
+        u.softened
+          ? `${u.name} (may be in an include file the app could not read)`
+          : u.name,
         u.spans
           .map((s) => String(lineNumberOfOffset(parse.lineOffsets, s.start)))
           .join(", "),

@@ -1,4 +1,10 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  memo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { HelpTip } from "../HelpTip";
 import { PreviewControls, PreviewPane } from "../preview/PreviewPane";
 import {
@@ -129,7 +135,22 @@ const TABS: readonly {
   },
 ];
 
-export function MapSidePanel() {
+/**
+ * Wrapped in `memo` so a keystroke does not re-render it. App keeps the
+ * document text in `AppContent`'s state, so every keystroke re-renders
+ * `AppContent` and, by default, every component it renders. This one takes no
+ * props and reads everything it shows from context, so `memo` (which skips a
+ * render when the props are unchanged) skips it on every keystroke, while a
+ * context it or a child reads still re-renders exactly the part that reads it.
+ * On Stranded.rms that saved about 45 ms of the hidden reference table's
+ * rows plus the preview pane and their HelpTips on each key in a development
+ * build (2026-11-04, docs/diagnostics-latency-report.md Sec.10).
+ *
+ * `memo` is the standard React tool for this. The other fix, moving the text
+ * out of `AppContent`'s state, would stop the whole shell re-rendering and is
+ * the bigger change the report ranks as fix 7.
+ */
+export const MapSidePanel = memo(function MapSidePanel() {
   const { width, collapsed } = useSidePanelLayout();
   const { tab, setTab } = useSidePanelTab();
   // Called before the `collapsed` early return below, since hooks have to run
@@ -232,4 +253,4 @@ export function MapSidePanel() {
       <SidePanelResizer panelRef={panelRef} />
     </>
   );
-}
+});

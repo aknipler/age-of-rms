@@ -72,6 +72,21 @@ export interface PreviewViewValue {
   colorMode: TerrainColorMode;
   setColorMode: (mode: TerrainColorMode) => void;
   /**
+   * Regenerate the preview whenever the script is edited. On by default. Off,
+   * an edit leaves the map as it is and marks it stale; the seed, the
+   * generation settings and the Generate action still redraw it.
+   */
+  regenOnEdit: boolean;
+  setRegenOnEdit: (on: boolean) => void;
+  /**
+   * Notes the user hid, as `<file path>\0<note id>` so one set serves every
+   * script and a hidden note stays hidden in the script it was hidden in.
+   */
+  hiddenNotes: ReadonlySet<string>;
+  hideNote: (filePath: string | null, noteId: string) => void;
+  /** Brings back every note hidden in one script. */
+  restoreNotes: (filePath: string | null) => void;
+  /**
    * The clicked tile, or null when nothing is selected. Its readout replaces
    * the hover readout for as long as it is set, so a tile's details stay
    * legible while the pointer moves away to the notes drawer or the code.
@@ -120,6 +135,25 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
   );
   const [colorMode, setColorMode] = useState<TerrainColorMode>(
     DEFAULT_TERRAIN_COLOR_MODE,
+  );
+  const [regenOnEdit, setRegenOnEdit] = useState(true);
+  const [hiddenNotes, setHiddenNotes] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+  const hideNote = useCallback(
+    (filePath: string | null, noteId: string) =>
+      setHiddenNotes((current) =>
+        new Set(current).add(`${filePath ?? ""}\0${noteId}`),
+      ),
+    [],
+  );
+  const restoreNotes = useCallback(
+    (filePath: string | null) =>
+      setHiddenNotes((current) => {
+        const prefix = `${filePath ?? ""}\0`;
+        return new Set([...current].filter((id) => !id.startsWith(prefix)));
+      }),
+    [],
   );
   const [selectedTile, setSelectedTile] = useState<TilePoint | null>(null);
   const [hiddenObjects, setHiddenObjects] = useState<ReadonlySet<string>>(
@@ -172,6 +206,11 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
       reseed,
       colorMode,
       setColorMode,
+      regenOnEdit,
+      setRegenOnEdit,
+      hiddenNotes,
+      hideNote,
+      restoreNotes,
       selectedTile,
       toggleSelectedTile,
       clearSelectedTile,
@@ -185,6 +224,10 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
       seed,
       reseed,
       colorMode,
+      regenOnEdit,
+      hiddenNotes,
+      hideNote,
+      restoreNotes,
       selectedTile,
       toggleSelectedTile,
       clearSelectedTile,

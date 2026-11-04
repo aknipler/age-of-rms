@@ -23,11 +23,25 @@ import {
 } from "../../../../parser/language";
 import type { ParseResult } from "../../../../parser/types";
 import { instantiateScript } from "../../../../preview/generator/instantiate";
+import {
+  parseOptionsFor,
+  type ParseOptionsConstant,
+} from "../../../../preview/generator/parseOptions";
+import gameConstantsRaw from "../../../../../reference/data/game-constants.json";
+import { useIncludeFiles } from "../../../../useIncludeFiles";
 import type { MapSize } from "../../../../generationSettings/generationSettingsConstants";
 import { reservedNamesForApply } from "../applyEdits";
 import { NameAllocator } from "../compiler/naming";
 import { emitAlpModel, type EmissionResult } from "../emitModel";
 import type { AlpModel } from "../fence";
+
+// The panel has no reference data of its own, so it reads the bundled table the
+// editor's parser worker reads. Built once at module scope: the options walk
+// the whole table, and `parseOptionsFor` caches on the array's identity.
+const PARSE_OPTIONS = parseOptionsFor(
+  (gameConstantsRaw as unknown as { constants: ParseOptionsConstant[] })
+    .constants,
+);
 
 export interface DryEmission {
   emission: EmissionResult;
@@ -43,6 +57,10 @@ export function useEmission(
   mapSize: MapSize,
   seed: number,
 ): DryEmission | null {
+  // A script's constants may come from DE's own include files (Bazi reads
+  // its map scale from `includes/scaling.inc`), and the emission resolves
+  // against the same table the preview does.
+  const includeFiles = useIncludeFiles(parse);
   return useMemo(() => {
     if (parse === null || model === null) return null;
     const refDb = buildLanguageIndex(lang);
@@ -51,6 +69,8 @@ export function useEmission(
       refDb,
       { playerCount, mapSize, teams: [] },
       seed,
+      includeFiles,
+      PARSE_OPTIONS,
     );
     const namer = new NameAllocator({
       reserved: reservedNamesForApply(parse, lang),
@@ -62,5 +82,5 @@ export function useEmission(
       playerCount,
     );
     return { emission, scriptSymbols: instantiated.symbols };
-  }, [parse, model, lang, playerCount, mapSize, seed]);
+  }, [parse, model, lang, playerCount, mapSize, seed, includeFiles]);
 }

@@ -52,7 +52,10 @@ function laterSave(over: Partial<RefreshedValues> = {}): RefreshedValues {
 function rowFor(source: string, label: string): string {
   const row = source
     .split("\n")
-    .find((line) => line.trimStart().startsWith(label));
+    // The label plus the start of its column padding, not the label alone.
+    // "Created" is a prefix of "Created by", and a bare startsWith would
+    // hand back whichever of the two rows comes first.
+    .find((line) => line.trimStart().startsWith(`${label}  `));
   if (!row) throw new Error(`no "${label}" row in:\n${source}`);
   return row.trim();
 }
@@ -61,7 +64,7 @@ describe("buildScriptHeader", () => {
   it("carries all five fields", () => {
     const { text } = buildScriptHeader(FIELDS);
     expect(rowFor(text, "File")).toBe("File           Sacred Springs.rms");
-    expect(rowFor(text, "Author")).toBe("Author         Ash");
+    expect(rowFor(text, "Created by")).toBe("Created by     Ash");
     expect(rowFor(text, "Created")).toBe("Created        03/08/2026");
     expect(rowFor(text, "Last modified")).toBe("Last modified  03/08/2026");
     expect(rowFor(text, `${HEADER_SIGNATURE} version`)).toBe(
@@ -303,7 +306,11 @@ describe("refreshScriptHeader ownership, row by row", () => {
 
   it("latches: a row stays un-owned even if its original text comes back", () => {
     const { source, stamped } = stampedDocument();
-    const edited = handEdit(source, "Author", "Author         Someone else");
+    const edited = handEdit(
+      source,
+      "Created by",
+      "Created by     Someone else",
+    );
     const afterEdit = refreshScriptHeader(edited, stamped, laterSave()).stamped;
     // Only that row went, otherwise the assertion below would pass for the
     // wrong reason.
@@ -321,7 +328,7 @@ describe("refreshScriptHeader ownership, row by row", () => {
     const { source, stamped } = stampedDocument();
     const withoutAuthor = source
       .split("\n")
-      .filter((line) => !line.includes("Author"))
+      .filter((line) => !line.includes("Created by"))
       .join("\n");
 
     const refresh = refreshScriptHeader(withoutAuthor, stamped, laterSave());

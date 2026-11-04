@@ -1,0 +1,1053 @@
+/* Battle Lines
+	by Thire7
+	created 2025/12/26 - 2026/01/11
+	
+	NOT PREPARED FOR ANYTHING BUT 1v1
+*/
+
+
+/* default sizes */
+	if MAPSIZE_MINI			#const MAPSIZE 80 /* */
+	elseif MAPSIZE_TINY		#const MAPSIZE 120 /* 2 */
+	elseif MAPSIZE_SMALL		#const MAPSIZE 144 /* 3 */
+	elseif MAPSIZE_MEDIUM		#const MAPSIZE 168 /* 4 */
+	elseif MAPSIZE_NORMAL		#const MAPSIZE 200 /* 6 */
+	elseif MAPSIZE_LARGE		#const MAPSIZE 220 /* 8 */
+	elseif MAPSIZE_HUGE		#const MAPSIZE 240 /* */
+	elseif MAPSIZE_GIANT		#const MAPSIZE 252 /* */
+	elseif MAPSIZE_MASSIVE		#const MAPSIZE 276 /* */
+	elseif MAPSIZE_ENORMOUS		#const MAPSIZE 300 /* */
+	elseif MAPSIZE_COLOSSAL		#const MAPSIZE 320 /* */
+	elseif MAPSIZE_INCREDIBLE	#const MAPSIZE 360 /* */
+	elseif MAPSIZE_MONSTROUS	#const MAPSIZE 400 
+	elseif MAPSIZE_LUDICROUS	#const MAPSIZE 480 
+	else				#const MAPSIZE 260 
+	endif
+
+/* for area scaling */
+	#const MAPAREA (MAPSIZE * MAPSIZE)
+
+/* player counting */
+	if 1_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#const	PLAYER_COUNT	1
+
+	elseif 2_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#const	PLAYER_COUNT	2
+
+	elseif 3_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#define AT_LEAST_3_PLAYERS
+		#const	PLAYER_COUNT	3
+
+	elseif 4_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#define AT_LEAST_3_PLAYERS
+		#define AT_LEAST_4_PLAYERS
+		#const	PLAYER_COUNT	4
+
+	elseif 5_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#define AT_LEAST_3_PLAYERS
+		#define AT_LEAST_4_PLAYERS
+		#define AT_LEAST_5_PLAYERS
+		#const	PLAYER_COUNT	5
+
+	elseif 6_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#define AT_LEAST_3_PLAYERS
+		#define AT_LEAST_4_PLAYERS
+		#define AT_LEAST_5_PLAYERS
+		#define AT_LEAST_6_PLAYERS
+		#const	PLAYER_COUNT	6
+
+	elseif 7_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#define AT_LEAST_3_PLAYERS
+		#define AT_LEAST_4_PLAYERS
+		#define AT_LEAST_5_PLAYERS
+		#define AT_LEAST_6_PLAYERS
+		#define AT_LEAST_7_PLAYERS
+		#const	PLAYER_COUNT	7
+
+	elseif 8_PLAYER_GAME
+		#define AT_LEAST_1_PLAYER
+		#define AT_LEAST_2_PLAYERS
+		#define AT_LEAST_3_PLAYERS
+		#define AT_LEAST_4_PLAYERS
+		#define AT_LEAST_5_PLAYERS
+		#define AT_LEAST_6_PLAYERS
+		#define AT_LEAST_7_PLAYERS
+		#define AT_LEAST_8_PLAYERS
+		#const	PLAYER_COUNT	8
+	endif
+
+/* parameter renames */
+	#const restricted_terrain_distance		max_distance_to_other_zones
+
+#const NUM_PI		3.14159
+
+#const TERR_BASE	83	/* grass, jungle (rainforest) */
+#const TERR_PLAYER	GRASS
+#const TERR_CORNER	GRASS2
+#const TERR_CENTER	GRASS3
+#const TERR_FILL_A	DIRT2
+#const TERR_TEMP_1	DIRT
+#const TERR_BLACK	129	/* Black, walkable */
+#const TERR_FOREST	FOREST
+#const TERR_TEMP_2	8	/* Farm, dead */
+#const TERR_P_POINT	7	/* Farm */
+#const TERR_FOREST_B	20
+
+start_random	/* replace land terrains with the final terrain choice, may reuse a terrain */
+percent_chance	30
+#const TERR_FILL_FINAL	83	/* grass, jungle (rainforest) */
+percent_chance	30
+#const TERR_FILL_FINAL	GRASS
+percent_chance	30
+#const TERR_FILL_FINAL	GRASS3
+percent_chance	10
+#const TERR_FILL_FINAL	DLC_DRYGRASS
+end_random
+
+/* objects definition */
+	/* Placeholder objects */
+	#const PH_ON_GENERIC	1543
+	#const PH_ON_AMPHIBIOUS	1545 /* unused */
+	#const PH_ON_WATER	1547 /* unused */
+
+	#const PH_OFF_GENERIC	1902 /* unused */
+
+	start_random
+	percent_chance	50
+	#const OBJ_ROCK	623 /* Rock 1 */
+	percent_chance	50
+	#const OBJ_ROCK	1323 /* Rock 2 */
+	end_random
+
+	#const OBJ_GENERATOR	1647
+	
+	#const OBJ_VILL_MALE	1810
+	#const OBJ_VILL_FEM	293
+
+	#const OBJ_MOUFLON	2340
+	/* see object generation for biome/season objects */
+
+<PLAYER_SETUP>
+random_placement
+
+effect_amount MOD_RESOURCE AMOUNT_WORKSHOP_TRICKLE_FOOD ATTR_SET 0.001
+effect_amount MOD_RESOURCE AMOUNT_WORKSHOP_TRICKLE_WOOD ATTR_SET 0.001
+effect_amount MOD_RESOURCE AMOUNT_WORKSHOP_TRICKLE_STONE ATTR_SET 0.001
+effect_amount MOD_RESOURCE AMOUNT_WORKSHOP_TRICKLE_GOLD ATTR_SET 0.4
+
+#define RELICS_IN_FOREST
+if WEAK_RELICS
+	effect_amount MUL_RESOURCE AMOUNT_RELIC_GENERATION_GOLD ATTR_DISABLE 0.66666
+endif
+<LAND_GENERATION>
+
+#const L_ID_CENTER	2
+#const L_ID_PLAYER_LAND	1
+#const L_ID_CORNER	3
+#const CORNER_ROUND	0.14
+#const CORNER_SQUARE	0.14
+#const CORNER_AREA	(CORNER_ROUND * CORNER_ROUND) /* unused? */
+#const CORNER_MID_L	25
+#const CORNER_MID_H	74
+#const CORNER_OUT_L	8
+#const CORNER_OUT_H	91
+
+base_terrain TERR_BASE
+
+create_land
+{
+	terrain_type			TERR_CENTER
+	land_position			50 50
+	base_size			1
+	number_of_tiles		1
+	land_conformity		99
+	land_id			L_ID_CENTER
+	base_elevation		2
+}
+create_player_lands
+{
+	terrain_type			TERR_PLAYER
+	base_size			7
+	set_circular_base
+	circle_radius			15 0
+	number_of_tiles		(MAPAREA * 0.09 * NUM_PI)
+	land_conformity		99
+	other_zone_avoidance_distance	3
+	land_id			L_ID_PLAYER_LAND
+}
+
+if AT_LEAST_3_PLAYERS
+else
+	create_player_lands
+	{
+		terrain_type			TERR_BASE
+		base_size			1
+		number_of_tiles		0
+		circle_radius			13 0
+	}
+endif
+
+/* corners */
+	/* left corner */
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_L CORNER_MID_L
+			base_size			(MAPSIZE * CORNER_ROUND)
+			number_of_tiles		0
+			set_circular_base
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_L CORNER_MID_L
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_L CORNER_OUT_L
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_L CORNER_OUT_L
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+	/* bottom corner */
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_L CORNER_MID_H
+			base_size			(MAPSIZE * CORNER_ROUND)
+			number_of_tiles		0
+			set_circular_base
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_L CORNER_MID_H
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_L CORNER_OUT_H
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_L CORNER_OUT_H
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+	/* top corner */
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_H CORNER_MID_L
+			base_size			(MAPSIZE * CORNER_ROUND)
+			number_of_tiles		0
+			set_circular_base
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_H CORNER_MID_L
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_H CORNER_OUT_L
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_H CORNER_OUT_L
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+	/* right corner */
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_H CORNER_MID_H
+			base_size			(MAPSIZE * CORNER_ROUND)
+			number_of_tiles		0
+			set_circular_base
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_H CORNER_MID_H
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_MID_H CORNER_OUT_H
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+		create_land
+		{
+			terrain_type			TERR_CORNER
+			land_position			CORNER_OUT_H CORNER_OUT_H
+			base_size			(MAPSIZE * CORNER_SQUARE)
+			number_of_tiles		0
+			land_conformity		99
+			land_id			L_ID_CORNER
+		}
+/*  */
+<ELEVATION_GENERATION>
+create_elevation	3
+{
+	base_terrain		TERR_CORNER
+	number_of_tiles	(MAPAREA * 0.04)
+	number_of_clumps	(MAPAREA * 0.001)
+	enable_balanced_elevation
+}
+<TERRAIN_GENERATION>
+
+create_terrain	TERR_FOREST
+{
+	base_terrain	TERR_BASE
+	number_of_tiles	(MAPAREA * 0.3)
+	number_of_clumps	(MAPAREA * 0.007)
+	set_avoid_player_start_areas	(MAPSIZE * 0.22)
+}
+
+/*
+create_terrain	TERR_BLACK
+{
+	base_terrain	TERR_BASE
+	number_of_tiles	(MAPAREA * 0.3)
+	number_of_clumps	(MAPAREA * 0.007)
+	spacing_to_other_terrain_types	6
+	spacing_to_specific_terrain		TERR_CORNER	8
+}
+*/
+
+/* create central black */
+	create_terrain	TERR_TEMP_1
+	{
+		base_terrain	TERR_BASE
+		number_of_tiles	(MAPAREA * 0.12)
+		number_of_clumps	(MAPAREA * 0.007)
+		spacing_to_specific_terrain		TERR_FOREST	(MAPSIZE * 0.1)
+	if AT_LEAST_3_PLAYERS
+		spacing_to_specific_terrain		TERR_CORNER	4
+	else
+		spacing_to_specific_terrain		TERR_CORNER	5
+	endif
+	}
+
+	create_terrain	TERR_FILL_A
+	{
+		base_terrain	TERR_BASE
+		number_of_tiles	(MAPAREA * 0.15)
+		number_of_clumps	(MAPAREA * 0.001)
+		spacing_to_specific_terrain		TERR_FOREST	4
+	}
+
+	create_terrain	TERR_BLACK
+	{
+		base_terrain	TERR_TEMP_1
+		number_of_tiles	(MAPAREA * 0.15)
+		number_of_clumps	(MAPAREA * 0.001)
+	}
+
+create_terrain	TERR_BLACK
+{
+	base_terrain	TERR_FOREST
+	number_of_tiles	(MAPAREA * 0.20)
+	number_of_clumps	(MAPAREA * 0.003)
+	spacing_to_other_terrain_types	(MAPSIZE * 0.05)
+}
+create_terrain	TERR_BLACK
+{
+	base_terrain	TERR_FOREST
+	number_of_tiles	(MAPAREA * 0.01)
+	number_of_clumps	(MAPAREA * 0.003)
+	spacing_to_other_terrain_types	(MAPSIZE * 0.03)
+}
+
+/* attempt to add a special terrain only around the player, fail */
+/* create_terrain	TERR_TEMP_2
+{
+	base_terrain	TERR_PLAYER
+	number_of_tiles	(MAPAREA * 0.15)
+	number_of_clumps	(MAPAREA * 0.015)
+	set_avoid_player_start_areas	4
+}
+create_terrain	TERR_P_POINT
+{
+	base_terrain	TERR_PLAYER
+	number_of_tiles	(MAPAREA * 0.01)
+	number_of_clumps	(MAPAREA * 0.001)
+}
+create_terrain	TERR_PLAYER
+{
+	base_terrain	TERR_TEMP_2
+	number_of_tiles	(MAPAREA * 0.15)
+	number_of_clumps	(MAPAREA * 0.015)
+} */
+
+/* trying to add forest clumps around the central black */
+create_terrain	TERR_PLAYER
+{
+	base_terrain	TERR_FILL_A
+	number_of_tiles	(MAPAREA * 0.15)
+	number_of_clumps	(MAPAREA * 0.015)
+}
+create_terrain	TERR_FILL_A
+{
+	base_terrain	TERR_PLAYER
+	number_of_tiles	(MAPAREA * 0.15)
+	number_of_clumps	(MAPAREA * 0.015)
+	spacing_to_specific_terrain		TERR_BLACK	(MAPSIZE * 0.05)
+}
+create_terrain	TERR_FILL_A
+{
+	base_terrain	TERR_PLAYER
+	number_of_tiles	(MAPAREA * 0.01)
+	number_of_clumps	(MAPAREA * 0.005)
+	spacing_to_specific_terrain		TERR_BLACK	(MAPSIZE * 0.03)
+	set_avoid_player_start_areas	(MAPSIZE * 0.08)
+}
+create_terrain	TERR_FOREST
+{
+	base_terrain	TERR_PLAYER
+	number_of_tiles	(MAPAREA * 0.02)
+	number_of_clumps	(MAPAREA * 0.003)
+	spacing_to_specific_terrain		TERR_CENTER	(MAPSIZE * 0.06 + 3)
+	if AT_LEAST_3_PLAYERS
+		set_avoid_player_start_areas	12
+	endif
+}
+
+/* scatter forests on corner terrain */
+	create_terrain	TERR_TEMP_1
+	{
+		base_terrain	TERR_CORNER
+		number_of_tiles	(MAPAREA * 0.025)
+		number_of_clumps	(MAPAREA * 0.001)
+		spacing_to_specific_terrain		TERR_BLACK	(MAPSIZE * 0.05 + 2)
+		spacing_to_other_terrain_types	2
+	}
+	if RELICS_IN_FOREST
+		create_terrain	TERR_TEMP_2
+		{
+			base_terrain	TERR_CORNER
+			number_of_tiles	(MAPAREA * 0.055)
+			number_of_clumps	(MAPAREA * 0.001)
+			spacing_to_specific_terrain		TERR_BLACK	(MAPSIZE * 0.05 + 1)
+			spacing_to_specific_terrain		TERR_TEMP_1	3
+			spacing_to_other_terrain_types	2
+			clumping_factor			25
+		}
+		create_terrain	TERR_FOREST_B
+		{
+			base_terrain	TERR_TEMP_2
+			number_of_tiles	(MAPAREA * 0.015)
+			number_of_clumps	(MAPAREA * 0.005)
+			spacing_to_other_terrain_types	1
+		}
+		create_terrain	TERR_FOREST
+		{
+			base_terrain	TERR_TEMP_1
+			number_of_tiles	(MAPAREA * 0.036)
+			number_of_clumps	(MAPAREA * 0.0015)
+		}
+		create_terrain	TERR_FOREST
+		{
+			base_terrain	TERR_TEMP_2
+			number_of_tiles	(MAPAREA * 0.045)
+			number_of_clumps	(MAPAREA * 0.015)
+		}
+		create_terrain	TERR_FOREST
+		{
+			base_terrain	TERR_TEMP_2
+			number_of_tiles	(MAPAREA * 0.005)
+			number_of_clumps	(MAPAREA * 0.005)
+		}
+	else
+		create_terrain	TERR_FOREST_B
+		{
+			base_terrain	TERR_CORNER
+			number_of_tiles	(MAPAREA * 0.055)
+			number_of_clumps	(MAPAREA * 0.001)
+			spacing_to_specific_terrain		TERR_BLACK	(MAPSIZE * 0.05 + 1)
+			spacing_to_specific_terrain		TERR_TEMP_1	3
+			spacing_to_other_terrain_types	2
+		}
+		create_terrain	TERR_FOREST_B
+		{
+			base_terrain	TERR_TEMP_1
+			number_of_tiles	(MAPAREA * 0.036)
+			number_of_clumps	(MAPAREA * 0.0015)
+		}
+	endif
+/* final terrain replacement */
+	create_terrain	TERR_FILL_FINAL
+	{
+		base_terrain	TERR_BASE
+		number_of_tiles		(MAPAREA * 0.3)
+		number_of_clumps		(MAPAREA * 0.06)
+	}
+	create_terrain	TERR_FILL_FINAL
+	{
+		base_terrain	TERR_PLAYER
+		number_of_tiles		(MAPAREA * 0.3)
+		number_of_clumps		(MAPAREA * 0.06)
+	}
+	create_terrain	TERR_FILL_FINAL
+	{
+		base_terrain	TERR_FILL_A
+		number_of_tiles		(MAPAREA * 0.3)
+		number_of_clumps		(MAPAREA * 0.06)
+	}
+	create_terrain	TERR_FILL_FINAL
+	{
+		base_terrain	TERR_TEMP_1
+		number_of_tiles		(MAPAREA * 0.3)
+		number_of_clumps		(MAPAREA * 0.06)
+	}
+	create_terrain	TERR_FILL_FINAL
+	{
+		base_terrain	TERR_TEMP_2
+		number_of_tiles		(MAPAREA * 0.1)
+		number_of_clumps		(MAPAREA * 0.03)
+	}
+<OBJECTS_GENERATION>
+
+
+/* Actor areas */
+	/*	1-10 player objects
+		100-199 player and loose resources
+		200-299 positional controls
+		300-399 other */
+	#const ACT_A_TC	1
+	#const ACT_A_VILLS_A	2
+	#const ACT_A_VILLS_B	3
+	#const ACT_R_TC	2
+	#const ACT_R_VILLS_A	3
+	#const ACT_R_VILLS_B	3
+
+	#const ACT_A_HERD_A	101
+	#const ACT_R_HERD_A	3
+	#const ACT_A_FORAGE	102
+	#const ACT_R_FORAGE	3
+	#const ACT_A_GOLD_A	103
+	#const ACT_R_GOLD_A	5
+	#const ACT_A_STONE_A	104
+	#const ACT_R_STONE_A	5
+	#const ACT_A_GOLD_B	105
+	#const ACT_R_GOLD_B	5
+	#const ACT_A_STONE_B	106
+	#const ACT_R_STONE_B	5
+	#const ACT_A_HERD_B	107
+	#const ACT_R_HERD_B	3
+	#const ACT_A_HUNT	108
+	#const ACT_R_HUNT	3
+	#const ACT_A_LURE	109
+	#const ACT_R_LURE	7
+
+	#const ACT_A_CENTER	201
+	#const ACT_R_CENTER	7
+	#const ACT_A_CORNER	202
+	#const ACT_R_CORNER	5
+
+	#const ACT_A_BLACK	301
+	#const ACT_R_BLACK	2
+	#const ACT_A_CORNER_GOLD	302
+	#const ACT_R_CORNER_GOLD	5
+
+create_object_group	GROUP_CORNER
+{
+	add_object	RELIC		50
+	add_object	OBJ_GENERATOR	50
+}
+
+create_object_group	GROUP_IDLE_VILLAGER
+{
+	add_object	OBJ_VILL_MALE		50
+	add_object	OBJ_VILL_FEM		50
+}
+
+/* biome/season objects */
+	create_object_group	GROUP_HERDABLE_A
+	{
+		add_object	SHEEP		50
+		add_object	DLC_PIG	50
+	}
+	create_object_group	GROUP_HERDABLE_B
+	{
+		add_object	DLC_GOOSE	33
+		add_object	TURKEY		33
+		add_object	DLC_GOAT	34
+	}
+	#const OBJ_KERICEK	FORAGE_BUSH
+	
+	create_object_group	GROUP_HUNTABLE
+	{
+		add_object	DEER		33
+		add_object	GAZELLE	33
+		add_object	OBJ_MOUFLON	34
+	}
+	create_object_group	GROUP_LURABLE
+	{
+		add_object	DLC_RHINO	50
+		add_object	DLC_ELEPHANT	50
+	}
+	create_object_group	GROUP_STRAGGLER
+	{
+		add_object	LUSH_BAMBOO_TREE	33
+		add_object	PEACH_BLOSSOM_TREE	33
+		add_object	WILLOW_TREE	34
+	}
+create_object PH_ON_GENERIC
+{
+	place_on_specific_land_id	L_ID_CENTER
+	max_distance_to_players	0
+	actor_area		ACT_A_CENTER
+	actor_area_radius	ACT_R_CENTER
+	/* second_object		VILLAGER */
+}
+
+create_object PH_ON_GENERIC
+{
+	place_on_specific_land_id	L_ID_CORNER
+	max_distance_to_players	0
+	actor_area		ACT_A_CORNER
+	actor_area_radius	ACT_R_CORNER
+}
+/* make black impassable */
+	create_object OBJ_ROCK
+	{
+		number_of_objects		(MAPAREA * 0.1)
+		terrain_to_place_on		TERR_BLACK
+		actor_area			ACT_A_BLACK
+		actor_area_radius		ACT_R_BLACK
+	}
+
+/* player objects */
+	create_object TOWN_CENTER
+	{
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players			0
+		max_distance_to_players			5
+		find_closest_to_map_center
+		set_circular_placement
+		avoid_actor_area	ACT_A_CENTER
+		actor_area			ACT_A_TC
+		actor_area_radius		ACT_R_TC
+	}
+	
+	create_object SCOUT
+	{
+		number_of_objects		1
+		/* temp_min_distance_group_placement	3 */
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		max_distance_to_players	0
+		/* restricted_terrain_distance	1 */
+	}
+
+	create_object GROUP_IDLE_VILLAGER
+	{
+		number_of_objects		2
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	5
+		max_distance_to_players	6
+		set_circular_placement
+		find_closest
+		enable_tile_shuffling
+		temp_min_distance_group_placement	7
+		avoid_actor_area			ACT_A_TC
+		actor_area			ACT_A_VILLS_A
+		actor_area_radius		ACT_R_VILLS_A
+	}
+	create_object GROUP_IDLE_VILLAGER
+	{
+		number_of_objects		1
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	4
+		max_distance_to_players	7
+		set_circular_placement
+		actor_area_to_place_in		ACT_A_VILLS_A
+		avoid_actor_area			ACT_A_TC
+		actor_area			ACT_A_VILLS_B
+		actor_area_radius		ACT_R_VILLS_B
+	}
+
+	create_object GROUP_HERDABLE_A
+	{
+		number_of_objects			1
+		actor_area			ACT_A_HERD_A
+		actor_area_radius		ACT_R_HERD_A
+		avoid_actor_area		ACT_A_TC
+		avoid_actor_area		ACT_A_VILLS_A
+		avoid_actor_area		ACT_A_BLACK
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players			7
+		max_distance_to_players			12
+		set_circular_placement
+		find_closest
+		enable_tile_shuffling
+		require_path	5
+		avoid_forest_zone 2
+	}
+
+	create_object GROUP_HERDABLE_A
+	{
+		number_of_objects		3
+		actor_area_to_place_in	ACT_A_HERD_A
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		set_gaia_object_only
+		min_distance_to_players    7
+		set_circular_placement
+	}
+
+	create_object OBJ_KERICEK
+	{
+		number_of_objects		6
+		group_placement_radius	3
+		set_tight_grouping
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	8
+		max_distance_to_players	15
+		find_closest
+		set_circular_placement
+		avoid_actor_area		ACT_A_CENTER
+		min_distance_group_placement 2
+		require_path	5
+		avoid_forest_zone		4
+		actor_area			ACT_A_FORAGE
+		actor_area_radius		ACT_R_FORAGE
+	}
+
+	/* main gold and stone */
+	create_object GOLD
+	{
+		number_of_objects			6  /* was 7 */
+		group_placement_radius		3
+		set_tight_grouping
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players		10
+		max_distance_to_players		18
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		avoid_actor_area		ACT_A_CENTER
+		avoid_actor_area		ACT_A_BLACK
+		require_path			5
+		avoid_forest_zone		3
+		min_distance_group_placement 2
+		actor_area			ACT_A_GOLD_A
+		actor_area_radius		ACT_R_GOLD_A
+	}
+
+	create_object STONE
+	{
+		number_of_objects          5
+		group_placement_radius     3
+		set_tight_grouping 
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players    11
+		max_distance_to_players    16
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		require_path		5
+		avoid_forest_zone	2
+		avoid_actor_area	ACT_A_FORAGE
+		avoid_actor_area	ACT_A_GOLD_A
+		avoid_actor_area		ACT_A_CENTER
+		avoid_actor_area		ACT_A_BLACK
+		min_distance_group_placement	3
+		actor_area 			ACT_A_STONE_A
+		actor_area_radius		ACT_R_STONE_A
+		/* avoid_actor_area	61	unsure what this is 
+		avoid_actor_area	62	unsure what this is */
+	}
+
+	if RELICS_IN_FOREST
+		create_object RELIC
+		{
+			number_of_objects		1
+			set_gaia_object_only
+			place_on_specific_land_id	L_ID_PLAYER_LAND
+			min_distance_to_players	16
+			find_closest
+			set_circular_placement
+			enable_tile_shuffling
+			require_path		5
+		}
+	endif
+
+	/* secondary gold and stone */
+	create_object GOLD
+	{
+		number_of_objects		4  /* was 4 */
+		group_placement_radius	3
+		set_tight_grouping
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	15
+		max_distance_to_players	20
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		require_path		5
+		avoid_forest_zone	2
+		avoid_actor_area	ACT_A_FORAGE
+		avoid_actor_area	ACT_A_GOLD_A
+		avoid_actor_area	ACT_A_BLACK
+		min_distance_group_placement 3
+		actor_area			ACT_A_GOLD_B
+		actor_area_radius		ACT_R_GOLD_B
+	}
+
+	create_object STONE
+	{
+		number_of_objects		5
+		group_placement_radius	2
+		set_tight_grouping
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	16
+		max_distance_to_players	21
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		require_path		5
+		avoid_forest_zone	2
+		avoid_actor_area	ACT_A_FORAGE
+		avoid_actor_area	ACT_A_GOLD_A
+		avoid_actor_area	ACT_A_GOLD_B
+		avoid_actor_area	ACT_A_STONE_A
+		avoid_actor_area	ACT_A_BLACK
+		actor_area			ACT_A_STONE_B
+		actor_area_radius		ACT_R_STONE_B
+	}
+
+	create_object GROUP_HERDABLE_B
+	{
+		number_of_objects 2
+		number_of_groups 2
+		set_loose_grouping
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	16
+		max_distance_to_players	25
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		require_path		5
+		avoid_forest_zone 2
+		avoid_actor_area		ACT_A_BLACK
+		min_distance_group_placement	3
+		temp_min_distance_group_placement	7
+		actor_area			ACT_A_HERD_B
+		actor_area_radius		ACT_R_HERD_B
+	}
+
+	create_object GROUP_HUNTABLE
+	{
+		number_of_objects		4
+		group_placement_radius	3
+		number_of_groups		1
+		set_loose_grouping
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	16
+		max_distance_to_players	30
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		require_path		5
+		avoid_actor_area	ACT_A_FORAGE
+		avoid_actor_area	ACT_A_HERD_B
+		avoid_actor_area	ACT_A_BLACK
+		avoid_forest_zone 2
+		min_distance_group_placement	2
+		actor_area			ACT_A_HUNT
+		actor_area_radius		ACT_R_HUNT
+	}
+
+	create_object GROUP_LURABLE
+	{
+		number_of_objects		1
+		set_loose_grouping  
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	16
+		max_distance_to_players	34
+		find_closest
+		require_path		5
+		avoid_forest_zone 2
+		avoid_actor_area	ACT_A_HERD_B
+		min_distance_group_placement	1
+		actor_area			ACT_A_LURE
+		actor_area_radius		ACT_R_LURE
+	}
+
+	create_object GROUP_LURABLE
+	{
+		number_of_objects		1
+		set_loose_grouping  
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	20
+		max_distance_to_players	34
+		find_closest
+		avoid_actor_area		ACT_A_LURE
+		avoid_actor_area		ACT_A_HERD_B
+		require_path		5
+		avoid_forest_zone	2
+		min_distance_group_placement	1
+	}
+
+	create_object GROUP_STRAGGLER
+	{
+		number_of_objects	7
+		set_gaia_object_only
+		place_on_specific_land_id	L_ID_PLAYER_LAND
+		min_distance_to_players	2
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		avoid_actor_area		ACT_A_TC
+		temp_min_distance_group_placement	4
+	}
+
+/* other map objects */
+	if RELIC_COUNT_16
+		create_object RELIC
+		{
+			place_on_specific_land_id	L_ID_CORNER
+			max_distance_to_players	0
+		}
+	elseif RELICS_IN_FOREST
+		create_object PH_ON_GENERIC
+		{
+			second_object		RELIC
+			terrain_to_place_on		TERR_FOREST_B
+			number_of_objects		4
+			temp_min_distance_group_placement	(MAPSIZE * 0.41)
+			avoid_actor_area		ACT_A_CORNER
+		}
+	else
+		create_object GROUP_CORNER
+		{
+			place_on_specific_land_id	L_ID_CORNER
+			max_distance_to_players	0
+			set_building_capturable
+			make_indestructible
+		}
+	endif
+
+	if RELICS_IN_FOREST
+		create_object GOLD
+		{
+			place_on_specific_land_id	L_ID_CORNER
+			number_of_objects		2
+			number_of_groups		(PLAYER_COUNT / 2)
+			min_distance_to_players	2
+			find_closest
+			set_circular_placement
+			enable_tile_shuffling
+			avoid_forest_zone		2
+			temp_min_distance_group_placement	(MAPSIZE * 0.08)
+			set_tight_grouping
+			actor_area			ACT_A_CORNER_GOLD
+			actor_area_radius		ACT_R_CORNER_GOLD
+		}
+	endif
+	create_object OBJ_KERICEK
+	{
+		place_on_specific_land_id	L_ID_CORNER
+		number_of_objects		2
+		number_of_groups		(PLAYER_COUNT / 2)
+		min_distance_to_players	2
+		find_closest
+		set_circular_placement
+		enable_tile_shuffling
+		avoid_forest_zone		2
+		temp_min_distance_group_placement	(MAPSIZE * 0.08)
+		avoid_actor_area		ACT_A_CORNER_GOLD
+		avoid_actor_area		ACT_A_HUNT
+		avoid_actor_area		ACT_A_LURE
+		set_tight_grouping
+	}
+
+	create_object STONE
+	{
+		terrain_to_place_on		TERR_CORNER
+		temp_min_distance_group_placement	20
+		number_of_groups		999
+		number_of_objects		1
+		avoid_forest_zone		1
+		avoid_actor_area		ACT_A_STONE_A
+		avoid_actor_area		ACT_A_STONE_B
+		avoid_actor_area		ACT_A_CORNER_GOLD
+		min_distance_to_map_edge	2
+	}

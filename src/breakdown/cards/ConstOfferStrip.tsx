@@ -5,7 +5,7 @@ import { editsOf } from "../patch/computeEdit";
 import type { EditResult, InsertTarget } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
 import {
-  commentOpenWarning,
+  commentMarkerWarning,
   defaultMeaning,
   moveUpRefusal,
   type CommitReview,
@@ -72,7 +72,7 @@ function CreateStrip({
   const meaning = defaultMeaning(review.defaultValue);
   const typed = value.trim();
   const numeric = typed !== "" && Number.isFinite(Number(typed));
-  const warning = numeric ? commentOpenWarning(Number(typed)) : undefined;
+  const warning = numeric ? commentMarkerWarning(Number(typed)) : undefined;
 
   const create = () => {
     if (typed === "") return;

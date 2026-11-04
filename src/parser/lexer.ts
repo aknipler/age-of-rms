@@ -130,7 +130,13 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
     });
   }
 
-  markComments(tokens, nestedComments, opts.commentOpenAliases, diagnostics);
+  markComments(
+    tokens,
+    nestedComments,
+    opts.commentOpenAliases,
+    opts.commentCloseAliases,
+    diagnostics,
+  );
   lintTokens(tokens, diagnostics);
 
   return { tokens, lineOffsets: computeLineOffsets(source), diagnostics };
@@ -155,11 +161,18 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
  * a live `create_object` is not commented out. Classifying them
  * globally, the `aliasTable` route, would truncate every map that
  * places a shore fish.
+ *
+ * `commentCloseAliases` is the other half, words valued 70, the engine's id
+ * for the closing marker (RMSTEST_82a, a word valued 70 ended a live comment
+ * and the text after it ran; 82b and 82c, an object name and the literal `70`
+ * did not). Same rule as the openers: they lower the depth by one only while a
+ * comment is open, and the word stays trivia, like a written closer.
  */
 function markComments(
   tokens: Token[],
   nestedComments: boolean,
   commentOpenAliases: ReadonlySet<string> | undefined,
+  commentCloseAliases: ReadonlySet<string> | undefined,
   diagnostics: Diagnostic[],
 ): void {
   let depth = 0;
@@ -186,13 +199,21 @@ function markComments(
       continue;
     }
     if (depth > 0) {
-      // A word the engine reads as `/*`. Same branch as a literal opener,
-      // deliberately: the opener bookkeeping (`openerIndex`) stays on the
-      // OUTERMOST marker, so an unclosed-at-EOF diagnostic still points at
-      // the comment the author opened rather than at the word that
-      // swallowed the file. RMS0111 is what names the word.
-      if (token.kind === "word" && commentOpenAliases?.has(token.text)) {
-        if (nestedComments) depth++;
+      if (token.kind === "word") {
+        // A word the engine reads as `/*`. Same branch as a literal opener,
+        // deliberately: the opener bookkeeping (`openerIndex`) stays on the
+        // OUTERMOST marker, so an unclosed-at-EOF diagnostic still points at
+        // the comment the author opened rather than at the word that
+        // swallowed the file. RMS0111 is what names the word.
+        if (commentOpenAliases?.has(token.text)) {
+          if (nestedComments) depth++;
+        } else if (commentCloseAliases?.has(token.text)) {
+          // A word valued 70 closes one level, exactly as a written `*/`
+          // would. The word is marked trivia just below, before the depth is
+          // read again, so it belongs to the comment it closes. RMS0112
+          // names it.
+          depth--;
+        }
       }
       token.isTrivia = true;
     }

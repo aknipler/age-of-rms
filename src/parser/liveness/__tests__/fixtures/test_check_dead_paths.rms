@@ -1,0 +1,13 @@
+/* From rms-check by Divy1211 (github.com/Divy1211/rms-check), GPL-3.0,
+   test_rms folder, copied 2026-11 for Age of RMS's liveness tests. */
+
+if B
+    create_terrain C {}
+endif
+
+#define A
+
+if A
+else
+    create_terrain D {}
+endif

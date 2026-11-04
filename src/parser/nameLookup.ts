@@ -19,6 +19,11 @@
 
 import { matchRank } from "../breakdown/pickerRanking";
 import type { ArgumentDef, CommandDef, LanguageData } from "./language";
+import {
+  includePathsIn,
+  type IncludedName,
+  type IncludeIndex,
+} from "./includeIndex";
 import { lineNumberOfOffset } from "./lineIndex";
 import { editDistanceCapped } from "./parser";
 import { isDefinedAbove } from "./scope";
@@ -99,6 +104,12 @@ export type Resolution =
       conditional: boolean;
       aliasOf?: BuiltinRow;
     }
+  /**
+   * Defined by an `#include_drs` file the script brought in above the use
+   * (docs/include-resolution-design.md Sec.4.3). `name` is the one whose
+   * directive comes first, the one the engine keeps.
+   */
+  | { kind: "included"; name: IncludedName }
   /** Defined only below the use, RMS0303's case. `symbol` is the first definition below. */
   | { kind: "definedBelow"; symbol: SymbolInfo }
   /** A predefined condition label, condition slots only. */
@@ -112,6 +123,7 @@ export interface Suggestion {
   name: string;
   source:
     | "script"
+    | "included"
     | "builtin"
     | "label"
     | "command"
@@ -127,6 +139,8 @@ export interface Suggestion {
   line?: number;
   definedBelow?: boolean;
   conditional?: boolean;
+  /** Included names, the include file the definition sits in (`includeKey` form). `line` is then the `#include_drs` line that brought it in. */
+  file?: string;
   /** Commands and attributes, from language.json. */
   description?: string;
 }
@@ -146,11 +160,33 @@ export function describeSuggestion(s: Suggestion): string | undefined {
       if (s.definedBelow)
         return `defined below (line ${s.line}), the game ignores it here`;
       return `your #const, line ${s.line}${s.conditional ? ", inside a branch" : ""}`;
+    case "included":
+      return `from ${s.file}${s.conditional ? ", inside a branch" : ""}`;
     case "label":
       return "predefined label";
     default:
       return undefined;
   }
+}
+
+/**
+ * The hover's sentence for a name an include defines (design Sec.4.6). Pure
+ * and here rather than in the hover module because that module imports
+ * Monaco, which plain-Node tests cannot load. `directiveLine` is the 1-based
+ * line of the `#include_drs` in the open script that brought the file in.
+ */
+export function describeIncludedHover(
+  name: string,
+  included: IncludedName,
+  directiveLine: number,
+): string {
+  const kind = included.directiveKind === "const" ? "#const" : "#define";
+  const value =
+    included.valueText !== undefined ? `, value ${included.valueText}` : "";
+  const branch = included.conditional
+    ? ", inside a branch there, so only some maps define it"
+    : "";
+  return `\`${name}\`, a ${kind} in ${included.file}, brought in by the #include_drs on line ${directiveLine}${value}${branch}.`;
 }
 
 export interface StaticNameIndex {
@@ -172,6 +208,8 @@ export interface ScriptNameIndex {
   readonly parse: ParseResult;
   /** In source order within each name, the order `parseRms` records them. */
   readonly symbolsByName: ReadonlyMap<string, readonly SymbolInfo[]>;
+  /** What the script's include files define, from `parse.includeIndex`. Absent when the parser worker has not read them. */
+  readonly includes?: IncludeIndex;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +246,18 @@ export function buildStaticNameIndex(
 export function buildScriptNameIndex(parse: ParseResult): ScriptNameIndex {
   const symbolsByName = new Map<string, SymbolInfo[]>();
   for (const s of parse.symbols) pushTo(symbolsByName, s.name, s);
-  return { parse, symbolsByName };
+  return { parse, symbolsByName, includes: parse.includeIndex };
+}
+
+/**
+ * True when a miss may be hiding in an include file nobody read: the script
+ * names an `#include_drs` and its index is absent, or says no install was
+ * found. A file the install lacks does not count, DE reads it as empty
+ * (design Sec.4.4), so the create and move offers stay available there.
+ */
+export function includesUnread(script: ScriptNameIndex): boolean {
+  if (includePathsIn(script.parse).length === 0) return false;
+  return script.includes === undefined || !script.includes.installFound;
 }
 
 function pushTo<T>(map: Map<string, T[]>, key: string, value: T): void {
@@ -264,6 +313,40 @@ function slotTakesSymbol(slot: SlotKind, symbol: SymbolInfo): boolean {
       return true;
     }
   }
+}
+
+/**
+ * Included names a slot can name. A `#define` carries no number, so only a
+ * condition slot takes one. A formula slot is left alone (Sec.9 reads the
+ * script's own consts with no position test, and an include's position is the
+ * whole point of this lookup).
+ */
+function slotTakesIncluded(slot: SlotKind, name: IncludedName): boolean {
+  switch (slot.kind) {
+    case "condition":
+      return true;
+    case "argument":
+      return slot.def.type !== "string" && name.directiveKind === "const";
+    case "formula":
+    case "lineStart":
+      return false;
+  }
+}
+
+/** The include definition of `name` the engine keeps at `useIndex`: the earliest directive above the use whose kind the slot takes. */
+function firstIncludedAbove(
+  script: ScriptNameIndex,
+  name: string,
+  useIndex: number,
+  slot: SlotKind,
+): IncludedName | undefined {
+  let first: IncludedName | undefined;
+  for (const n of script.includes?.names.get(name) ?? []) {
+    if (n.directiveToken >= useIndex || !slotTakesIncluded(slot, n)) continue;
+    if (first === undefined || n.directiveToken < first.directiveToken)
+      first = n;
+  }
+  return first;
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +426,22 @@ export function resolveName(
   }
 
   const scoped = scriptResolution(definitions, useIndex);
+
+  // The first definition wins across the two sources (design Sec.4.3). The
+  // script's `#const` and an include's are both read in file order, so the one
+  // the engine keeps is whichever comes first, the script's own line or the
+  // `#include_drs` that brings the include's in. A name only an include
+  // defines, and only below the use, stays unknown here: RMS0303 already says
+  // what is wrong there, and a "defined below" hover would name a line the
+  // script does not own.
+  const included = firstIncludedAbove(script, name, useIndex, slot);
+  if (
+    included &&
+    (scoped.kind !== "script" ||
+      included.directiveToken < scoped.symbol.nameToken)
+  )
+    return { kind: "included", name: included };
+
   if (scoped.kind === "script") {
     const aliasOf = aliasTarget(stat, script, scoped.symbol, slot);
     return aliasOf ? { ...scoped, aliasOf } : scoped;
@@ -399,6 +498,9 @@ function scriptResolution(
 
 /** Built-in objects join the list from this many typed characters (Sec.3), since one letter matches several hundred of them. */
 const OBJECT_MIN_PREFIX = 2;
+
+/** Included names join the list from this many typed characters, for the same reason (design Sec.4.3). */
+const INCLUDED_MIN_PREFIX = 2;
 
 interface Ranked {
   suggestion: Suggestion;
@@ -497,6 +599,37 @@ function nameCandidates(
         },
         tier,
         sourceOrder: 0,
+        distance: 0,
+      });
+    }
+  }
+
+  // Included names rank after the script's own and before labels, and join
+  // from INCLUDED_MIN_PREFIX characters since one include file can define
+  // hundreds (design Sec.4.3).
+  if (
+    (slot.kind === "condition" || slot.kind === "argument") &&
+    q.length >= INCLUDED_MIN_PREFIX
+  ) {
+    for (const name of script.includes?.names.keys() ?? []) {
+      if (seen.has(name)) continue;
+      // A name that is also a game constant is the game constant (RMS0302).
+      if (stat.rowsByName.has(name) && slot.kind === "argument") continue;
+      const first = firstIncludedAbove(script, name, useIndex, slot);
+      if (!first) continue;
+      const tier = matchRank({ name }, q);
+      if (tier === null) continue;
+      seen.add(name);
+      out.push({
+        suggestion: {
+          name,
+          source: "included",
+          file: first.file,
+          line: lineOfToken(script.parse, first.directiveToken),
+          conditional: first.conditional || undefined,
+        },
+        tier,
+        sourceOrder: 0.5,
         distance: 0,
       });
     }
@@ -779,9 +912,10 @@ export function unknownNameOffer(
     return null;
   const name = text.trim();
   if (name === "" || /\s/.test(name) || isNumberWord(name)) return null;
-  // An included file can define any name and we cannot read it, so a miss
-  // proves even less than usual there.
-  if (script.parse.includes.length > 0) return null;
+  // An include file nobody read can define any name, so a miss proves even
+  // less than usual there. Once the files were read, a miss means the same as
+  // in a script with no include.
+  if (includesUnread(script)) return null;
   if (resolveName(stat, script, name, at, slot).kind !== "unknown") return null;
 
   const typo = didYouMeanFor(stat, script, name, at, slot);
@@ -856,7 +990,7 @@ export function moveUpPlan(
   const useIndex = tokenIndexAt(parse, at);
   if (definitions.length === 0 || isDefinedAbove(definitions, useIndex))
     return { ok: false, reason: "notDefinedBelow" };
-  if (parse.includes.length > 0) return { ok: false, reason: "includes" };
+  if (includesUnread(script)) return { ok: false, reason: "includes" };
   const first = definitions[0];
   // Lifting a branch's definition out of its branch would change which maps
   // define it.

@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<OBJECTS_GENERATION>
+create_object DLC_STORK { set_gaia_object_only number_of_groups 12 }
+create_actor_area 60 60 12 2
+create_object DLC_STORK { number_of_groups 9999 actor_area_to_place_in 12 }
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object VILLAGER { set_place_for_every_player min_distance_to_players 6 max_distance_to_players 6 }
+create_object SCOUT { set_place_for_every_player min_distance_to_players 7 max_distance_to_players 9 }

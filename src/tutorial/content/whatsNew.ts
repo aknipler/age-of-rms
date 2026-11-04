@@ -280,6 +280,44 @@ const whatsNew0100: TutorialDefinition = {
   ],
 };
 
+// No new controls to point at, so the announcement is the whole tour.
+const whatsNew0110: TutorialDefinition = {
+  id: "whats-new-0.11.0",
+  kind: "feature",
+  title: "What's new in 0.11",
+  blurb:
+    "Terrain and connections are tile-for-tile with DE, scripts that use the game's include files preview properly, smoother typing in huge scripts",
+  version: "0.11.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.11",
+      body: [
+        "Hello!",
+        "",
+        "This one is almost all preview engine.",
+        "- The preview's terrain and connection sections now match DE's engine, tile for tile on the same seed. With land, elevation and cliffs already done, everything before the objects section should now look exactly like the game. Objects are still approximate, and they are next (about 75% done already).",
+        "- Scripts that open an if or start_random in one section and close it in another now preview the way the game reads them, along with a handful of smaller reading rules for if, elseif, start_random and rnd().",
+        "- Maps that use #include_drs to pull in DE's own constants and themes now preview properly. The app reads those files from your own game install, the same place the game reads them, so nothing extra is downloaded. If it cannot find your install or a file is missing, the preview tells you which.",
+        "- Typing in very large scripts should no longer be laggy.",
+        "",
+        "Coming up next.",
+        "(1) improving the preview engine (objects section),",
+        "(2) adding in community hub for sharing maps (designed, needs to be implemented. May still take a while),",
+        "(3) version history for scripts,",
+        "(4) more tutorials!",
+        "(5) improving the Advanced Land Placement tool,",
+        "(6) any of the bug fixes or small QOL improvements that you guys suggest along the way.",
+        "I am still looking into supporting multiple languages. If anyone is interested in helping with that (or with anything else, like making tutorials), please reach out to me on GitHub or Discord.",
+        "Thank you for the support!",
+        { kind: "text", text: "Happy scripting,", align: "right" },
+        { kind: "text", text: "Captain Kniples the Fourth", align: "right" },
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
@@ -287,4 +325,5 @@ export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew080,
   whatsNew090,
   whatsNew0100,
+  whatsNew0110,
 ];

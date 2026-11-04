@@ -1,0 +1,17 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type WATER land_position 75 75 number_of_tiles 900 base_size 4 }
+<CLIFF_GENERATION>
+min_number_of_cliffs 6
+max_number_of_cliffs 8
+<TERRAIN_GENERATION>
+create_terrain FOREST { base_terrain GRASS land_percent 10 number_of_clumps 8 }
+<OBJECTS_GENERATION>
+create_object GOLD { number_of_objects 25 avoid_forest_zone 4 avoid_cliff_zone 3 min_distance_to_map_edge 10 max_distance_to_other_zones 5 }
+create_object STONE { number_of_objects 15 place_on_forest_zone }
+create_object FORAGE { number_of_objects 20 avoid_forest_zone }
+create_object DEER { number_of_objects 20 avoid_cliff_zone }
+create_object BOAR { number_of_objects 10 min_distance_group_placement 9 }
+create_object SHEEP { number_of_objects 10 temp_min_distance_group_placement 9 }

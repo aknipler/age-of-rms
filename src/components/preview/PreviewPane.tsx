@@ -157,6 +157,26 @@ function MinimapIcon({ mode }: { mode: TerrainColorMode }) {
   );
 }
 
+/** Two chasing arrows: the usual "refresh" glyph, for Regenerate on Edit. */
+function RegenIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9M2.5 8a5.5 5.5 0 0 1 9.4-3.9" />
+      <path d="M12.5 1.5v3h-3M3.5 14.5v-3h3" />
+    </svg>
+  );
+}
+
 /**
  * The Current cut point (Sec.5's pin).
  *
@@ -247,7 +267,7 @@ export function PreviewPane() {
   // response lands (usePreviewResult.ts). It does NOT cover the 300ms
   // debounce before the request, so the label below appears once the worker
   // is actually busy, not on every keystroke.
-  const { result, pending } = usePreviewResultContext();
+  const { result, pending, stale, regenerate } = usePreviewResultContext();
 
   // Rebuilt when the mode changes: the palette memoises a colour per terrain
   // id, and that cache is only valid for one mode. Keeping one palette and
@@ -353,6 +373,8 @@ export function PreviewPane() {
           hiddenObjects={hiddenObjects}
           playerCount={playerCount}
           terrainsInUse={terrainsInUse}
+          stale={stale}
+          onRegenerate={regenerate}
           topLeft={
             tile !== null && (
               <div
@@ -413,8 +435,17 @@ export function PreviewPane() {
  * not, since PreviewPane returns early until then.
  */
 export function PreviewControls() {
-  const { view, setView, seed, setSeed, reseed, colorMode, setColorMode } =
-    usePreviewView();
+  const {
+    view,
+    setView,
+    seed,
+    setSeed,
+    reseed,
+    colorMode,
+    setColorMode,
+    regenOnEdit,
+    setRegenOnEdit,
+  } = usePreviewView();
 
   return (
     <div className={styles.controls}>
@@ -474,6 +505,21 @@ export function PreviewControls() {
       </div>
 
       <div className={styles.controlsGroup}>
+        <HelpTip id="preview.regenOnEdit">
+          <button
+            type="button"
+            className={
+              regenOnEdit
+                ? `${styles.iconToggle} ${styles.iconToggleOn}`
+                : styles.iconToggle
+            }
+            aria-pressed={regenOnEdit}
+            aria-label="Regenerate on edit"
+            onClick={() => setRegenOnEdit(!regenOnEdit)}
+          >
+            <RegenIcon />
+          </button>
+        </HelpTip>
         <HelpTip id="preview.seedChip">
           {/* The word is back (2026-10-24). It stays on one line (.seed is
               nowrap), which is what the earlier wrap onto a second row

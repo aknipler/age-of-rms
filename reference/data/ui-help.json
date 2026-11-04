@@ -162,7 +162,7 @@
     },
     {
       "id": "settings.authorName",
-      "text": "The name written into the Author row of the comment this app stamps at the top of a script it creates. Left blank it reads Unknown. Changing it renames the author of scripts saved from now on, not of ones already stamped."
+      "text": "The name written into the Created by row of the comment this app stamps at the top of a script it creates. Left blank it reads Unknown. Changing it renames the author of scripts saved from now on, not of ones already stamped."
     },
     {
       "id": "settings.helpMode",
@@ -889,12 +889,28 @@
       "text": "Sets the point Current stops at. Put your cursor where you want the map to stop, then click this to hold the preview there while you keep editing and moving around; click it again to let go, and Current follows your cursor instead. Everything after that point is dimmed in the code and left out of the map, down to the individual attribute, so you can watch a land take shape as you add lines to it. A pin sticks to the code it was set in, so edits above it move it along with them."
     },
     {
+      "id": "tools.outputStale",
+      "text": "The report was made from an earlier version of the script. Findings and their line numbers may no longer match."
+    },
+    {
+      "id": "preview.regenOnEdit",
+      "text": "On: the map redraws as you edit the script. Off: edits leave the map alone and mark it stale, which helps on a slow script. Changing the seed or the generation settings still redraws."
+    },
+    {
+      "id": "preview.staleNotice",
+      "text": "The script has changed since this map was drawn. Click to generate from the current script."
+    },
+    {
+      "id": "preview.noteHide",
+      "text": "Hides this note for the current script. It returns when you open another script."
+    },
+    {
       "id": "preview.mapSummary",
       "text": "The map size this preview was drawn at, in tiles, and the player count it was generated for. Both come from the generation settings (the gear button), except that a script using override_map_size changes the size here mid-script, so this can differ from the size you picked."
     },
     {
       "id": "preview.seedChip",
-      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It is also the game's own seed for the lands, hills and cliffs. Type the seed a match used (the game shows it on the Objectives screen) with the same players, teams and Team Positions setting, and those come out where the game put them. Everything drawn after the cliffs is the preview's own approximation and will differ."
+      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It is also the game's own seed for everything up to the objects. Type the seed a match used (the game shows it on the Objectives screen) with the same players, teams and Team Positions setting, and lands, hills, cliffs, terrain and connections come out where the game put them. Objects are the preview's own approximation and will differ."
     },
     {
       "id": "preview.reroll",

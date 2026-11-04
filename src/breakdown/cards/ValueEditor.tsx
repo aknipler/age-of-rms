@@ -78,6 +78,13 @@ interface ValueEditorProps {
    */
   hint?: string;
   /**
+   * A blank commit is refused and the field goes back to its text. For an
+   * argument with another argument after it: clearing it would delete the
+   * token and the next argument would slide into its place, and the field
+   * itself would vanish from a card that only draws the arguments present.
+   */
+  required?: boolean;
+  /**
    * Which names this field takes, so it can suggest them, flash when one
    * resolves and offer to create one that does not exist
    * (docs/name-lookup-design.md). Absent for a field that holds something
@@ -101,6 +108,7 @@ export function ValueEditor({
   helpText,
   allowSpaces,
   hint: hintOverride,
+  required,
   names,
 }: ValueEditorProps) {
   const {
@@ -141,6 +149,11 @@ export function ValueEditor({
     raw: string,
     restoreFocusOnEnter: boolean,
   ): "rejected" | "unchanged" | EditResult | null | void => {
+    if (required && raw.trim() === "") {
+      if (inputRef.current) inputRef.current.value = text;
+      setError(null);
+      return "unchanged";
+    }
     if (raw === text) {
       setError(null);
       return "unchanged"; // Sec.4.11, identical-to-current commits produce no edit/reparse/undo-entry
@@ -270,6 +283,9 @@ export function ValueEditor({
               registerFocusable(anchorOffset, el);
             }}
             rowsFor={rowsFor}
+            // Picking a row from the list commits it, as Enter in the field
+            // does, so the flash and the create strip follow a pick too.
+            onAccept={(el) => commit(el.value, false)}
             type="text"
             defaultValue={text}
             placeholder={hint}

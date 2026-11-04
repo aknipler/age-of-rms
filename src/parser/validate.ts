@@ -32,10 +32,12 @@
 // legal maps) outranks coverage.
 
 import * as d from "./diagnostics";
+import { walkComments, type CommentMarker } from "./commentWalk";
 import { lineNumberOfOffset } from "./lineIndex";
 import { NUMERIC_ARGUMENT_TYPES } from "./language";
 import { isDefinedAbove } from "./scope";
-import { editDistanceCapped } from "./parser";
+import type { IncludeIndex } from "./includeIndex";
+import { editDistanceCapped, isFamilySibling } from "./parser";
 import type { ArgumentType, LanguageData, PredefinedLabel } from "./language";
 import type {
   ArgNode,
@@ -127,11 +129,22 @@ const RANDOM_BRANCH_PREFIX = "\u0000rnd";
 
 /**
  * The engine's own token id for the opening comment marker, inferred from four
- * in-game runs (parser-design Sec.2.1 amendment). Drives RMS0111. The id for
- * the CLOSING marker is still unknown, so the words that would close a comment
- * early are unenumerated and this check is deliberately one-sided.
+ * in-game runs (parser-design Sec.2.1 amendment). Drives RMS0111.
+ *
+ * Kept as a constant here, not read from `structuralTokens`, because
+ * `src/breakdown/constReview.ts` and `src/editor/constOffers.ts` import it and
+ * neither has the language data. `tokenData.test.ts` pins it to the data.
  */
 export const COMMENT_OPEN_ID = 69;
+
+/**
+ * The engine's id for the closing comment marker (star then slash, which
+ * cannot be written inside this comment), from the community RMS Equivalencies
+ * sheet (docs/token-alias-design.md Sec.3.1) and measured by RMSTEST_82a, where
+ * a word valued 70 ended a live comment. Read by `commentCloseAliases` and by
+ * the comment walk. Chaotic Strait (RMSTEST_83) is its corpus case.
+ */
+export const COMMENT_CLOSE_ID = 70;
 
 /**
  * Categories `tools/extract-constants --misc-constants` sources ENTIRELY from
@@ -155,6 +168,8 @@ export const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set([
   "objectAlias",
 ]);
 
+export { isFamilySibling };
+
 /**
  * The words the lexer must treat as `/*` when it meets them INSIDE a comment,
  * built from reference data so no RMS vocabulary is hardcoded. Feed the result
@@ -162,22 +177,44 @@ export const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set([
  *
  * Engine-defined names only. A script's own `#const NAME 69` is caught by
  * RMS0111 but is NOT modelled, because deciding it needs the directive stream
- * the lexer deliberately does not read, see the note on `checkCommentOpeningWords`.
+ * the lexer deliberately does not read, see the note on `checkCommentMarkerWords`.
  */
 export function commentOpenAliases(
-  // Structurally typed to the fields it reads, and the nullable slots accept
-  // null AND undefined: the JSON carries null, `ValidateConstant` models the
-  // same absence as optional, and a parameter narrower than either caller is a
-  // compile error rather than a bug, which is how this signature was found.
-  constants: readonly {
-    rmsConstant?: string | null;
-    constId?: number | null;
-    category?: string | null;
-  }[],
+  constants: readonly AliasableConstant[],
+): ReadonlySet<string> {
+  return aliasesValued(constants, COMMENT_OPEN_ID);
+}
+
+/**
+ * The words the lexer must treat as the closing marker when it meets them
+ * INSIDE a comment, `HOUSE`, `ATTR_ATTACK_GRAPHIC` and `CITY_OF_LAKES` on
+ * today's data. Same ambient-only rule as `commentOpenAliases`, and for the
+ * same reason a script's own `#const NAME 70` is left to the validator's walk.
+ * Feed the result to `ParseOptions.commentCloseAliases`.
+ */
+export function commentCloseAliases(
+  constants: readonly AliasableConstant[],
+): ReadonlySet<string> {
+  return aliasesValued(constants, COMMENT_CLOSE_ID);
+}
+
+// Structurally typed to the fields it reads, and the nullable slots accept
+// null AND undefined: the JSON carries null, `ValidateConstant` models the
+// same absence as optional, and a parameter narrower than either caller is a
+// compile error rather than a bug, which is how this signature was found.
+interface AliasableConstant {
+  rmsConstant?: string | null;
+  constId?: number | null;
+  category?: string | null;
+}
+
+function aliasesValued(
+  constants: readonly AliasableConstant[],
+  id: number,
 ): ReadonlySet<string> {
   const names = new Set<string>();
   for (const c of constants) {
-    if (c.constId !== COMMENT_OPEN_ID || !c.rmsConstant) continue;
+    if (c.constId !== id || !c.rmsConstant) continue;
     if (c.category && NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category)) continue;
     names.add(c.rmsConstant);
   }
@@ -219,7 +256,14 @@ class Validator {
   readonly diagnostics: Diagnostic[] = [];
 
   private readonly tokens: Token[];
-  private readonly includesPresent: boolean;
+  // Whether a missing name might come from an include nobody read. Without a
+  // resolved index, any include in the file (the rule before the editor read
+  // include files). With one, only a #include_drs the app could not read.
+  private readonly includesUnread: boolean;
+  // The synthetic definitions standing in for names an include defines, kept
+  // apart so the checks that judge the script's OWN definitions (RMS0302,
+  // RMS0312) never report one at the directive that brought it in.
+  private readonly includedSymbols = new Set<SymbolInfo>();
 
   // Grouped rather than a plain name->symbol map: a name legitimately has
   // several definitions (exclusive if/elseif branches), and both the
@@ -318,15 +362,47 @@ class Validator {
   constructor(
     private readonly result: ParseResult,
     refDb: ValidateReferenceDb,
+    resolvedIncludes?: IncludeIndex,
   ) {
     this.tokens = result.tokens;
-    this.includesPresent = result.includes.length > 0;
+    this.includesUnread =
+      resolvedIncludes === undefined
+        ? result.includes.length > 0
+        : !resolvedIncludes.installFound &&
+          result.includes.some(
+            (inc) => result.tokens[inc.directiveToken]?.text === "#include_drs",
+          );
 
     for (const symbol of result.symbols) {
       const list = this.symbolsByName.get(symbol.name);
       if (list) list.push(symbol);
       else this.symbolsByName.set(symbol.name, [symbol]);
       this.symbolByNameToken.set(symbol.nameToken, symbol);
+    }
+    // Each included name stands in as a definition at its directive, so
+    // isDefinedAbove gives the engine's answer with no change: the file runs
+    // where the directive stands, and a use above it is RMS0303. Not added to
+    // symbolByNameToken, which RMS0301 reads for definitions in the AST.
+    if (resolvedIncludes !== undefined) {
+      for (const [name, entries] of resolvedIncludes.names) {
+        for (const entry of entries) {
+          const synthetic: SymbolInfo = {
+            name,
+            directiveKind: entry.directiveKind,
+            nameToken: entry.directiveToken,
+            conditionalDepth: entry.conditional ? 1 : 0,
+          };
+          this.includedSymbols.add(synthetic);
+          const list = this.symbolsByName.get(name);
+          if (list) list.push(synthetic);
+          else this.symbolsByName.set(name, [synthetic]);
+        }
+      }
+      // Source order is what `definitions[0]` and isDefinedAbove expect.
+      for (const list of this.symbolsByName.values()) {
+        if (list.some((s) => this.includedSymbols.has(s)))
+          list.sort((a, b) => a.nameToken - b.nameToken);
+      }
     }
     // `?? []` is mandated, not defensive: predefinedLabels is optional on
     // LanguageData precisely so this guard stays live as the backstop against
@@ -386,7 +462,7 @@ class Validator {
   // ---- entry point ------------------------------------------------------
 
   run(): void {
-    this.checkCommentOpeningWords();
+    this.checkCommentMarkerWords();
     this.checkDefinitions();
     this.checkMissingPlayerSetup();
 
@@ -418,71 +494,123 @@ class Validator {
   // ---- file-level checks ------------------------------------------------
 
   /**
-   * RMS0111, a word inside a comment that the engine resolves to **69**, its
-   * own id for `/*`. Measured (parser-design Sec.2.1 amendment): a leading
-   * comment containing `SHORE_FISH` (object 69) or `ATTR_PROJECTILE_ARC`
-   * (attribute 69) blanked the map, while the bare literal `69` did not,
-   * numeric literals are lexed as numbers and never reach the symbol table, so
-   * **it is the value, carried by a word**, and the namespace is irrelevant.
+   * RMS0111, RMS0113 and RMS0112, a word inside a comment that the engine
+   * resolves to a comment marker. Measured (parser-design Sec.2.1 amendment,
+   * token-alias-design Sec.3.1): a word valued **69** (`SHORE_FISH`, object 69,
+   * `ATTR_PROJECTILE_ARC`, attribute 69) opens a nested comment, a word valued
+   * **70** (`HOUSE`, `ATTR_ATTACK_GRAPHIC`, `CITY_OF_LAKES`) closes one level,
+   * and the bare literals do not, numeric literals are lexed as numbers and
+   * never reach the symbol table, so **it is the value, carried by a word**,
+   * and the namespace is irrelevant.
    *
-   * **Reported, not modelled, decided 2026-08-11, do not re-open.** Treating
-   * the rest of the file as commented would match the engine and would hand
-   * the author an empty Breakdown for a file full of content, as a consequence
-   * of the bug they are hunting. The AST below the offending comment is
-   * therefore deliberately NOT what the engine produces, and nothing
-   * downstream may read a clean parse there as evidence the script works.
+   * The comment depth comes from `walkComments`, not from the trivia flags on
+   * the tokens. This pass has to give the same answer however the parse was
+   * configured, and a parse made without the alias sets marks different
+   * tokens as trivia. A corpus test pins the walk to the lexer.
    *
-   * **Only the FIRST hit is reported.** Everything after it is inside the
-   * engine's nested comment, so a second one is not a second bug, and the
-   * message's whole claim is "everything below here is gone".
+   * A word valued 69 is reported once per comment as the game reads it, at
+   * its first such word, with the severity of what it costs. RMS0111 (error)
+   * when the comment runs to the end of the file or skips a token the written
+   * markers alone leave live, RMS0113 (info) when the comment ends earlier
+   * having skipped only text that was commented anyway (Chaotic Strait, where
+   * line 560's `HOUSE` would end the comment without `SHORE_FISH`). Every word
+   * valued 70 gets an RMS0112, since each one moves where code starts running.
    *
    * Resolution is positive-only, per this module's standing rule: engine
-   * constants by name, then the script's own `#const`s. The engine-defined set
-   * is exactly two names in `random_map.def`, and both are in our data with
-   * `constId` 69, so nothing is hardcoded here.
+   * constants by name, then the script's own `#const` literals. The engine
+   * side comes from our data, so no id is hardcoded beyond the two constants.
    */
-  private checkCommentOpeningWords(): void {
-    for (const token of this.tokens) {
-      if (!token.isTrivia || token.kind !== "word") continue;
+  private checkCommentMarkerWords(): void {
+    const sources = new Map<string, string>();
+    // A miss is cached too (as undefined), so \`has\` below tells "asked, no
+    // marker" from "not asked yet".
+    const markers = new Map<string, CommentMarker | undefined>();
+    const markerOf = (word: string): CommentMarker | undefined => {
+      const known = markers.get(word);
+      if (known !== undefined || markers.has(word)) return known;
+      let marker: CommentMarker | undefined;
       const ambientHit = this.constantsByName
-        .get(token.text)
+        .get(word)
         ?.find(
           (c) =>
-            c.constId === COMMENT_OPEN_ID &&
+            (c.constId === COMMENT_OPEN_ID || c.constId === COMMENT_CLOSE_ID) &&
             !NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category),
         );
       if (ambientHit) {
-        this.diagnostics.push(
-          d.commentOpensNestedComment(
-            token,
-            `the game's own ${ambientHit.category} constant`,
-          ),
-        );
-        return;
+        marker = ambientHit.constId === COMMENT_OPEN_ID ? "open" : "close";
+        sources.set(word, `the game's own ${ambientHit.category} constant`);
+      } else {
+        // A script `#const NAME 69` reaches the same table the engine's names
+        // do. `SymbolInfo` carries the value's TOKEN rather than a number,
+        // since a `#const` value can be an expression, so the literal case is
+        // the one that can be answered here, and it is the one that matters.
+        for (const s of this.symbolsByName.get(word) ?? []) {
+          const text =
+            s.valueToken === undefined
+              ? undefined
+              : this.tokens[s.valueToken]?.text;
+          if (text === String(COMMENT_OPEN_ID)) marker = "open";
+          else if (text === String(COMMENT_CLOSE_ID)) marker = "close";
+          else continue;
+          sources.set(word, `this script defines it as ${text}`);
+          break;
+        }
       }
-      // A script `#const NAME 69` reaches the same table the engine's names do.
-      // `SymbolInfo` carries the value's TOKEN rather than a number, since a
-      // `#const` value can be an expression, so the literal case is the one
-      // that can be answered here, and it is the one that matters.
-      const symbols = this.symbolsByName.get(token.text);
-      if (
-        symbols?.some(
-          (s) =>
-            s.valueToken !== undefined &&
-            this.tokens[s.valueToken]?.text === String(COMMENT_OPEN_ID),
-        )
-      ) {
-        this.diagnostics.push(
-          d.commentOpensNestedComment(token, "this script defines it as 69"),
-        );
-        return;
+      markers.set(word, marker);
+      return marker;
+    };
+
+    const walk = walkComments(this.tokens, markerOf);
+
+    // RMS0111 and RMS0113, once per game comment, at its first 69 word.
+    const firstOpen = new Map<number, number>();
+    for (const hit of walk.hits) {
+      if (hit.marker === "open" && !firstOpen.has(hit.comment)) {
+        firstOpen.set(hit.comment, hit.index);
       }
+    }
+    for (const [commentIndex, hitIndex] of firstOpen) {
+      const comment = walk.comments[commentIndex];
+      const token = this.tokens[hitIndex];
+      const source = sources.get(token.text) ?? "";
+      if (comment.end === null) {
+        this.diagnostics.push(d.commentOpensNestedComment(token, source));
+        continue;
+      }
+      const endLine = this.lineOf(this.tokens[comment.end].start);
+      let skipsLiveCode = false;
+      for (let i = hitIndex + 1; i <= comment.end; i++) {
+        if (walk.gameComment[i] === 1 && walk.writtenComment[i] === 0) {
+          skipsLiveCode = true;
+          break;
+        }
+      }
+      this.diagnostics.push(
+        skipsLiveCode
+          ? d.commentOpensNestedComment(token, source, endLine)
+          : d.commentOpenedAndClosed(token, source, endLine),
+      );
+    }
+
+    // RMS0112, every word valued 70.
+    for (const hit of walk.hits) {
+      if (hit.marker !== "close") continue;
+      const token = this.tokens[hit.index];
+      this.diagnostics.push(
+        d.commentClosedByWord(
+          token,
+          sources.get(token.text) ?? "",
+          hit.depthAfter === 0,
+        ),
+      );
     }
   }
 
   /** RMS0301 duplicate definition + RMS0302/RMS0312 redefining an engine name. */
   private checkDefinitions(): void {
-    for (const [name, definitions] of this.symbolsByName) {
+    for (const [name, all] of this.symbolsByName) {
+      const definitions = all.filter((s) => !this.includedSymbols.has(s));
+      if (definitions.length === 0) continue;
       const first = definitions[0];
 
       this.checkOverridesEngineCondition(name, first);
@@ -1056,7 +1184,7 @@ class Validator {
           d.usedBeforeDefinition(
             token,
             this.lineOf(this.tokens[definitions[0].nameToken].start),
-            this.includesPresent,
+            this.includesUnread,
           ),
         );
       }
@@ -1088,8 +1216,10 @@ class Validator {
     // presumed to be a label we simply don't know about yet, and stays silent.
     const suggestion = this.nearestKnownName(token.text);
     if (!suggestion) return;
+    // Rule 2: a numbered or lettered family member is a sibling, not a slip.
+    if (isFamilySibling(token.text, suggestion)) return;
     this.diagnostics.push(
-      d.undefinedName(token, suggestion, this.includesPresent),
+      d.undefinedName(token, suggestion, this.includesUnread),
     );
   }
 
@@ -1321,7 +1451,7 @@ class Validator {
       d.usedBeforeDefinition(
         token,
         this.lineOf(this.tokens[definitions[0].nameToken].start),
-        this.includesPresent,
+        this.includesUnread,
       ),
     );
   }
@@ -1506,22 +1636,28 @@ class Validator {
   }
 }
 
+/** The optional inputs to validate(). */
+export interface ValidateOptions {
+  /** Built when the editor has read the script's `#include_drs` files (src/parser/includeIndex.ts). */
+  resolvedIncludes?: IncludeIndex;
+}
+
 /**
  * Semantic checks over a parsed script (docs/parser-design.md Sec.8). Pure,
  * no I/O, never throws, and additive: the returned diagnostics are meant to be
  * concatenated onto `result.diagnostics`, which holds the lexical and syntactic
  * ones. Nothing here re-reports anything the parser already said.
  *
- * The spec's optional third `opts` parameter is omitted until it has something
- * to carry: its only documented member, `ValidateOptions.resolvedIncludes`
- * (Sec.7), is explicitly out of scope for v1, and a parameter that silently
- * does nothing is worse than one that isn't there yet.
+ * `opts.resolvedIncludes` is the spec's Sec.7 member (docs/include-resolution-design.md).
+ * Without it nothing changes, and any include in the file softens the
+ * missing-name checks to info.
  */
 export function validate(
   result: ParseResult,
   refDb: ValidateReferenceDb,
+  opts: ValidateOptions = {},
 ): Diagnostic[] {
-  const validator = new Validator(result, refDb);
+  const validator = new Validator(result, refDb, opts.resolvedIncludes);
   validator.run();
   return validator.diagnostics;
 }

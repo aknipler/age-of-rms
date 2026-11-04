@@ -73,12 +73,20 @@ interface RmsSuggestInputProps extends PassThrough {
   inputRef?: (el: HTMLInputElement | null) => void;
   /** Class on the wrapper, for a caller that needs the field to stretch. */
   wrapClassName?: string;
+  /**
+   * Called after a row is picked, with the input holding the picked name. A
+   * caller that commits on Enter or blur needs this: picking writes the value
+   * and closes the list, but the field never blurs and Enter was spent on the
+   * pick, so without it the pick would sit uncommitted until the next Enter.
+   */
+  onAccept?: (el: HTMLInputElement) => void;
 }
 
 export function RmsSuggestInput({
   rowsFor,
   inputRef,
   wrapClassName,
+  onAccept,
   onKeyDown,
   onKeyUp,
   onBlur,
@@ -116,6 +124,7 @@ export function RmsSuggestInput({
       writingRef.current = false;
     }
     close();
+    onAccept?.(el);
   };
 
   const nav = useSearchListNav({

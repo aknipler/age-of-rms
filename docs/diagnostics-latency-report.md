@@ -190,3 +190,55 @@ What each line means.
 - `src/perfTrace.ts`, new. Every function returns at once when the flag is off. Tested in `src/__tests__/perfTrace.test.ts`, which a mutant forcing the flag on turns red.
 - Call sites in `useParsedDocument.ts`, `editor/parserWorker.ts`, `hooks/useDocument.ts`, `components/CodePane.tsx`, `usePreviewResult.ts` and `main.tsx`. With the flag off, the only change is three numbers added to each parse response, and `<React.Profiler>` is added only when the flag is on.
 - The Chromium harness and the Node probes were throwaway and are not in the repo.
+
+## 10. Stranded.rms typing lag, 2026-11-04
+
+Reported during run sheet 53. Typing in DE's `Stranded.rms` froze the editor for several frames, then showed what was typed. Fix 3 (the preview request carries the script text, built earlier the same day) was not the cause, and four further changes were built.
+
+### 10.1 How it was measured
+
+`Stranded.rms` is 603,287 characters, 48,442 tokens, 45 include files and 1,891 diagnostics. It was opened from the install in a browser copy of the app (`@tauri-apps/api/mocks`, served by the running `tauri dev` Vite, include files answered from a copy of the install), in the Code tab of a visible pane at 61 to 62 frames a second. That is the development build, as in `tauri dev`. Five characters were typed 200 ms apart, and main thread tasks over 50 ms were collected with a `longtask` observer, a wrapper around every task entry point (timers, frames, listeners, worker and MessagePort messages), and a stand-in React DevTools hook that read each fiber's own render time. A Node probe measured the payloads with `v8.serialize`. All of it was throwaway.
+
+| Payload                                 | Size    | Node unpack |
+| --------------------------------------- | ------- | ----------- |
+| Parse result, whole                     | 9.6 MB  | 254 ms      |
+| of which `script`                       | 4.55 MB | 164 ms      |
+| of which `tokens`                       | 3.20 MB | 75 ms       |
+| of which `includeIndex`                 | 0.62 MB | 12 ms       |
+| of which `diagnostics`                  | 0.57 MB | 4 ms        |
+| Preview result                          | 1.85 MB | 12 ms       |
+| Preview request, text and include files | 1.05 MB | under 1 ms  |
+
+### 10.2 What froze
+
+| Cause                                                                    | Cost on the UI thread                               | Build                       |
+| ------------------------------------------------------------------------ | --------------------------------------------------- | --------------------------- |
+| React's Performance tracks diffing props that hold the parse result      | 1,281 to 1,927 ms after a parse or preview result   | development only            |
+| The whole shell re-rendering on each keystroke                           | 122 to 159 ms a key                                 | both, smaller in production |
+| Unpacking the parse result                                               | 103 to 175 ms a parse                               | both                        |
+| A second preview of every edit for the Land Placement panel, open or not | no UI time, a second core for 1.3 to 2.0 s per edit | both                        |
+
+React 19.2's development build records each component render for the browser's Performance panel. For a component whose props changed it builds a table of old and new values three levels deep and passes it to `performance.measure`, which copies it. The parse result's tokens sit at that depth, so each of `ChannelProvider` (twice), `ParsedDocumentProvider`, `PreviewCutProvider`, `PreviewResultProviders` and `CodePane` got about 255,000 rows per commit, and `PreviewCanvas` and `OverlayCanvas` about 150,000 for the preview result. `performance.measure` alone took 658 ms over two keystrokes and their results, before counting the diff. With `console.timeStamp` removed before react-dom loaded, no task in the same test went over 250 ms.
+
+Each keystroke made 7,734 hook calls. 3,496 were in `HelpTip`, many of them in the Reference table, which is mounted while hidden. Own render times were `AppContent` 56 ms, the hidden `ReferenceTable` 45 ms and the HelpTips 46 ms in total. No single `useMemo` or effect took over 3 ms.
+
+The panel channel (`PanelPreviewResultProvider`) was given the parse on every render and generated whenever it changed, so each edit ran two full generations on two workers. Its comment said it generated only while asked to, which was not true.
+
+### 10.3 What was built
+
+1. `src/devReactTracks.ts`, imported first in `main.tsx`, removes `console.timeStamp` in a development build so react-dom never turns its tracks on. `localStorage.setItem("aorms.reactTracks", "1")` and a reload keep them for a profiling session.
+2. `MapSidePanel` is wrapped in `memo`. It takes no props, so a keystroke no longer re-renders the preview pane or the hidden Reference table.
+3. The panel channel generates only while a component reads it (`generateOnlyWhileRead`, a reader count in `PreviewResultContext.tsx`). Opening Land Placement sent its first request at once and drew in 1.4 s.
+4. `useParsedDocument` drops a reply whose text the document has moved past, the same way it drops a superseded one, so a big document's out of date tree is never unpacked. `reparseNow`'s requests are exempt, and a dropped reply clears the debounce's "already sent" text so an undo still gets parsed.
+
+### 10.4 After
+
+The same five keystrokes gave main thread tasks of 92 to 143 ms and none longer. Out of date trees were dropped unread (`parse #N tree out of date, dropped unread` in the trace), the final tree unpacked in 103 ms once typing stopped, and one preview ran per edit in 0.9 s.
+
+What is left, all of it smaller.
+
+- About 95 ms of React render per keystroke in the development build. Fix 7 (move the text mirror out of `AppContent` state) is the change that removes it.
+- One tree unpack of about 100 to 125 ms after typing pauses, and a commit of 100 to 140 ms after it in development. Fix 6 (a slimmer tree) is the change that shrinks the unpack.
+- Fix 4 is still open, though one generation per edit is now the most that runs.
+
+A release build was not measured. Tracks, StrictMode's double render and React's development checks are all absent there, so the per keystroke render should be a fraction of the figure above.

@@ -3,6 +3,7 @@ import { lineNumberOfOffset } from "../parser/lineIndex";
 import { moveUpRefusal } from "../breakdown/constReview";
 import {
   buildScriptNameIndex,
+  describeIncludedHover,
   describeSuggestion,
   moveUpPlan,
   resolveName,
@@ -61,6 +62,7 @@ const KIND_BY_SOURCE: Record<
   monaco.languages.CompletionItemKind
 > = {
   script: monaco.languages.CompletionItemKind.Constant,
+  included: monaco.languages.CompletionItemKind.Constant,
   builtin: monaco.languages.CompletionItemKind.Constant,
   label: monaco.languages.CompletionItemKind.EnumMember,
   command: monaco.languages.CompletionItemKind.Function,
@@ -123,6 +125,7 @@ export function registerAoe2RmsCompletion(): void {
           command:
             flashes &&
             (s.source === "builtin" ||
+              s.source === "included" ||
               (s.source === "script" && !s.definedBelow))
               ? {
                   id: FLASH_RANGE_COMMAND,
@@ -163,7 +166,7 @@ export function wordResolvesToConst(
     lookupOffset(ctx),
     ctx.slot,
   );
-  return r.kind === "builtin" || r.kind === "script";
+  return r.kind === "builtin" || r.kind === "script" || r.kind === "included";
 }
 
 /**
@@ -179,8 +182,6 @@ export function describeScriptName(
 ): string | undefined {
   const script = getScriptNameIndex();
   if (!script) return undefined;
-  const defs = script.symbolsByName.get(name);
-  if (!defs || defs.length === 0) return undefined;
   const parse = script.parse;
   const r = resolveName(
     getStaticNameIndex(),
@@ -191,6 +192,12 @@ export function describeScriptName(
   );
   const lineOf = (tokenIndex: number) =>
     lineNumberOfOffset(parse.lineOffsets, parse.tokens[tokenIndex].start);
+  // An included name is not in the script's own table, so this has to come
+  // before the "does the script define it" test below.
+  if (r.kind === "included")
+    return describeIncludedHover(name, r.name, lineOf(r.name.directiveToken));
+  const defs = script.symbolsByName.get(name);
+  if (!defs || defs.length === 0) return undefined;
   const kind = defs[0].directiveKind === "const" ? "#const" : "#define";
   if (r.kind === "definedBelow") {
     const line = lineOf(r.symbol.nameToken);

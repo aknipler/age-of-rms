@@ -1,0 +1,17 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT base_size 4 number_of_tiles 150 }
+create_player_lands { terrain_type SNOW base_size 3 number_of_tiles 80 }
+create_land { terrain_type DESERT land_position 50 50 number_of_tiles 300 base_size 3 land_id 7 }
+create_land { terrain_type DESERT land_position 20 80 number_of_tiles 300 base_size 3 land_id 7 }
+create_land { terrain_type LEAVES land_position 80 20 number_of_tiles 200 base_size 3 land_id 8 }
+<OBJECTS_GENERATION>
+create_object SHEEP { set_place_for_every_player number_of_objects 2 max_distance_to_players 6 }
+create_object GOLD { place_on_specific_land_id 7 number_of_objects 3 }
+create_object STONE { place_on_specific_land_id 7 generate_for_first_land_only number_of_objects 3 }
+create_object FORAGE { place_on_specific_land_id 8 avoid_other_land_zones number_of_objects 6 }
+create_object DEER { place_on_specific_land_id 7 max_distance_to_players 5 number_of_objects 4 }
+create_object BOAR { set_place_for_every_player set_gaia_object_only generate_for_first_land_only number_of_objects 2 max_distance_to_players 6 }
+create_object RELIC { place_on_specific_land_id -11 number_of_objects 3 }

@@ -1,0 +1,7 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT base_size 3 number_of_tiles 0 }
+<CONNECTION_GENERATION>
+create_connect_teams_lands { default_terrain_replacement ROAD terrain_size GRASS 0 0 terrain_size DIRT 0 0 }

@@ -85,7 +85,17 @@ export const DIAGNOSTIC_CODES: Record<
   RMS0111: {
     severity: "error",
     summary:
-      "A word inside a comment resolves to 69, which the engine reads as an opening comment marker. Everything below it is invisible to the game",
+      "A word inside a comment resolves to 69, which the engine reads as an opening comment marker. The game skips code after it that was written to run",
+  },
+  RMS0112: {
+    severity: "warning",
+    summary:
+      "A word inside a comment resolves to 70, which the engine reads as a closing comment marker. The code after it runs",
+  },
+  RMS0113: {
+    severity: "info",
+    summary:
+      "A word inside a comment resolves to 69 and opens a nested comment that something later closes again. Nothing written to run is skipped yet",
   },
   RMS0200: {
     severity: "warning",
@@ -552,10 +562,65 @@ export function degradedToRaw(
 export function commentOpensNestedComment(
   token: Token,
   source: string,
+  endLine?: number,
+): Diagnostic {
+  // With no `endLine` the comment runs to the end of the file, which is the
+  // original wording of this diagnostic and the one the tests pin.
+  const message =
+    endLine === undefined
+      ? `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That opens a second comment, the next */ closes only that one, and every line below here is invisible to the game. The map still generates, silently missing everything after this point. Split the word, or move this comment below the rest of the script.`
+      : `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That opens a second comment, so the game keeps skipping code that was written to run, up to line ${endLine}. Split the word, or move this comment below the rest of the script.`;
+  return makeDiagnostic("RMS0111", message, toSpan(token));
+}
+
+/**
+ * RMS0113, the quiet half of RMS0111. A word valued 69 opens a nested comment,
+ * but something later closes it again and the game's comment ends before the
+ * end of the file having skipped only text that was commented anyway. Chaotic
+ * Strait is the case (RMSTEST_83 placed its town centres).
+ *
+ * Info, not warning, since the map works as written and the code is only
+ * fragile. It is reported at all because the word moves where the comment ends,
+ * and rewording or removing whatever closes it later would make the game skip
+ * the code below. The owner asked on 2026-11-03 that it still be pointed out.
+ */
+export function commentOpenedAndClosed(
+  token: Token,
+  source: string,
+  endLine: number,
 ): Diagnostic {
   return makeDiagnostic(
-    "RMS0111",
-    `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That opens a second comment, the next */ closes only that one, and every line below here is invisible to the game. The map still generates, silently missing everything after this point. Split the word, or move this comment below the rest of the script.`,
+    "RMS0113",
+    `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That starts a nested comment inside a comment that is already open. The first */ closes only the inner one, so the outer comment continues to line ${endLine}. Currently, only comment text is affected, but deleting or rewording that first */ could make the game skip real code after line ${endLine}. Split the word.`,
+    toSpan(token),
+  );
+}
+
+/**
+ * RMS0112, a word inside a comment whose value is 70, which is the engine's id
+ * for the closing comment marker. The engine resolves constants inside
+ * comments, so the word closes one level of the comment exactly as a written
+ * closer would (parser-design Sec.2.1, measured by RMSTEST_82a, and RMSTEST_83
+ * for Chaotic Strait).
+ *
+ * A warning, not an error: the text after the word often does nothing (the
+ * disabled block in Fortress becomes a block with no command), so the map is
+ * usually unchanged. When it does something, the author's disabled code runs,
+ * and that is why it is reported at all. Two forms, since a word that only
+ * closes one level of a nested comment moves the end of the comment without
+ * ending it.
+ */
+export function commentClosedByWord(
+  token: Token,
+  source: string,
+  endsComment: boolean,
+): Diagnostic {
+  const effect = endsComment
+    ? "The comment ends here and the game runs what follows as code."
+    : "It closes one level of this nested comment, so the comment ends sooner than its markers say.";
+  return makeDiagnostic(
+    "RMS0112",
+    `"${token.text}" inside this comment has the value 70, which the game reads as a closing comment marker (${source}). ${effect} Split the word, or reword the comment.`,
     toSpan(token),
   );
 }
@@ -660,20 +725,20 @@ export function argTypeMismatch(
  * on legal maps), so a word that resolves to a known symbol now draws nothing
  * at all, and only genuinely-unresolvable names reach this builder.
  *
- * `includesPresent` softens to info, mirroring Sec.7's rule for unknown symbols:
+ * `includesUnread` softens to info, mirroring Sec.7's rule for unknown symbols:
  * an `#include_drs` can define constants we cannot see, so we must not claim
  * the name is undefined. Pa_Site pulls 43 includes and would otherwise drown.
  */
 export function unresolvedConstantInNumericSlot(
   token: Token,
   argDef: { name: string; type: string },
-  includesPresent: boolean,
+  includesUnread: boolean,
 ): Diagnostic {
-  const base = includesPresent
+  const base = includesUnread
     ? `"${token.text}" isn't defined in this file, so "${argDef.name}" may not get a valid ${argDef.type}. It may come from an include file. Age of RMS can't see inside those yet.`
     : `"${token.text}" isn't defined in this file, so "${argDef.name}" won't get a valid ${argDef.type}. Define it first with #const, e.g. "#const ${token.text} 10".`;
   const diagnostic = makeDiagnostic("RMS0202", base, toSpan(token));
-  return includesPresent ? { ...diagnostic, severity: "info" } : diagnostic;
+  return includesUnread ? { ...diagnostic, severity: "info" } : diagnostic;
 }
 
 export function argOutOfRange(
@@ -834,9 +899,9 @@ export function unexpectedValue(first: Token, last: Token): Diagnostic {
  */
 function softenForIncludes(
   diagnostic: Diagnostic,
-  includesPresent: boolean,
+  includesUnread: boolean,
 ): Diagnostic {
-  if (!includesPresent) return diagnostic;
+  if (!includesUnread) return diagnostic;
   return {
     ...diagnostic,
     severity: "info",
@@ -938,7 +1003,7 @@ export function emptyClassTarget(
 export function undefinedName(
   token: Token,
   suggestion: string,
-  includesPresent: boolean,
+  includesUnread: boolean,
 ): Diagnostic {
   const diagnostic = makeDiagnostic(
     "RMS0300",
@@ -946,7 +1011,7 @@ export function undefinedName(
     toSpan(token),
   );
   diagnostic.suggestion = suggestion;
-  return softenForIncludes(diagnostic, includesPresent);
+  return softenForIncludes(diagnostic, includesUnread);
 }
 
 export function duplicateDefinition(
@@ -1048,7 +1113,7 @@ export function overridesEngineCondition(token: Token): Diagnostic {
 export function usedBeforeDefinition(
   token: Token,
   definedOnLine: number,
-  includesPresent: boolean,
+  includesUnread: boolean,
 ): Diagnostic {
   return softenForIncludes(
     makeDiagnostic(
@@ -1056,7 +1121,7 @@ export function usedBeforeDefinition(
       `"${token.text}" isn't defined until line ${definedOnLine}, below this line. Definitions only count higher up in the file, so the engine ignores this one. Move the #define/#const above this line.`,
       toSpan(token),
     ),
-    includesPresent,
+    includesUnread,
   );
 }
 

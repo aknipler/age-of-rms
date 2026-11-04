@@ -1,0 +1,10 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DIRT land_position 50 50 number_of_tiles 0 base_size 2 }
+<OBJECTS_GENERATION>
+create_object GOLD { number_of_objects 5 resource_delta 500 }
+create_object DEER { number_of_objects 5 set_gaia_object_only set_gaia_unconvertible }
+create_object HOUSE { number_of_objects 3 set_gaia_object_only set_building_capturable }
+create_object STONE { number_of_objects 10 }

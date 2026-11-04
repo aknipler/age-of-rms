@@ -20,6 +20,8 @@
 //   2. A bare word equal to the name of a constant whose engine value is 69
 //      opens a SECOND, nested comment (RMS0111), "SHORE_FISH" is exactly
 //      such a name, and it is an ordinary word a user might type as a label.
+//      A bare word valued 70 (HOUSE) closes a level early (RMS0112) and
+//      makes the text after it run as code.
 // Both hazards need the dangerous text to land as its own whitespace-
 // delimited token. `JSON.stringify` with no indent argument never emits
 // whitespace of its own, every space, tab or newline in its output

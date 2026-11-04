@@ -1,0 +1,9 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT base_size 10 land_percent 40 other_zone_avoidance_distance 4 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object PALISADE_WALL { set_place_for_every_player min_distance_to_players 12 max_distance_to_players 13 }
+create_object STONE_WALL { set_place_for_every_player min_distance_to_players 20 max_distance_to_players 21 }

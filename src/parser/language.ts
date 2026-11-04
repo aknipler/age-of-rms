@@ -101,6 +101,12 @@ export interface CommandDef {
    * COMMENT_OPEN_ID, RMS0111).
    */
   tokenId?: number;
+  /**
+   * Where `tokenId` came from, `RMSTEST_<run>` for a DE run or
+   * `equivalencies-<date>` for the community sheet. Only a run-measured number
+   * feeds `commandsByTokenId`, see `buildLanguageIndex`.
+   */
+  tokenIdSource?: string;
   kind: "standalone" | "block";
   description?: string;
   arguments?: ArgumentDef[];
@@ -116,6 +122,11 @@ export interface CommandDef {
 
 export interface AttributeDef {
   name: string;
+  // The engine's id for this word and its source, as on CommandDef. Data only,
+  // nothing reads these yet. A word that is both a command and an attribute
+  // (`base_terrain`, `base_layer`) carries the same id on both entries.
+  tokenId?: number;
+  tokenIdSource?: string;
   description?: string;
   arguments?: ArgumentDef[];
   verified: boolean;
@@ -172,6 +183,8 @@ export interface AttributeDef {
 
 export interface DirectiveDef {
   name: string; // full token text, e.g. "#const"
+  tokenId?: number;
+  tokenIdSource?: string;
   description?: string;
   arguments?: ArgumentDef[];
   verified: boolean;
@@ -181,6 +194,8 @@ export interface DirectiveDef {
 
 export interface ControlKeywordDef {
   name: string;
+  tokenId?: number;
+  tokenIdSource?: string;
   description?: string;
   arguments?: ArgumentDef[]; // schema action item, absent today, see pinned exception
   verified: boolean;
@@ -231,7 +246,26 @@ export interface PredefinedLabel {
   // already own MapSize can narrow it themselves.
   dimensions?: number;
   mapSize?: string;
+  /**
+   * The id of the `LanguageData.labelGroups` entry this label belongs to, set
+   * only where a cardinality was measured (docs/name-liveness-design.md
+   * Sec.4.2). The size and player-count groups are derived from `mapSize` and
+   * the label name and carry no `group`.
+   */
+  group?: string;
   notes?: string;
+}
+
+/**
+ * A set of labels the lobby can define only so many of at once. Name liveness
+ * turns it into a constraint on the labels' atoms. Only a measured cardinality
+ * belongs here: a weaker constraint just turns a definite answer into a
+ * "maybe", while a wrong stronger one reports a bug that is not there.
+ */
+export interface LabelGroup {
+  id: string;
+  cardinality: "exactlyOne" | "atMostOne";
+  evidence: string;
 }
 
 export interface LanguageData {
@@ -247,6 +281,22 @@ export interface LanguageData {
   // that stops a data regression from silently evaluating every conditional as
   // undefined. Typing it non-optional would make that mandated guard dead code.
   predefinedLabels?: PredefinedLabel[];
+  /** Cardinality constraints over groups of predefined labels, read by name liveness. */
+  labelGroups?: LabelGroup[];
+  /**
+   * Section headers, braces and comment markers with their engine ids, the
+   * tokens that have no entry of their own above. Optional for the reason
+   * `predefinedLabels` is. Read by the tests that pin `COMMENT_OPEN_ID` and
+   * `COMMENT_CLOSE_ID` to the data, and by nothing at runtime yet.
+   */
+  structuralTokens?: StructuralToken[];
+}
+
+export interface StructuralToken {
+  /** The text as a script spells it, `<LAND_GENERATION>` with its brackets. */
+  text: string;
+  tokenId: number;
+  tokenIdSource: string;
 }
 
 /** Precomputed lookup maps. Build once per LanguageData, share freely. */
@@ -261,8 +311,9 @@ export interface LanguageIndex {
   knownNames: ReadonlySet<string>;
   /**
    * Reverse index over `CommandDef.tokenId`, for resolving a script's own
-   * `#const NAME <id>` back to the command that id names (Sec.2.1). Empty but
-   * for the ids a run has measured, which today is one.
+   * `#const NAME <id>` back to the command that id names (Sec.2.1). Holds only
+   * the ids a DE run has measured, which today is one (`create_land`, 32).
+   * The sheet's ids are on every command too and stay out of it on purpose.
    */
   commandsByTokenId: ReadonlyMap<number, CommandDef>;
 }
@@ -285,9 +336,19 @@ export function buildLanguageIndex(data: LanguageData): LanguageIndex {
   // map renders as depending on array order. `validate:reference` rejects the
   // duplicate outright; this is the belt to that braces, since the index is
   // also built from data the app loads at runtime.
+  //
+  // Only a number a run measured (`RMSTEST_*`) is admitted. Every command now
+  // carries the sheet's id as well, and admitting those would make
+  // `#const L 48` read as `create_object` in every script, an alias nobody has
+  // seen in a shipped map (docs/token-alias-design.md Sec.3.3). The sheet's ids
+  // sit in the data for the places that have a measured reason to read them.
   const commandsByTokenId = new Map<number, CommandDef>();
   for (const c of data.commands) {
-    if (typeof c.tokenId === "number" && !commandsByTokenId.has(c.tokenId)) {
+    if (
+      typeof c.tokenId === "number" &&
+      c.tokenIdSource?.startsWith("RMSTEST_") &&
+      !commandsByTokenId.has(c.tokenId)
+    ) {
       commandsByTokenId.set(c.tokenId, c);
     }
   }

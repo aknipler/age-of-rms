@@ -13,6 +13,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../parser/parser";
+import { commentOpenAliases } from "../../parser/validate";
 import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { generatePreview, type PreviewReferenceData } from "../generator/index";
@@ -147,11 +148,10 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
     expect(result.notes.some((n) => n.key === "automaticBeach")).toBe(true);
   });
 
-  it("no beach yet when the land stage ends, and one by the end of the terrain stage (rev 10)", () => {
-    // DE grows hills on land beside water as if no beach were there (lh1, in
-    // deElevationCliffMaps.test.ts), so the first pass runs after the cliffs
-    // and before <TERRAIN_GENERATION>, not at the end of the land stage. The
-    // test below is the observable that keeps a pass before S4 at all.
+  it("no beach until the end of the terrain stage (rev 11)", () => {
+    // DE grows hills on land beside water as if no beach were there (lh1), and
+    // a create_terrain on BEACH finds none either (gt1). The beach comes with
+    // the end of the terrain stage.
     const result = run(coastline, 3, true);
     const beachIn = (stage: string) =>
       Array.from(
@@ -162,19 +162,16 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
     expect(beachIn("S4")).toBeGreaterThan(0);
   });
 
-  it("`base_terrain BEACH` therefore has tiles to match: the command places rather than reporting terrainAbsent", () => {
-    // 67 uses across the tracked corpus. This is the observable that
-    // refuted the single-late-pass design; those commands did not error,
-    // they silently painted nothing.
+  it("`base_terrain BEACH` finds no coast to take, since no beach exists while the stage runs (gt1)", () => {
+    // 67 uses across the tracked corpus. DE refuses a beach before the first
+    // create_terrain on gt1-beachfirst: a pass there would beach 127 and 87
+    // coast tiles that the DIRT pass then takes, and both maps refuse it.
     const result = run(
       `${coastline}<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nbase_terrain BEACH\nland_percent 100\nnumber_of_clumps 9320\n}\n`,
       3,
     );
     const report = result.reports.at(-1)!;
-    expect(report.placed).toBeGreaterThan(0);
-    expect(report.failures.some((f) => f.bucket === "terrainAbsent")).toBe(
-      false,
-    );
+    expect(report.placed).toBe(0);
   });
 
   it("dresses the boundary a connection command carves through open water (Sec.15 item 31, RMSTEST_70)", () => {
@@ -558,4 +555,32 @@ describe("corpus: generatePreview never throws, and its output is internally con
       }, 15000);
     }
   }
+});
+
+// docs/token-alias-design.md Sec.5, B2, through `generatePreview`. The options
+// `instantiateScript` needs are built inside `generatePreview` from the
+// constants it is handed, so the wiring there has to be proved on its own.
+describe("generatePreview: the second parse reads comments as the first did (token-alias B2)", () => {
+  it("leaves a script hidden by a SHORE_FISH comment hidden after the token filter", () => {
+    // `base_terrain WATER` below the comment is dead text, so the base stays
+    // GRASS. With the aliases lost in the second parse the comment closes at
+    // its marker and the base turns to WATER.
+    const source = [
+      "if REGICIDE <PLAYER_SETUP> endif",
+      "<LAND_GENERATION>",
+      "/* SHORE_FISH */",
+      "base_terrain WATER",
+      "",
+    ].join("\n");
+    const parse = parseRms(source, lang, {
+      commentOpenAliases: commentOpenAliases(constants),
+    });
+    expect(parse.diagnostics.map((d) => d.code)).toContain("RMS0110");
+    const result = generatePreview(parse, refDb, settings(), {
+      seed: 1,
+      collectSnapshots: true,
+    });
+    const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
+    expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => GRASS));
+  });
 });

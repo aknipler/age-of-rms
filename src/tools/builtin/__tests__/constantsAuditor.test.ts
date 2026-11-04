@@ -97,6 +97,32 @@ describe("findUndefinedReferences", () => {
     expect(refs[0].name).toBe("NEVER_DEFINED");
     expect(refs[0].spans).toHaveLength(2);
   });
+
+  it("marks only a name with an info RMS0202 as softened, and says so in the table", () => {
+    // Without an install the parser softens to info, with one it warns.
+    // Both severities in one parse, so the first RMS0202 is turned to info.
+    const p = parse(`
+<LAND_GENERATION>
+  create_land { clumping_factor SOFT_ONE }
+  create_land { clumping_factor HARD_ONE }
+`);
+    const first = p.diagnostics.find((d) => d.code === "RMS0202")!;
+    first.severity = "info";
+    const refs = findUndefinedReferences(p);
+    expect(refs.map((r) => [r.name, r.softened])).toEqual([
+      ["HARD_ONE", false],
+      ["SOFT_ONE", true],
+    ]);
+    const table = buildConstantsAuditOutput(p, true).find(
+      (b) =>
+        b.kind === "table" && b.columns[0] === "Name" && b.columns.length === 3,
+    );
+    const names = table && "rows" in table ? table.rows.map((r) => r[0]) : [];
+    expect(names).toEqual([
+      "HARD_ONE",
+      "SOFT_ONE (may be in an include file the app could not read)",
+    ]);
+  });
 });
 
 describe("buildConstantsAuditOutput", () => {

@@ -1,0 +1,23 @@
+/* From rms-check by Divy1211 (github.com/Divy1211/rms-check), GPL-3.0,
+   test_rms folder, copied 2026-11 for Age of RMS's liveness tests. */
+
+start_random
+    percent_chance 50    #define WINTER_VERSION
+    percent_chance 50    #define SUMMER_VERSION
+end_random
+
+if WINTER_VERSION
+    #const HARE ARCTIC_HARE
+elseif SUMMER_VERSION
+    #define HARE_MIX_SUMMER
+endif
+
+
+<OBJECTS_GENERATION>
+
+if HARE_MIX_SUMMER
+    create_object_group HARE {
+        add_object HARE_A 50
+        add_object HARE_B 50
+    }
+endif

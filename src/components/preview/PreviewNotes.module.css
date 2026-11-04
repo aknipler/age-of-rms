@@ -78,6 +78,31 @@
   font-size: 0.66rem;
 }
 
+.snippet {
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+}
+
+.hideButton {
+  float: right;
+  margin-left: 0.4rem;
+  font-size: 0.6rem;
+  padding: 0 0.3rem;
+  cursor: pointer;
+}
+
+.staleNotice {
+  pointer-events: auto;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.34rem;
+  color: #fff;
+  background: rgba(150, 100, 0, 0.9);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
 .note {
   padding: 0.22rem 0.3rem;
   border-bottom: 1px solid var(--border-subtle);

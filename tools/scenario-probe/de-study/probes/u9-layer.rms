@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+<TERRAIN_GENERATION>
+create_terrain SNOW { base_terrain DESERT number_of_tiles 400 number_of_clumps 6 terrain_mask 1 }
+create_terrain GRASS { base_terrain DESERT number_of_tiles 400 number_of_clumps 6 terrain_mask 2 }
+<OBJECTS_GENERATION>
+create_object DEER { number_of_objects 10 }
+create_object GOLD { number_of_objects 20 layer_to_place_on SNOW }
+create_object STONE { number_of_objects 20 layer_to_place_on DESERT terrain_to_place_on GRASS }
+create_object FORAGE { number_of_objects 20 layer_to_place_on DESERT }

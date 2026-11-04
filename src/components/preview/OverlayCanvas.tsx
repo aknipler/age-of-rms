@@ -150,6 +150,8 @@ export interface OverlayCanvasProps {
   helpTipId: string;
   /** The banner notes, and the map size chip beside the buttons. Meaningful only alongside `base`, since a caller with no generation has nothing for the banner to report on. */
   showApproximateBadge?: boolean;
+  /** Drawn right after the map size chip, for a notice about the map as a whole (the preview's stale marker). */
+  staleNotice?: ReactNode;
   /**
    * The lobby player count this generation ran with, drawn in the top right
    * corner as "200×200, 6 players". The dim half of that line is this component's
@@ -224,6 +226,7 @@ export function OverlayCanvas({
   overlayShapes,
   helpTipId,
   showApproximateBadge,
+  staleNotice,
   playerCount,
   showExportButton,
   showOrientation,
@@ -692,6 +695,7 @@ export function OverlayCanvas({
               </span>
             </HelpTip>
           )}
+          {showApproximateBadge && staleNotice}
           {showExportButton && (
             <HelpTip id="preview.exportPng">
               <button

@@ -1,0 +1,37 @@
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<TERRAIN_GENERATION>
+
+/* 70 create_terrain SNOW { base_terrain GRASS land_percent 100 } */
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_82c - control for 82a. The same comment, opened by the literal number
+70 instead of a word.
+Feeds: docs/token-alias-design.md Sec.3.1 and slice B.
+
+The header is at the bottom on purpose and names no constant whose number is
+a comment marker or a control word.
+
+PREDICTION, written 2026-11-02 before the run. GRASS everywhere. RMSTEST_57
+showed the literal 69 does not open a comment, only a word valued 69 does, so
+the literal 70 should not close one either. SNOW here would mean literals do
+count for 70, and the lexer rule in slice B would have to cover them.
+Read: probe_scenario.py, terrain histogram.
+
+Generate at: Tiny, 2 players, seed 1000, scenario editor.
+================================================================================
+*/

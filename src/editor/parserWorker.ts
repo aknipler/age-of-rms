@@ -7,8 +7,17 @@
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { parseRms } from "../parser/parser";
+import type { IncludeFiles } from "../parser/includeIndex";
+import {
+  emptyIncludeState,
+  indexFor,
+  parseOptionsFor,
+  receiveIncludes,
+  type IncludeState,
+} from "./includeCache";
 import {
   builtinConstantNames,
+  commentCloseAliases,
   commentOpenAliases,
   validate,
   type GameConstantsForValidate,
@@ -38,8 +47,12 @@ const validateRefDb: ValidateReferenceDb = {
 };
 
 // Computed ONCE at module scope, not per parse. The worker is long-lived and
-// this walks the whole constants table to find the two names in it valued 69.
+// this walks the whole constants table to find the two names in it valued 69
+// and the three valued 70.
 const COMMENT_OPEN_ALIASES = commentOpenAliases(
+  (gameConstantsRaw as unknown as GameConstantsForValidate).constants,
+);
+const COMMENT_CLOSE_ALIASES = commentCloseAliases(
   (gameConstantsRaw as unknown as GameConstantsForValidate).constants,
 );
 // Also once. Lets `effect_amount ... ATTR_FOUNDATION_TERRAIN FOREST` resolve
@@ -52,6 +65,20 @@ const BUILTIN_CONSTANTS = builtinConstantNames(
 export interface ParseRequestMessage {
   requestId: number;
   source: string;
+}
+
+/**
+ * The script's `#include_drs` files, read by the main thread (the Tauri fs
+ * plugin only works there). Sent when the set of files changes, not with
+ * each parse request: this worker is never replaced, so it can hold them
+ * (src/editor/includeCache.ts). `files` is null when no install was found,
+ * and `requested` lists every key the main thread asked the disk for, so a
+ * file the install lacks can be told from one not asked for yet.
+ */
+export interface IncludesMessage {
+  kind: "includes";
+  files: IncludeFiles | null;
+  requested: string[];
 }
 
 /** The full reply. For a big document a ParseDiagnosticsMessage comes just before it (parseResponses.ts). */
@@ -96,16 +123,44 @@ export interface ParseResultMessage {
  */
 export type ParseResponseMessage = ParseDiagnosticsMessage | ParseResultMessage;
 
-self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
-  const { requestId, source } = event.data;
+// The one place this worker keeps state between messages. Replaced, never
+// mutated, by receiveIncludes.
+let includeState: IncludeState = emptyIncludeState((text) =>
+  parseRms(text, languageData, {
+    commentOpenAliases: COMMENT_OPEN_ALIASES,
+    commentCloseAliases: COMMENT_CLOSE_ALIASES,
+    builtinConstants: BUILTIN_CONSTANTS,
+  }),
+);
+
+self.onmessage = (
+  event: MessageEvent<ParseRequestMessage | IncludesMessage>,
+) => {
+  // A discriminated union tells the two apart. A parse request has no `kind`,
+  // so the `in` check narrows it before either field is read.
+  if ("kind" in event.data && event.data.kind === "includes") {
+    includeState = receiveIncludes(
+      includeState,
+      event.data.files,
+      event.data.requested,
+      includeState.parse,
+    );
+    return;
+  }
+  const { requestId, source } = event.data as ParseRequestMessage;
   const startedAt = performance.now();
-  // The lexer needs this to model the truncation, not merely report it: a word
-  // valued 69 inside a comment opens a nested one in the engine, so everything
-  // after it is invisible and the AST has to say so. Built from reference data
+  // The lexer needs these to model comment ends, not merely report them: a
+  // word valued 69 inside a comment opens a nested one in the engine, so the
+  // comment runs on, and a word valued 70 closes one, so the text after it
+  // runs as code. The AST has to say so either way. Built from reference data
   // here rather than inside the parser, which holds no RMS vocabulary.
   const result = parseRms(source, languageData, {
     commentOpenAliases: COMMENT_OPEN_ALIASES,
+    commentCloseAliases: COMMENT_CLOSE_ALIASES,
     builtinConstants: BUILTIN_CONSTANTS,
+    // The names the script's include files define, and whether any file was
+    // not read. Both come from the cache, so a keystroke parses nothing new.
+    ...parseOptionsFor(includeState, source),
   });
   const parsedAt = performance.now();
   // The semantic pass (docs/parser-design.md Sec.8) runs here, in the worker,
@@ -113,7 +168,13 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   // UI thread should never do one. Its diagnostics are ADDITIVE. The parser's
   // are lexical/syntactic, these are semantic, and neither pass reports what
   // the other already said, so they concatenate.
-  const semanticDiagnostics = validate(result, validateRefDb);
+  // Built once and used twice. validate() reads it for the checks, and the
+  // parse carries it out (below) so the name lookup can offer and describe
+  // included names without a second walk of the files.
+  const includeIndex = indexFor(includeState, result);
+  const semanticDiagnostics = validate(result, validateRefDb, {
+    resolvedIncludes: includeIndex,
+  });
   // The merge happens HERE, at the app boundary, and not in either pure
   // module. Inside src/parser/* the split stays real: parseRms never sees a
   // semantic diagnostic and validate() returns its own array (spec Sec.3,
@@ -153,7 +214,7 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
     lexParseMs: parsedAt - startedAt,
     validateMs: finishedAt - parsedAt,
     postedAtEpochMs: performance.timeOrigin + performance.now(),
-    parseResult: { ...result, diagnostics: allDiagnostics },
+    parseResult: { ...result, diagnostics: allDiagnostics, includeIndex },
   };
   self.postMessage(response);
 };

@@ -436,3 +436,73 @@ describe("comment-opening aliases (Sec.2.1 amendment — a word the engine reads
     ]);
   });
 });
+
+describe("comment-closing aliases (token-alias-design Sec.3.1 — a word the engine reads as the closing marker)", () => {
+  // The engine's id for the closing marker is 70, so a constant valued 70
+  // closes one level of a comment, exactly as a written closer would. Measured
+  // by RMSTEST_82a/82b/82c (2026-11-02), and RMSTEST_83 for Chaotic Strait.
+  const CLOSES = new Set(["HOUSE", "ATTR_ATTACK_GRAPHIC"]);
+  const OPENS = new Set(["SHORE_FISH"]);
+
+  const live = (src: string, opts = {}) =>
+    tokenize(src, opts)
+      .tokens.filter((t) => !t.isTrivia)
+      .map((t) => t.text);
+
+  const BLOCK = "create_terrain SNOW { base_terrain GRASS land_percent 100 }";
+
+  it("RMSTEST_82a: the text after a closing word runs, and the written closer is stray", () => {
+    const src = `/* HOUSE ${BLOCK} */`;
+    const result = tokenize(src, { commentCloseAliases: CLOSES });
+    expect(result.tokens.filter((t) => !t.isTrivia).map((t) => t.text)).toEqual(
+      BLOCK.split(" "),
+    );
+    expect(result.diagnostics.map((x) => x.code)).toEqual(["RMS0002"]);
+  });
+
+  it("RMSTEST_82b: an object name that is not valued 70 leaves nothing live", () => {
+    const src = `/* TOWN_CENTER ${BLOCK} */`;
+    expect(live(src, { commentCloseAliases: CLOSES })).toEqual([]);
+  });
+
+  it("RMSTEST_82c: the bare literal 70 leaves nothing live", () => {
+    const src = `/* 70 ${BLOCK} */`;
+    expect(live(src, { commentCloseAliases: CLOSES })).toEqual([]);
+  });
+
+  it("does not touch the same word outside a comment", () => {
+    expect(
+      live("create_object HOUSE { number_of_objects 1 }", {
+        commentCloseAliases: CLOSES,
+      }),
+    ).toEqual(["create_object", "HOUSE", "{", "number_of_objects", "1", "}"]);
+  });
+
+  it("does nothing when no close set is supplied", () => {
+    expect(live(`/* HOUSE ${BLOCK} */`)).toEqual([]);
+  });
+
+  it("closes the inner level of a nested comment only", () => {
+    // The word shuts the inner level, the first written closer shuts the outer
+    // one, and the last closer is a stray.
+    expect(
+      live("/* /* HOUSE */ x */ y", { commentCloseAliases: CLOSES }),
+    ).toEqual(["x", "y"]);
+  });
+
+  it("the Chaotic Strait shape, with both sets", () => {
+    const src = "/* /* SHORE_FISH */ HOUSE HOUSE a */ b";
+    expect(
+      live(src, { commentOpenAliases: OPENS, commentCloseAliases: CLOSES }),
+    ).toEqual(["a", "b"]);
+  });
+
+  it("closes the only level when comments do not nest", () => {
+    expect(
+      live("/* HOUSE a */", {
+        nestedComments: false,
+        commentCloseAliases: CLOSES,
+      }),
+    ).toEqual(["a"]);
+  });
+});

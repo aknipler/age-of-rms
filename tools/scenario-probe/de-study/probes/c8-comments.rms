@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+/* a comment */ create_land { terrain_type DESERT land_position 20 20 number_of_tiles 0 base_size 2 }
+/* outer /* inner */ still the outer comment */ create_land { terrain_type SNOW land_position 50 20 number_of_tiles 0 base_size 2 }
+create_land { terrain_type DIRT /* inline */ land_position 80 20 number_of_tiles 0 base_size 2 }
+/*
+create_land { terrain_type FOREST land_position 20 50 number_of_tiles 0 base_size 2 }
+*/
+create_land { terrain_type LEAVES land_position 50 50 number_of_tiles 0 base_size 2 }
+/* trailing */

@@ -1,85 +1,38 @@
-// S4: terrains, docs/preview-design.md Sec.6.4. PURE (CLAUDE.md hard rule /
-// preview-design Sec.2).
+// S4: terrains, docs/preview-design.md Sec.6.4 (rev 11). PURE (CLAUDE.md hard
+// rule / preview-design Sec.2).
 //
-// Per `create_terrain T { ... }`, sequential in script order (guide:
-// "generated sequentially… positions cannot be directly specified"): resolve
-// a tile budget, then grow `number_of_clumps` clumps restricted to an
-// eligible-tile set (base_terrain/base_layer match, height_limits, two
-// flavours of spacing, flatness, player-start avoidance), using terrain's
-// OWN `clumping_factor` regime (Sec.6.4: "do not reuse Sec.6.1's land
-// table"). The eligible set is computed ONCE per COMMAND (matching
-// elevation.ts's own precedent), not once per clump: what genuinely differs
-// clump-to-clump within one command is only "has an earlier clump already
-// claimed this tile", tracked separately as a live `claimed` mask rather
-// than by rebuilding the whole eligible set. See the ITERATION CAP note
-// below for why a naive per-clump rebuild is not just slower but
-// unshippable.
+// THIS STAGE REPRODUCES THE GAME TILE FOR TILE. It is the terrain stage the
+// owner's DE study measured (`tools/scenario-probe/de-study/evidence/
+// de-terrain-stage.md`, rounds ET and GP), on the same stream as the land,
+// elevation and cliff stages. `deWholeScriptMaps.test.ts` holds it to every
+// saved terrain map of the study. One draw out of place moves every clump of
+// every later pass, so the order of the draws below matters as much as the
+// rules they serve.
 //
-// ONE DELIBERATE SIMPLIFICATION. `set_avoid_player_start_areas` is modelled
-// as a flat `distance >= d` predicate: Sec.6.4 says "with mild variance",
-// unquantified, and a per-tile jitter has no home in Sec.7's architecture
-// where `AttributedPredicate.test` is a pure, deterministic membership query
-// with no RNG access. Threading randomness through it would be a bigger
-// change than the feature justifies.
+// THE MODEL, in brief.
+//   - The stage burns one draw, then runs every `create_terrain` as its own
+//     pass, in script order. There is no beach while it runs, not even
+//     before the first pass, so `base_terrain BEACH` finds only BEACH that a
+//     land or an earlier pass painted.
+//   - A pass puts every tile in a main list, shuffles it by moving random
+//     tiles to the front, seeds its clumps from the front of the list and
+//     grows them round robin from priority lists, the same lists and insert
+//     rule as the elevation stage (`TileLists`).
+//   - A pass paints a little more than its target, because a drain at the
+//     end paints every listed tile that sits between two painted ones.
+//   - Painting writes the tile and marks it with the pass's `beach_terrain`.
+//     The beach itself waits for the end of the stage (`index.ts`), which
+//     reads the mark.
 //
-// TWO THINGS THAT USED TO BE LISTED HERE AS SIMPLIFICATIONS AND WERE ACTUALLY
-// WRONG. Both are worth keeping, because "documented approximation" is a
-// comfortable place for a bug to hide.
+// The end of the stage is three more steps that `index.ts` runs in order.
+// Composite terrains resolve (`resolveComposites`), the cliff lines get
+// their earlier terrain back and WATER is cleaned (`finishTerrainStage` in
+// cliffs.ts), and the beach rule runs (`applyAutomaticBeach`).
 //
-//   `set_flat_terrain_only`'s "also >= spacing from sloped tiles" clause was
-//   treated as a flat unconditional "reject any sloped candidate" with the
-//   spacing-buffer half dropped -- corrected after review flagged that the
-//   combination shows up in real corpus scripts (`24hr_Blind Valley.rms`).
-//   See `eligibleTerrainCandidates` for the fix: a sloped tile becomes
-//   "foreign" for `spacing_to_other_terrain_types`'s own distance transform
-//   exactly when that attribute is set, which is what "only when spacing >= 1"
-//   means.
-//
-//   `terrain_mask 1` vs `2` was collapsed into one behaviour on the reasoning
-//   that Sec.9 item 6 already renders masking as a flat tint, so "the
-//   over/under distinction would be invisible in the renderer's own contract
-//   even if modelled exactly". The distinction is not about rendering at all:
-//   guide:1502-1509 says mask 1's new terrain "inherits its properties" from
-//   the base while mask 2's "provides new properties", so mask 2 changes
-//   WHICH TERRAIN OWNS THE TILE and therefore what every later `base_terrain`,
-//   habitat check and automatic-object rule sees. Collapsing them made every
-//   mask-2 command a no-op for the rest of the pipeline; `AD4 - Pag - v1.2.rms`
-//   uses mask 2 twice in its first three commands. Both layers are now
-//   modelled and only the visual BLEND remains a flat tint.
-//
-// HOW MANY CLUMPS ACTUALLY RUN (Sec.11), and why this is not a [tune]
-// constant. The guide's own worked create_terrain example uses
-// `number_of_clumps 9320`; real corpus scripts declare it constantly
-// (`AD4 - Pag - v1.2.rms` writes it 23 times in one section, `24hr_Blind
-// Valley.rms` several times, one of them under `set_scale_by_groups` which
-// turns it into tens of thousands) and some declare `999999999`. Sec.11
-// names the scenario directly ("9320-clump commands... never hang").
-//
-// **The bound is the eligible pool, which is exact.** Every clump that runs
-// claims at least its own seed tile, so a command can never usefully run
-// more clumps than it has eligible tiles, `min(clumpCount, pool.length)` is
-// a fact about the work, not a guess about a budget, and it terminates a
-// 999999999-clump command after at most `dim^2` iterations on its own. Seed
-// draws come from a shrinking pool with swap-remove, so the whole command
-// pays O(pool) for removals no matter how many clumps it asks for.
-//
-// **This replaced a `[tune]` cap of `4 * dim` attempts, and that cap was a
-// real correctness bug, not just a conservative setting.** At `dim` 200 it
-// stopped every command after 800 clumps, 8.6% of a 9320-clump command.
-// `create_terrain DIRT { base_terrain DESERT land_percent 100
-// number_of_clumps 9320 }` is how a script converts *all* of one terrain
-// into another, and it was converting a twelfth of it, leaving DESERT
-// scattered through regions the author had cleared. One Pag generation
-// emitted 23 `terrainIterationCapped` notes. The lesson worth keeping: a cap
-// chosen so "no non-pathological corpus script hits it" was measured against
-// nothing, the corpus hits it constantly, and it fired as a silent visual
-// wrong answer rather than as an error.
-//
-// An EARLIER version computed the eligible set per clump instead of per
-// command (reasoning that an earlier clump's painted tiles must stop being
-// eligible for the next one); that reasoning is still correct, but
-// implementing it as a full rebuild rather than a `claimed` mask took a real
-// corpus run from milliseconds to multiple minutes.
+// This file replaced a statistical model (a 122 * dim / 120 budget, a
+// circularity table and a beach pass after every command). Each of those
+// was fitted to measured counts and each was wrong in kind. Its history is
+// in docs/build-log.md.
 
 import type {
   CommandReport,
@@ -88,618 +41,800 @@ import type {
   InstantiatedValue,
   LandOrigin,
   PlacementFailure,
-  PlacementOutcome,
   SimulationNote,
   TileGrid,
 } from "./types";
-import { createSubstream, nextFloat01, nextInt, type Rng } from "./rng";
+import { resumeDeStream, type DeStreamState } from "./deRandom";
+import { TileLists } from "./elevation";
+import { f32Div, f32Sqrt } from "./float32";
 import {
   DEPTH_LAND,
   NO_LAYER,
-  UNREACHABLE,
   beachTerrainFor,
-  computeSlopeMask,
-  isWaterTerrain,
-  distanceTransform,
-  distanceTransformFromMask,
   resolveTerrainId,
-  scaleToMapArea,
   waterDepthMask,
   type TerrainConstantForMasks,
 } from "./grid";
+import { pushFailure } from "./placement";
 import {
-  intersectCandidates,
-  ok,
-  fail,
-  pushFailure,
-  type AttributedPredicate,
-} from "./placement";
+  CLASS_SHORE,
+  COMPOSITE_TERRAINS,
+  classOf,
+  terrainClassTable,
+} from "./terrainClass";
 
 // ---------------------------------------------------------------------------
-// [tune] / guide-value constants
+// Constants (de-terrain-stage.md Sections 2 to 6)
 // ---------------------------------------------------------------------------
 
-/** RMSTEST_14: "default 122 tiles on a tiny map", side-length scaled like Sec.6.2's elevation default, NOT re-scaled by set_scale_by_*, same policy as elevation.ts's own default. */
-const DEFAULT_BUDGET_NUMERATOR = 122;
-const DEFAULT_BUDGET_DENOMINATOR = 120;
+/** Terrain ids the rules name directly. Engine facts, as `cliffs.ts`'s BEACH is. */
+const GRASS = 0;
+const WATER = 1;
+/** `number_of_clumps` above this is read as this (gt7, 9999 clumps at 252). */
+const MAX_CLUMPS = 999;
+/** `clumping_factor` when the pass writes none. */
+const DEFAULT_CLUMPING = 20;
+/** `set_avoid_player_start_areas` bare or 0. */
+const DEFAULT_AVOID = 13;
+const AVOID_WEIGHT = 20;
+const PENALTY_CAP = 101;
+/** `spacing_to_specific_terrain` ignores terrain ids from here up. */
+const SPECIFIC_TERRAIN_LIMIT = 200;
+/** "No mark", the value a tile's beach mark holds when no pass with `beach_terrain` painted it last. */
+export const NO_BEACH_MARK = -1;
 
-/** guide:1646: "different than for lands". lands.ts's own default is 8. */
-const TERRAIN_DEFAULT_CF = 20;
-
-/**
- * RMSTEST_20's saturation point, which happens to equal RMSTEST_21's land
- * saturation point (Sec.6.1), coincidence in the data, not a reason to
- * import `bucketWeights` (elevation.ts since rev 8, lands.ts before it). Sec.6.4 explicitly says the two tables
- * are separate measurements ("do not reuse Sec.6.1's land table"), and an
- * edit to one must not risk silently changing the other's tested shape.
- * same reasoning grid.ts gives for keeping `distanceTransform` and
- * `distanceTransformFromMask` un-unified.
- */
-const TERRAIN_SATURATION_CF = 15;
-/** [tune]: no measurement pins the magnitude, only the qualitative shape (Sec.6.4's own table), same reasoning as lands.ts's MAX_STEEPNESS. */
-const TERRAIN_MAX_STEEPNESS = 3;
-/** cf < 0: "extremely snakey" (guide:1647). Not literally 0 so a clump isn't stuck if bucket 1 empties first. */
-const TERRAIN_NEGATIVE_REGIME_WEIGHTS: readonly [
-  number,
-  number,
-  number,
-  number,
-] = [1, 0.05, 0.05, 0.05];
-
-/** guide, Sec.6.4: "set_avoid_player_start_areas d (default 13 when bare)". */
-const AVOID_PLAYER_START_DEFAULT = 13;
-
-const ZERO_SPAN = { start: 0, end: 0 };
+const MAIN = 0;
+const CLUMP0 = 1;
+const LIST_COUNT = CLUMP0 + MAX_CLUMPS;
 
 // ---------------------------------------------------------------------------
-// Attribute reading, duplicated per-file convention (elevation.ts/lands.ts
-// each keep their own small copy rather than sharing one; see either file's
-// header for why).
+// Reading one pass's attributes
 // ---------------------------------------------------------------------------
 
-function argValue(
-  cmd: InstantiatedCommand,
-  name: string,
-  argIndex = 0,
-): InstantiatedValue {
-  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
-  return arg?.value;
+function firstAttr(cmd: InstantiatedCommand, name: string) {
+  return cmd.attributes.get(name)?.[0];
 }
 
-// BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
-// a known symbol (a #define with no #const) that resolves to JS `undefined`
-// — that reads as 0, measured. See objects.ts's own copy for the full note.
+function argOf(
+  cmd: InstantiatedCommand,
+  name: string,
+  index = 0,
+): InstantiatedValue {
+  return firstAttr(cmd, name)?.args[index]?.value;
+}
+
+/**
+ * A number attribute, `fallback` when the attribute is absent. A known
+ * symbol with no value reads as 0, as in every other stage (BUG-021).
+ */
 function numAttr(
   cmd: InstantiatedCommand,
   name: string,
-  argIndex: number,
   fallback: number,
+  index = 0,
 ): number {
-  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
+  const arg = firstAttr(cmd, name)?.args[index];
   if (arg === undefined) return fallback;
-  if (typeof arg.value === "number") return arg.value;
+  if (typeof arg.value === "number") return Math.trunc(arg.value);
   return arg.value === undefined ? 0 : fallback;
 }
 
-/** guide:1257/1274 (shared with elevation.ts): "only the LAST scale attribute applies" when a script writes both. */
-function lastScaleAttribute(
+/**
+ * A terrain slot as the game reads it. A name the script never defined
+ * reads as terrain 0 (de-findings-cg-cj.md 2.9, Bazi's placeholders), so an
+ * unresolved name still runs the pass and spends its draws.
+ */
+function terrainOf(
+  value: InstantiatedValue,
+  instantiated: InstantiatedScript,
+  constants: readonly TerrainConstantForMasks[],
+): number {
+  return (
+    resolveTerrainId(
+      constants,
+      value,
+      instantiated.symbols,
+      instantiated.aliases,
+    ) ?? 0
+  );
+}
+
+/** The later of two attributes by source position, or the one present. */
+function later(
   cmd: InstantiatedCommand,
-): "size" | "groups" | undefined {
-  const sizeAttr = cmd.attributes.get("set_scale_by_size")?.[0];
-  const groupsAttr = cmd.attributes.get("set_scale_by_groups")?.[0];
-  if (sizeAttr && groupsAttr)
-    return sizeAttr.span.start > groupsAttr.span.start ? "size" : "groups";
-  if (sizeAttr) return "size";
-  if (groupsAttr) return "groups";
+  a: string,
+  b: string,
+): string | undefined {
+  const x = firstAttr(cmd, a);
+  const y = firstAttr(cmd, b);
+  if (x && y) return x.span.start > y.span.start ? a : b;
+  if (x) return a;
+  if (y) return b;
   return undefined;
 }
 
-/** The script's own `#const` table, threaded from `InstantiatedScript.symbols` so `resolveTerrainId` can see a `create_terrain WOODIES` this file would otherwise report as an unknown terrain. */
-type Symbols = ReadonlyMap<string, number>;
-/** BUG-015's name-to-name `#const`s, travelling with `Symbols` everywhere it goes. */
-type Aliases = ReadonlyMap<string, string>;
+export interface TerrainAmount {
+  /** The pass's target, painted tiles including the seeds. */
+  tiles: number;
+  clumps: number;
+  /** True when the target came from a percentage, `land_percent` or a negative `number_of_tiles`. */
+  percentage: boolean;
+}
 
-// ---------------------------------------------------------------------------
-// Budget / clump count (Sec.6.4), mirrors elevation.ts's shape, but with
-// the terrain-specific scaling rule: EITHER scale attribute scales tiles
-// (guide: set_scale_by_groups "scales the total tile count too" for
-// terrains, elevation only lets set_scale_by_size touch tiles).
-// ---------------------------------------------------------------------------
-
-export function resolveTerrainTileBudget(
+/**
+ * The pass's target and clump count (de-terrain-stage.md 2).
+ *
+ * `number_of_tiles` defaults to the map's side, 120 on Tiny, which explains
+ * the measured counts just above it that the guide's 122 was fitted to. A
+ * negative count is a percentage, and so is `land_percent`. A scale key
+ * scales a count given as a number, and `set_scale_by_groups` scales the
+ * clumps too. With both keys the later one counts.
+ */
+export function terrainAmount(
   cmd: InstantiatedCommand,
   dim: number,
-): number {
-  const explicitTiles = argValue(cmd, "number_of_tiles", 0);
-  if (typeof explicitTiles === "number") {
-    return lastScaleAttribute(cmd) !== undefined
-      ? scaleToMapArea(explicitTiles, dim)
-      : explicitTiles;
+): TerrainAmount {
+  const area = dim * dim;
+  let tiles = dim;
+  let percentage = false;
+  const amountKey = later(cmd, "number_of_tiles", "land_percent");
+  if (amountKey === "number_of_tiles") {
+    const n = numAttr(cmd, "number_of_tiles", dim);
+    if (n < 0) {
+      tiles = Math.floor((-n * area) / 100);
+      percentage = true;
+    } else tiles = n;
+  } else if (amountKey === "land_percent") {
+    const arg = firstAttr(cmd, "land_percent")?.args[0];
+    const p =
+      arg?.exact ?? (typeof arg?.value === "number" ? arg.value : undefined);
+    tiles = p !== undefined && p > 0 ? Math.floor((p * area) / 100) : 0;
+    percentage = true;
   }
-  // NOTE: read directly, NOT via numAttr's own fallback -- land_percent's
-  // OWN declared default (100) must not leak in here. The terrain-level
-  // default when NEITHER attribute is written is the dim-scaled formula
-  // below, not "100% of the map" (same trap RMSTEST_14 flagged for
-  // elevation.ts's number_of_tiles default).
-  const percentValue = argValue(cmd, "land_percent", 0);
-  if (typeof percentValue === "number") return (percentValue / 100) * dim * dim;
-  return (DEFAULT_BUDGET_NUMERATOR * dim) / DEFAULT_BUDGET_DENOMINATOR;
-}
-
-export function resolveClumpCount(
-  cmd: InstantiatedCommand,
-  dim: number,
-): number {
-  const declared = numAttr(cmd, "number_of_clumps", 0, 1);
-  return lastScaleAttribute(cmd) === "groups"
-    ? Math.max(1, scaleToMapArea(declared, dim))
-    : Math.max(1, declared);
+  let clumps = numAttr(cmd, "number_of_clumps", 1);
+  const scale = later(cmd, "set_scale_by_size", "set_scale_by_groups");
+  if (scale !== undefined && !percentage && tiles > 0)
+    tiles = Math.floor((tiles * area) / 10000);
+  if (scale === "set_scale_by_groups")
+    clumps = Math.floor((clumps * area) / 10000);
+  return {
+    tiles,
+    clumps: Math.max(0, Math.min(clumps, MAX_CLUMPS)),
+    percentage,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Terrain's own clumping_factor regime (Sec.6.4, RMSTEST_20). See the
-// TERRAIN_SATURATION_CF comment above for why this is not elevation.ts's
-// `bucketWeights` despite the identical shape.
-// ---------------------------------------------------------------------------
-
-export function terrainBucketWeights(
-  clumpingFactor: number,
-): readonly [number, number, number, number] {
-  if (clumpingFactor < 0) return TERRAIN_NEGATIVE_REGIME_WEIGHTS;
-  const steepness =
-    (Math.min(clumpingFactor, TERRAIN_SATURATION_CF) / TERRAIN_SATURATION_CF) *
-    TERRAIN_MAX_STEEPNESS;
-  return [1, 1 + steepness, 1 + 2 * steepness, 1 + 3 * steepness];
-}
-
-// ---------------------------------------------------------------------------
-// Per-command attribute resolution beyond budget/cf
-// ---------------------------------------------------------------------------
-
-interface HeightLimits {
-  min: number;
-  max: number;
-}
-
-function readHeightLimits(cmd: InstantiatedCommand): HeightLimits | undefined {
-  const attr = cmd.attributes.get("height_limits")?.[0];
-  if (!attr) return undefined;
-  const min = attr.args[0]?.value;
-  const max = attr.args[1]?.value;
-  return typeof min === "number" && typeof max === "number"
-    ? { min, max }
-    : undefined;
-}
-
-interface SpecificTerrainSpacing {
-  terrainId: number;
-  distance: number;
-}
-
-/** `spacing_to_specific_terrain` is `repeatable: true` (Sec.3 rule 10). Every occurrence accumulates, not just the last. Unresolvable terrain names are skipped (positive-resolver policy: absence from reference data is not itself a reason to fail the whole command). */
-function specificTerrainSpacings(
-  cmd: InstantiatedCommand,
-  constants: readonly TerrainConstantForMasks[],
-  symbols: Symbols,
-  aliases: Aliases,
-): SpecificTerrainSpacing[] {
-  const attrs = cmd.attributes.get("spacing_to_specific_terrain") ?? [];
-  const out: SpecificTerrainSpacing[] = [];
-  for (const attr of attrs) {
-    const distance = attr.args[1]?.value;
-    if (typeof distance !== "number") continue;
-    const terrainId = resolveTerrainId(
-      constants,
-      attr.args[0]?.value,
-      symbols,
-      aliases,
-    );
-    if (terrainId !== undefined) out.push({ terrainId, distance });
-  }
-  return out;
-}
-
-/** `set_avoid_player_start_areas d`, undefined when the attribute is absent entirely (no constraint); `AVOID_PLAYER_START_DEFAULT` when present but bare. */
-function avoidPlayerStartDistance(
-  cmd: InstantiatedCommand,
-): number | undefined {
-  const attr = cmd.attributes.get("set_avoid_player_start_areas")?.[0];
-  if (!attr) return undefined;
-  const v = attr.args[0]?.value;
-  return typeof v === "number" ? v : AVOID_PLAYER_START_DEFAULT;
-}
-
-// ---------------------------------------------------------------------------
-// Eligible-tile candidate set (Sec.7's successive-intersection attribution,
-// predicate order matching Sec.6.4's own listed order: base match, height
-// limits, other-terrain spacing, specific-terrain spacings, flatness,
-// player-start avoidance). Bucket assignment is SPEC-STATED, not a judgment
-// call: "Failures: terrainAbsent (no eligible tiles at all...), spacingConflict
-// (eligible set emptied by spacing)". Only the base-match predicate uses
-// terrainAbsent, every later predicate uses spacingConflict.
-// ---------------------------------------------------------------------------
-
-export interface EligibilityContext {
-  baseTerrainId: number;
-  baseLayerId?: number;
-  heightLimits?: HeightLimits;
-  /** 0 = no constraint (attribute absent, Sec.6.4 gives no default, unlike cliffs.ts's guide-sourced spacing defaults). */
-  otherTerrainSpacing: number;
-  specificSpacings: readonly SpecificTerrainSpacing[];
-  flatOnly: boolean;
-  /** undefined = no constraint (`set_avoid_player_start_areas` absent). */
-  avoidPlayerDistance?: number;
-}
-
-export function eligibleTerrainCandidates(
-  grid: TileGrid,
-  ctx: EligibilityContext,
-  slope: Uint8Array,
-  playerOrigins: readonly LandOrigin[],
-): PlacementOutcome<Int32Array> {
-  const { dim } = grid;
-  const n = dim * dim;
-  const scratch = new Int32Array(n);
-  for (let i = 0; i < n; i++) scratch[i] = i;
-
-  // guide:1471 on `base_layer` (terrain): "If used together with base_terrain,
-  // the new terrain will be placed only where BOTH the base and the layer
-  // apply." This was an OR, which made `base_layer` a widening clause instead
-  // of a narrowing one -- a command asking for "DESERT layered over GRASS"
-  // matched every GRASS tile on the map as well. `base_terrain` itself always
-  // applies, defaulting to GRASS (guide:1449); `base_layer` has no default
-  // and only narrows when written.
-  const predicates: AttributedPredicate[] = [
-    {
-      bucket: "terrainAbsent",
-      test: (i) =>
-        grid.terrain[i] === ctx.baseTerrainId &&
-        (ctx.baseLayerId === undefined || grid.layer[i] === ctx.baseLayerId),
-    },
-  ];
-
-  if (ctx.heightLimits) {
-    const { min, max } = ctx.heightLimits;
-    predicates.push({
-      bucket: "spacingConflict",
-      test: (i) => grid.elevation[i] >= min && grid.elevation[i] <= max,
-    });
-  }
-
-  if (ctx.otherTerrainSpacing > 0) {
-    // "cliff tiles also count as foreign terrain for this spacing" (Sec.6.4's
-    // own pinned approximation, Sec.9 item 7) -- ANY tile that is neither
-    // base_terrain/base_layer NOR a cliff tile counts as this command's OWN
-    // eligible ground; everything else (other terrain patches, water,
-    // cliffs) is foreign. `set_flat_terrain_only` widens "foreign" further,
-    // per Sec.6.4's own clause: "also >= spacing from sloped tiles (only
-    // when spacing >= 1)" -- the gate this whole block is already inside
-    // IS "spacing >= 1" (an integer attribute, so `> 0` and `>= 1` coincide),
-    // so a slope becomes foreign under exactly the condition the guide
-    // states, and the SAME distance transform enforces the same buffer
-    // distance against both. This folds the flag into the spacing check
-    // rather than a second separate one: a bare `flatOnly` (no spacing
-    // attribute, or spacing 0) still needs its own unconditional "never
-    // paint ON a slope" rule below, since this block does not run then.
-    const foreign = new Uint8Array(n);
-    for (let i = 0; i < n; i++) {
-      const isOwnBase =
-        grid.terrain[i] === ctx.baseTerrainId &&
-        (ctx.baseLayerId === undefined || grid.layer[i] === ctx.baseLayerId);
-      if (!isOwnBase || grid.cliff[i] !== 0 || (ctx.flatOnly && slope[i] !== 0))
-        foreign[i] = 1;
-    }
-    const foreignDistance = distanceTransformFromMask(dim, foreign);
-    const minSpacing = ctx.otherTerrainSpacing;
-    predicates.push({
-      bucket: "spacingConflict",
-      test: (i) =>
-        foreignDistance[i] === UNREACHABLE || foreignDistance[i] >= minSpacing,
-    });
-  }
-
-  for (const spacing of ctx.specificSpacings) {
-    const dist = distanceTransform(grid, spacing.terrainId);
-    const minDistance = spacing.distance;
-    predicates.push({
-      bucket: "spacingConflict",
-      test: (i) => dist[i] === UNREACHABLE || dist[i] >= minDistance,
-    });
-  }
-
-  if (ctx.flatOnly) {
-    // Unconditional half of the flag's own plain description ("only paints
-    // this terrain onto flat ground") -- applies even when
-    // otherTerrainSpacing is 0/absent, unlike the buffer above. Redundant
-    // with the block above whenever BOTH are active (a sloped tile already
-    // fails foreignDistance >= minSpacing there), which is harmless: a
-    // second pass over an already-filtered survivor set costs nothing
-    // Sec.7's attribution rule cares about.
-    predicates.push({ bucket: "spacingConflict", test: (i) => slope[i] === 0 });
-  }
-
-  if (ctx.avoidPlayerDistance !== undefined) {
-    const minDistance2 = ctx.avoidPlayerDistance * ctx.avoidPlayerDistance;
-    predicates.push({
-      bucket: "spacingConflict",
-      test: (i) => {
-        if (playerOrigins.length === 0) return true;
-        const x = i % dim;
-        const y = (i - x) / dim;
-        for (const origin of playerOrigins) {
-          const dx = x - origin.x;
-          const dy = y - origin.y;
-          if (dx * dx + dy * dy < minDistance2) return false;
-        }
-        return true;
-      },
-    });
-  }
-
-  const result = intersectCandidates(scratch, n, predicates);
-  if (result.count === 0) {
-    return fail({
-      bucket: result.failedBucket ?? "noValidTiles",
-      commandSpan: ZERO_SPAN, // filled in by the caller, which has the real span
-      stage: "S4",
-      entity: "terrain clump",
-      detail: "",
-    });
-  }
-  return ok(Int32Array.from(result.survivors));
-}
-
-// ---------------------------------------------------------------------------
-// Restricted clump growth, elevation.ts's `growClump` shape, plus TWO
-// per-clump membership checks gating every frontier candidate (Sec.6.4:
-// "grow restricted to eligible tiles"): a STATIC `eligible` mask (computed
-// ONCE per command, see applyTerrains below for why) and a live `claimed`
-// mask marking tiles an EARLIER clump of this same command already grew
-// into. Two arrays rather than one combined mask because `eligible` is
-// shared read-only across every clump of a command while `claimed` grows
-// clump by clump, merging them would mean rebuilding a combined array per
-// clump, exactly the O(dim^2)-per-clump cost this split exists to avoid.
-// Kept as its OWN copy rather than adding parameters to elevation.ts's
-// tested, working `growClump`, for the same reason grid.ts keeps its two
-// distance transforms un-unified: an edit to one must not risk silently
-// changing the other's already-tested behaviour.
-// ---------------------------------------------------------------------------
-
-function fourNeighbors(dim: number, tile: number): number[] {
-  const x = tile % dim;
-  const y = (tile - x) / dim;
-  const out: number[] = [];
-  if (x > 0) out.push(tile - 1);
-  if (x < dim - 1) out.push(tile + 1);
-  if (y > 0) out.push(tile - dim);
-  if (y < dim - 1) out.push(tile + dim);
-  return out;
-}
-
-export function growTerrainClump(
-  dim: number,
-  seed: number,
-  target: number,
-  eligible: Uint8Array,
-  claimed: Uint8Array,
-  weights: readonly [number, number, number, number],
-  rng: Rng,
-): Set<number> {
-  const owned = new Set<number>([seed]);
-  if (target <= 1) return owned;
-  const buckets: [number[], number[], number[], number[]] = [[], [], [], []];
-  const inFrontier = new Set<number>();
-
-  function addFrontier(tile: number): void {
-    if (
-      inFrontier.has(tile) ||
-      owned.has(tile) ||
-      eligible[tile] === 0 ||
-      claimed[tile] !== 0
-    )
-      return;
-    inFrontier.add(tile);
-    let neighborsOwned = 0;
-    for (const n of fourNeighbors(dim, tile))
-      if (owned.has(n)) neighborsOwned++;
-    const bucketIndex = Math.max(1, Math.min(4, neighborsOwned)) - 1;
-    buckets[bucketIndex].push(tile);
-  }
-
-  for (const n of fourNeighbors(dim, seed)) addFrontier(n);
-
-  while (owned.size < target) {
-    const sizes = buckets.map((b) => b.length);
-    const totalWeight = sizes.reduce(
-      (sum, size, i) => sum + size * weights[i],
-      0,
-    );
-    if (totalWeight <= 0) break; // frontier exhausted (eligibility boundary reached) -- growthShortfall, not an error
-    let roll = nextFloat01(rng) * totalWeight;
-    let bucketIndex = 0;
-    for (; bucketIndex < 3; bucketIndex++) {
-      const contribution = sizes[bucketIndex] * weights[bucketIndex];
-      if (roll < contribution) break;
-      roll -= contribution;
-    }
-    const bucket = buckets[bucketIndex];
-    const pickIndex = nextInt(rng, 0, bucket.length - 1);
-    const tile = bucket[pickIndex];
-    bucket[pickIndex] = bucket[bucket.length - 1];
-    bucket.pop();
-    inFrontier.delete(tile);
-    owned.add(tile);
-    for (const n of fourNeighbors(dim, tile)) addFrontier(n);
-  }
-
-  return owned;
-}
-
-// ---------------------------------------------------------------------------
-// Automatic beaches (engine behaviour, not a command)
+// The avoidance penalty and slopes, per map
 // ---------------------------------------------------------------------------
 
 /**
- * Options for one run of the beach pass.
- *
- * Both fields exist because the pass runs at more than one moment and the two
- * moments differ (see `applyAutomaticBeach`): after land generation it dresses
- * the whole map with each terrain's own default, and after a `create_terrain`
- * command it dresses only what that command painted, with that command's
- * `beach_terrain`.
+ * Every tile's penalty from the player lands' origins (de-terrain-stage.md
+ * 5). The elevation stage's weight with `d` in place of 13. Each origin
+ * reaches only tiles within `d`, so it touches its own box, not the map.
  */
+function avoidancePenalty(
+  origins: readonly LandOrigin[],
+  dim: number,
+  d: number,
+): Uint8Array {
+  const sum = new Int32Array(dim * dim);
+  // Every player land counts, two at one origin twice, as in the game.
+  // Caverns sends six of player 1's lands to the map centre.
+  for (const origin of origins) {
+    if (origin.player === undefined) continue;
+    for (
+      let y = Math.max(origin.y - d, 0);
+      y <= Math.min(origin.y + d, dim - 1);
+      y++
+    )
+      for (
+        let x = Math.max(origin.x - d, 0);
+        x <= Math.min(origin.x + d, dim - 1);
+        x++
+      ) {
+        const dx = x - origin.x;
+        const dy = y - origin.y;
+        const r = Math.floor(f32Sqrt(dx * dx + dy * dy));
+        if (r < d) sum[y * dim + x] += AVOID_WEIGHT * (d - r);
+      }
+  }
+  const penalty = new Uint8Array(dim * dim);
+  for (let i = 0; i < sum.length; i++)
+    penalty[i] = Math.min(sum[i], PENALTY_CAP);
+  return penalty;
+}
+
+/**
+ * A tile is sloped when one of its 8 neighbours is exactly one level higher.
+ * A neighbour off the map counts as the tile's own height, so a hilltop is
+ * flat, and so is a tile beside a two-level step (de-terrain-stage.md 4).
+ * Heights are final by this stage, so the mask is built once.
+ */
+function slopedTiles(grid: TileGrid): Uint8Array {
+  const { dim, elevation } = grid;
+  const out = new Uint8Array(dim * dim);
+  for (let y = 0; y < dim; y++)
+    for (let x = 0; x < dim; x++) {
+      const h = elevation[y * dim + x];
+      search: for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (
+            (dx === 0 && dy === 0) ||
+            nx < 0 ||
+            ny < 0 ||
+            nx >= dim ||
+            ny >= dim
+          )
+            continue;
+          if (elevation[ny * dim + nx] === h + 1) {
+            out[y * dim + x] = 1;
+            break search;
+          }
+        }
+    }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// One pass
+// ---------------------------------------------------------------------------
+
+interface Pass {
+  cmd: InstantiatedCommand;
+  terrain: number;
+  amount: TerrainAmount;
+  /** The terrain and layer halves of the base test, each only when it applies. */
+  terrainPart: boolean;
+  layerPart: boolean;
+  baseTerrain: number;
+  baseLayer: number;
+  mask: number;
+  /** What a painted tile holds, which the eligibility count and the drain look for. */
+  targetTerrain: number;
+  targetLayer: number;
+  heightMin: number;
+  heightMax: number;
+  spacing: number;
+  specific: { terrain: number; distance: number }[];
+  flatOnly: boolean;
+  /** Undefined without `set_avoid_player_start_areas`. */
+  avoid?: number;
+  clumping: number;
+  beachMark: number;
+}
+
+function readPass(
+  cmd: InstantiatedCommand,
+  instantiated: InstantiatedScript,
+  constants: readonly TerrainConstantForMasks[],
+  dim: number,
+): Pass {
+  const terrain = terrainOf(cmd.args[0]?.value, instantiated, constants);
+  const hasBaseTerrain = cmd.attributes.has("base_terrain");
+  const hasBaseLayer = cmd.attributes.has("base_layer");
+  const mask = cmd.attributes.has("terrain_mask")
+    ? numAttr(cmd, "terrain_mask", 1)
+    : 0;
+  // The terrain half applies when `base_terrain` is given or neither line
+  // is, the layer half when `base_layer` is given or the pass masks over.
+  // With both lines a tile needs both (gt3).
+  const terrainPart = hasBaseTerrain || !hasBaseLayer;
+  const layerPart = hasBaseLayer || mask === 1;
+  const baseTerrain = hasBaseTerrain
+    ? terrainOf(argOf(cmd, "base_terrain"), instantiated, constants)
+    : GRASS;
+  const baseLayer = hasBaseLayer
+    ? terrainOf(argOf(cmd, "base_layer"), instantiated, constants)
+    : NO_LAYER;
+  // de-terrain-stage.md 2's table. A mask without `base_terrain` takes
+  // GRASS as its base here, a reading no DE map has tested.
+  const [targetTerrain, targetLayer] =
+    mask === 1
+      ? [baseTerrain, terrain]
+      : mask === 2
+        ? [terrain, baseTerrain]
+        : [terrain, NO_LAYER];
+
+  const limits = firstAttr(cmd, "height_limits");
+  const lo = limits?.args[0]?.value;
+  const hi = limits?.args[1]?.value;
+
+  const specific: { terrain: number; distance: number }[] = [];
+  for (const attr of cmd.attributes.get("spacing_to_specific_terrain") ?? []) {
+    const distance = attr.args[1]?.value;
+    if (typeof distance !== "number") continue;
+    const id = terrainOf(attr.args[0]?.value, instantiated, constants);
+    if (id < SPECIFIC_TERRAIN_LIMIT)
+      specific.push({ terrain: id, distance: Math.trunc(distance) });
+  }
+
+  let avoid: number | undefined;
+  if (cmd.attributes.has("set_avoid_player_start_areas")) {
+    const d = numAttr(cmd, "set_avoid_player_start_areas", DEFAULT_AVOID);
+    avoid = d > 0 ? d : DEFAULT_AVOID;
+  }
+
+  return {
+    cmd,
+    terrain,
+    amount: terrainAmount(cmd, dim),
+    terrainPart,
+    layerPart,
+    baseTerrain,
+    baseLayer,
+    mask,
+    targetTerrain,
+    targetLayer,
+    heightMin: typeof lo === "number" && limits ? lo : -Infinity,
+    heightMax: typeof hi === "number" && limits ? hi : Infinity,
+    spacing: Math.max(0, numAttr(cmd, "spacing_to_other_terrain_types", 0)),
+    specific,
+    // Every WATER pass is flat-only by itself (t7), which only matters with
+    // a spacing, since flatness is read inside the spacing square (gt2).
+    flatOnly: cmd.attributes.has("set_flat_terrain_only") || terrain === WATER,
+    avoid,
+    clumping: numAttr(cmd, "clumping_factor", DEFAULT_CLUMPING),
+    beachMark: cmd.attributes.has("beach_terrain")
+      ? terrainOf(argOf(cmd, "beach_terrain"), instantiated, constants)
+      : NO_BEACH_MARK,
+  };
+}
+
+interface PassOutcome {
+  seeded: number;
+  painted: number;
+  /** Whether any tile the seed search popped passed the base test. */
+  sawBase: boolean;
+}
+
+/**
+ * One `create_terrain` (de-terrain-stage.md 3 to 6). Every draw comes off
+ * `stream`, in the order the sections give.
+ */
+function runPass(
+  pass: Pass,
+  grid: TileGrid,
+  sloped: Uint8Array,
+  origins: readonly LandOrigin[],
+  lists: TileLists,
+  beachMark: Int16Array,
+  stream: ReturnType<typeof resumeDeStream>,
+): PassOutcome {
+  const { dim, terrain, layer, elevation } = grid;
+  const n = dim * dim;
+  const { tiles: target, clumps } = pass.amount;
+  const penalty =
+    pass.avoid === undefined
+      ? undefined
+      : avoidancePenalty(origins, dim, pass.avoid);
+
+  const passesBase = (i: number): boolean =>
+    (!pass.terrainPart || terrain[i] === pass.baseTerrain) &&
+    (!pass.layerPart || layer[i] === pass.baseLayer);
+  const holdsTarget = (i: number): boolean =>
+    terrain[i] === pass.targetTerrain && layer[i] === pass.targetLayer;
+
+  /** The eligibility m of 4: 0 refuses, otherwise 1 + painted tiles in the 5 x 5 square. */
+  const eligibility = (i: number): number => {
+    const h = elevation[i];
+    if (h < pass.heightMin || h > pass.heightMax) return 0;
+    const x = i % dim;
+    const y = (i - x) / dim;
+    const s = pass.spacing;
+    if (s > 0)
+      for (let ny = Math.max(y - s, 0); ny <= Math.min(y + s, dim - 1); ny++)
+        for (
+          let nx = Math.max(x - s, 0);
+          nx <= Math.min(x + s, dim - 1);
+          nx++
+        ) {
+          const j = ny * dim + nx;
+          if (
+            pass.terrainPart &&
+            terrain[j] !== pass.baseTerrain &&
+            terrain[j] !== pass.targetTerrain
+          )
+            return 0;
+          if (
+            pass.layerPart &&
+            layer[j] !== pass.baseLayer &&
+            layer[j] !== pass.targetLayer
+          )
+            return 0;
+          if (pass.flatOnly && sloped[j] !== 0) return 0;
+        }
+    if (pass.terrainPart)
+      for (const { terrain: other, distance: d } of pass.specific)
+        for (let ny = Math.max(y - d, 0); ny <= Math.min(y + d, dim - 1); ny++)
+          for (
+            let nx = Math.max(x - d, 0);
+            nx <= Math.min(x + d, dim - 1);
+            nx++
+          )
+            if (terrain[ny * dim + nx] === other) return 0;
+    let m = 1;
+    for (let ny = Math.max(y - 2, 0); ny <= Math.min(y + 2, dim - 1); ny++)
+      for (let nx = Math.max(x - 2, 0); nx <= Math.min(x + 2, dim - 1); nx++)
+        if (holdsTarget(ny * dim + nx)) m++;
+    return m;
+  };
+
+  const paint = (i: number): void => {
+    if (pass.mask === 1) layer[i] = pass.terrain;
+    else if (pass.mask === 2) {
+      // The old terrain moves under as the layer. Painting a tile's own
+      // terrain again leaves its layer as it was (Pag's DIRT under DIRT).
+      if (terrain[i] !== pass.terrain) layer[i] = terrain[i];
+      terrain[i] = pass.terrain;
+    } else {
+      terrain[i] = pass.terrain;
+      layer[i] = NO_LAYER;
+    }
+    beachMark[i] = pass.beachMark;
+  };
+
+  // 3. The main list, every tile in index order, then the shuffle. The last
+  // row and column are never picked, and the draws are spent even when the
+  // pass has no clumps.
+  lists.reset();
+  for (let i = n - 1; i >= 0; i--) lists.pushFront(MAIN, i);
+  const moves = Math.floor(n / 8);
+  for (let k = 0; k < moves; k++) {
+    const x = stream.bounded(dim - 1);
+    const y = stream.bounded(dim - 1);
+    lists.pushFront(MAIN, y * dim + x);
+  }
+  if (clumps === 0) return { seeded: 0, painted: 0, sawBase: false };
+
+  // 5. Seeds. A clump that finds none ends the seeding for every later one.
+  const r = Math.max(2 * Math.floor(f32Sqrt(f32Div(target, clumps))), 2);
+  let seeded = 0;
+  let painted = 0;
+  let sawBase = false;
+  while (seeded < clumps) {
+    let seed = -1;
+    for (let i = lists.pop(MAIN); i !== -1; i = lists.pop(MAIN)) {
+      if (!passesBase(i)) continue;
+      sawBase = true;
+      if (penalty !== undefined && penalty[i] !== 0) continue;
+      if (eligibility(i) === 0) continue;
+      seed = i;
+      break;
+    }
+    if (seed === -1) break;
+    const x = seed % dim;
+    const y = (seed - x) / dim;
+    for (let ny = Math.max(y - r, 0); ny <= Math.min(y + r, dim - 1); ny++)
+      for (let nx = Math.max(x - r, 0); nx <= Math.min(x + r, dim - 1); nx++)
+        lists.remove(ny * dim + nx);
+    paint(seed);
+    painted++;
+    const q = CLUMP0 + seeded;
+    // Left, up, right, down, untested until they are popped.
+    if (x > 0) lists.insert(q, seed - 1, 0);
+    if (y > 0) lists.insert(q, seed - dim, 0);
+    if (x + 1 < dim) lists.insert(q, seed + 1, 0);
+    if (y + 1 < dim) lists.insert(q, seed + dim, 0);
+    seeded++;
+  }
+
+  // 6. Growth, round robin over the clumps that found a seed, until the
+  // target is met or a whole round pops nothing. A refused tile still
+  // counts as a pop.
+  const f = pass.clumping;
+  grow: for (;;) {
+    let popped = false;
+    for (let c = 0; c < seeded; c++) {
+      if (painted >= target) break grow;
+      const q = CLUMP0 + c;
+      const i = lists.pop(q);
+      if (i === -1) continue;
+      popped = true;
+      const p = penalty === undefined ? 0 : penalty[i];
+      if (penalty !== undefined && p > stream.bounded(100)) continue;
+      const m = eligibility(i);
+      if (m === 0 || !passesBase(i)) continue;
+      paint(i);
+      const x = i % dim;
+      const y = (i - x) / dim;
+      const base = 250 - f * m + p;
+      // Left, right, up, down, one draw for each that passes the base test.
+      if (x > 0 && passesBase(i - 1))
+        lists.insert(q, i - 1, base + stream.bounded(100));
+      if (x + 1 < dim && passesBase(i + 1))
+        lists.insert(q, i + 1, base + stream.bounded(100));
+      if (y > 0 && passesBase(i - dim))
+        lists.insert(q, i - dim, base + stream.bounded(100));
+      if (y + 1 < dim && passesBase(i + dim))
+        lists.insert(q, i + dim, base + stream.bounded(100));
+      painted++;
+    }
+    if (!popped) break;
+  }
+
+  // The drain. Every tile still listed that sits between two tiles holding
+  // the target, left and right, takes the target too. No tests and no
+  // draws. It writes the target rather than painting: under `terrain_mask
+  // 1` a seed's untested neighbour that is not the base gets the base
+  // terrain under the layer, not its own (Menindee's PALM_DESERT tiles,
+  // de-terrain-stage.md 6 as amended 2026-11-02). Under mask 2 that is the
+  // study's reading, untested by any map.
+  for (let c = 0; c < seeded; c++) {
+    const q = CLUMP0 + c;
+    for (let i = lists.pop(q); i !== -1; i = lists.pop(q)) {
+      const x = i % dim;
+      if (x > 0 && x + 1 < dim && holdsTarget(i - 1) && holdsTarget(i + 1)) {
+        terrain[i] = pass.targetTerrain;
+        layer[i] = pass.targetLayer;
+        beachMark[i] = pass.beachMark;
+      }
+    }
+  }
+  return { seeded, painted, sawBase };
+}
+
+// ---------------------------------------------------------------------------
+// The stage
+// ---------------------------------------------------------------------------
+
+export interface TerrainsResult {
+  reports: CommandReport[];
+  notes: SimulationNote[];
+  /** The game's stream after this stage, where the connections start. */
+  stream: DeStreamState;
+  /** Each tile's `beach_terrain` mark, `NO_BEACH_MARK` for none. The end of the stage reads it. */
+  beachMark: Int16Array;
+}
+
+/**
+ * Sec.6.4: `<TERRAIN_GENERATION>`. Mutates `grid.terrain` and `grid.layer`
+ * and returns one report per `create_terrain`, the stream and the beach
+ * marks. The burned draw is spent with no section too (de-terrain-stage.md
+ * 1, round CO's Part 0).
+ */
+export function applyTerrains(
+  instantiated: InstantiatedScript,
+  grid: TileGrid,
+  constants: readonly TerrainConstantForMasks[],
+  origins: readonly LandOrigin[],
+  streamState: DeStreamState,
+): TerrainsResult {
+  const { dim } = grid;
+  const n = dim * dim;
+  const stream = resumeDeStream(streamState);
+  stream.raw(); // the burned draw
+  const beachMark = new Int16Array(n).fill(NO_BEACH_MARK);
+  const commands = (
+    instantiated.sections.get("TERRAIN_GENERATION") ?? []
+  ).filter((cmd) => cmd.name === "create_terrain");
+  const reports: CommandReport[] = [];
+  if (commands.length === 0)
+    return { reports, notes: [], stream: stream.state(), beachMark };
+
+  const sloped = slopedTiles(grid);
+  const lists = new TileLists(LIST_COUNT, n);
+  for (const cmd of commands) {
+    const pass = readPass(cmd, instantiated, constants, dim);
+    const { seeded, painted, sawBase } = runPass(
+      pass,
+      grid,
+      sloped,
+      origins,
+      lists,
+      beachMark,
+      stream,
+    );
+    const failures: PlacementFailure[] = [];
+    const { tiles, clumps, percentage } = pass.amount;
+    // Only what an author would want to hear. A pass that converts all of
+    // one terrain (`land_percent 100` and thousands of clumps, a common
+    // idiom) always drops clumps and falls short of its percentage, so those
+    // two say nothing about a mistake. A pass that placed nothing does, and
+    // so does a count the author wrote as a number.
+    if (clumps > 0 && seeded === 0)
+      pushFailure(failures, {
+        bucket: sawBase ? "spacingConflict" : "terrainAbsent",
+        commandSpan: cmd.span,
+        stage: "S4",
+        entity: "terrain patch",
+        detail: sawBase
+          ? "Every tile on this command's base terrain fails its height, spacing or player-avoidance test, so it placed nothing."
+          : "No tile on the map matches this command's base terrain and base layer when it runs, so it placed nothing.",
+      });
+    else if (!percentage && painted < tiles)
+      pushFailure(failures, {
+        bucket: "growthShortfall",
+        commandSpan: cmd.span,
+        stage: "S4",
+        entity: "terrain patch",
+        detail: `This command painted ${painted} of its ${tiles} tiles before its clumps ran out of tiles they could grow into.`,
+        data: { owned: painted, target: tiles },
+      });
+    reports.push({
+      commandSpan: cmd.span,
+      stage: "S4",
+      attempted: clumps,
+      placed: seeded,
+      failures,
+    });
+  }
+  return { reports, notes: [], stream: stream.state(), beachMark };
+}
+
+// ---------------------------------------------------------------------------
+// The end of the stage
+// ---------------------------------------------------------------------------
+
+/**
+ * Composite terrains, at the end of the terrain stage and before its beach
+ * (de-findings-cg-cj.md 5.1). A tile painted with a composite, as its
+ * terrain or as its layer, shows the composite's primary terrain with its
+ * secondary as the layer.
+ *
+ * Returns what each resolved tile was painted as. Later stages read that
+ * rather than the resolved terrain. The connections read a composite
+ * painted as a tile's terrain (5.3), so a `replace_terrain` naming
+ * composite 62 still finds Ra's underbrush, and the study found the object
+ * stage reading both kinds as painted. Two values per tile, rather than
+ * resolving late, because the beach reads the resolved one, and a resolved 77
+ * beside water becomes BEACH.
+ */
+export function resolveComposites(grid: TileGrid): CompositeRecord {
+  const { terrain, layer } = grid;
+  const record: CompositeRecord = {
+    kind: new Uint8Array(terrain.length),
+    terrain: terrain.slice(),
+    layer: layer.slice(),
+  };
+  for (let i = 0; i < terrain.length; i++) {
+    const asTerrain = COMPOSITE_TERRAINS.get(terrain[i]);
+    if (asTerrain !== undefined) {
+      record.kind[i] = COMPOSITE_AS_TERRAIN;
+      [terrain[i], layer[i]] = asTerrain;
+      continue;
+    }
+    const asLayer = COMPOSITE_TERRAINS.get(layer[i]);
+    if (asLayer !== undefined) {
+      record.kind[i] = COMPOSITE_AS_LAYER;
+      [terrain[i], layer[i]] = asLayer;
+    }
+  }
+  return record;
+}
+
+/** `CompositeRecord.kind`, a tile painted with a composite as its terrain. */
+export const COMPOSITE_AS_TERRAIN = 1;
+/** `CompositeRecord.kind`, a tile painted with a composite as its layer. */
+export const COMPOSITE_AS_LAYER = 2;
+
+/**
+ * What the terrain stage's end resolved, for the stages that read the map as
+ * painted. Plain typed arrays, so it travels like the grid does.
+ */
+export interface CompositeRecord {
+  /** Per tile, `COMPOSITE_AS_TERRAIN`, `COMPOSITE_AS_LAYER` or 0. A stage that repaints the tile sets it back to 0. */
+  kind: Uint8Array;
+  /** Every tile's terrain and layer as painted, before resolving. Meaningful only where `kind` is set. */
+  terrain: Uint16Array;
+  layer: Uint16Array;
+}
+
+/**
+ * The map as painted, for the object stage. A tile still marked in `record`
+ * shows its composite, every other tile what `grid` holds. Returns new
+ * arrays and leaves `grid` alone.
+ */
+export function paintedView(
+  grid: TileGrid,
+  record: CompositeRecord,
+): { terrain: Uint16Array; layer: Uint16Array } {
+  const terrain = grid.terrain.slice();
+  const layer = grid.layer.slice();
+  for (let i = 0; i < terrain.length; i++)
+    if (record.kind[i] !== 0) {
+      terrain[i] = record.terrain[i];
+      layer[i] = record.layer[i];
+    }
+  return { terrain, layer };
+}
+
+/**
+ * A beach tile has no layer, run after the connections
+ * (de-findings-cg-cj.md 5.2, Rekawa, Comeer and Menindee). A beach is a
+ * terrain whose placement class has the shore bit. Shallows keep their
+ * layers, and so does a layer equal to its own terrain.
+ */
+export function clearBeachLayers(
+  grid: TileGrid,
+  constants: readonly TerrainConstantForMasks[],
+): void {
+  const table = terrainClassTable(constants);
+  for (let i = 0; i < grid.terrain.length; i++)
+    if (
+      grid.layer[i] !== NO_LAYER &&
+      (classOf(table, grid.terrain[i]) & CLASS_SHORE) !== 0
+    )
+      grid.layer[i] = NO_LAYER;
+}
+
+/** Options for one run of the beach rule. */
 export interface AutomaticBeachOptions {
-  /** `create_terrain`'s `beach_terrain`: use this instead of a tile's own `beachTerrain` data, but only within `beachTerrainScope`. */
-  beachTerrain?: number;
-  /** The tiles `beachTerrain` speaks for (1 = in scope), the painting command's own. Everything else on the grid still takes its own data default. */
-  beachTerrainScope?: Uint8Array;
+  /** Each tile's `beach_terrain` mark from the terrain stage, `NO_BEACH_MARK` for none. */
+  beachMark?: Int16Array;
 }
 
 /**
  * Writes each tile's beach terrain onto it where it borders something DEEPER
  * than itself.
  *
- * NOT driven by the script. The community DE terrain table states it on the
- * beach terrains' own rows, id 2 BEACH is "automatically placed when land
- * terrains border water", id 37 ICYSHORE is "created when snowy terrains
- * border water", and `create_terrain`'s `beach_terrain` attribute exists to
- * OVERRIDE it per command, which is why guide:1483 gives that attribute a
- * default of BEACH. Without this pass a preview shows land meeting open water
- * with no shoreline anywhere, which `AD4 - Pag - v1.2.rms` did on 536 tiles.
+ * NOT driven by the script. DE's terrain table states it on the beach
+ * terrains' own rows, id 2 BEACH is "automatically placed when land terrains
+ * border water", and `create_terrain`'s `beach_terrain` picks another beach
+ * for the tiles a pass painted.
  *
- * WHERE IT RUNS, and why REPEATEDLY rather than once at the end. The engine
- * beaches at the end of land generation and again at the end of every
- * `create_terrain` command, so a beach exists for the whole of
- * `<TERRAIN_GENERATION>` rather than appearing after it.
+ * WHERE IT RUNS, measured. Once at the end of the terrain stage, after the
+ * cliff lines are restored and WATER is cleaned, and again at the end of the
+ * connection stage when the script has one. Never at the end of the land
+ * stage, never between `create_terrain` passes (t7, 562 and 571 tiles off
+ * with a pass after each) and never before the first one (gt1). An earlier
+ * version beached after every pass, on the argument that the 67 corpus uses
+ * of `base_terrain BEACH` need a beach to match. They find only BEACH a land
+ * or an earlier pass painted.
  *
- * **This was first built as a single pass after S5 and that was wrong, in a
- * way the corpus states plainly.** `base_terrain BEACH` is an ordinary idiom,
- * 67 uses across the tracked maps, including five consecutive
- * `create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100
- * number_of_clumps 99999 }` in `AK_Namatjira.rms`, and a beach that does not
- * exist until after S5 matches NONE of them. The commands ran, found an empty
- * eligible pool and painted nothing, which looks like a quiet map rather than
- * an error. Running late also made the pass the LAST writer, so it undid those
- * conversions; running per command makes it a writer among others, in order.
+ * THREE DEPTHS ARE READ AND ONLY THE LANDWARD BOUNDARY IS EDGED. The map has
+ * land, shallows (`isHybrid`) and open water. A beach appears where land
+ * meets shallows and where land meets open water. Where shallows meet open
+ * water the engine lays none (RMSTEST_52, BUG-010). `grid.ts`'s
+ * `terrainDepth` defines the ordering.
  *
- * Every run dresses the WHOLE grid; what is scoped is `beach_terrain`, to the
- * tiles of the command that set it (guide:1483: "placed where the CURRENT
- * terrain borders water"). The grid-wide part matters because a command that
- * paints water puts land it never touched onto the coast.
+ * Adjacency is 8 connected (RMSTEST_75 and RMSTEST_52, `deBeachMaps.test.ts`),
+ * so a coast at 45 degrees is two tiles thick. A neighbour off the map is not
+ * deeper. Depth is read from a mask taken before any write, so a beach laid
+ * on one tile cannot make its neighbour look inland.
  *
- * **A `create_terrain` reading `base_terrain BEACH` therefore comes out as a
- * no-op wherever the only beach is the waterline, and that is right.** The
- * step re-beaches the strip the command just converted, so nothing changes on
- * an ordinary coast. The idiom pays off on a land made OF beach: the interior
- * converts and only the tiles touching water revert. A version of this file
- * made the per-command step conditional on `beach_terrain` specifically to
- * stop the "undo", which protected the no-op case and broke the real one.
- *
- * THREE DEPTHS ARE READ AND ONLY THE LANDWARD BOUNDARY IS EDGED, corrected
- * 2026-08-12, and the correction is exactly half of what shipped on
- * 2026-08-08. The map has land, shallows (`isHybrid`, terrain both land units
- * and ships cross) and open water. A beach appears where land meets shallows
- * and where land meets open water; where SHALLOWS meet open water the engine
- * lays none (`RMSTEST_52`, BUG-010: 3 and 2 tiles against 336/312 and 30/90 on
- * the other two boundaries, a triple junction, not a boundary).
- *
- * **The three-value depth mask stays and is not an artefact of the withdrawn
- * half.** `isWater` alone cannot express the landward boundary either: the
- * table calls `DLC_MANGROVESHALLOW` and the navigable ice family shallows while
- * `isWater` calls them dry, so an `isWater`-only test left those coasts with no
- * beach at all, which is what motivated the depth model in the first place.
- * Land beside a DRY shallow still beaches because it is bordering something
- * deeper than itself. `grid.ts`'s `terrainDepth` defines the ordering and says
- * why it is a separate flag from `isWater` rather than a rereading of it.
- *
- * The beach lands on the LAND side of the boundary. A beach terrain's own row
- * carries `beachTerrain: null`, so the tile it lands on stops there instead of
- * eating another tile inward on the next pass.
- *
- * **What the withdrawn half was argued from, since the argument was the
- * mistake.** A `terrain_state` line about "thinner blending of shallows and
- * beach terrain" was read as evidence the two are adjacent by default; it
- * describes an adjacency the author supplies. A guide sentence that a construct
- * CAN be configured is not a statement that the engine does it unasked.
- *
- * Depth is read from a mask taken BEFORE any write, so a beach laid on one
- * tile can never make its neighbour think it is shallower than it was.
- *
- * **Adjacency is 8 connected, MEASURED 2026-10-15.** A land tile takes a beach
- * when anything deeper sits in any of its eight neighbours, the diagonals
- * included. On a straight coast that is the same single row of sand as a 4
- * connected test gives. On a coast running at 45 degrees it is two tiles
- * thick, because the tile one step inland still touches the water at a
- * corner. Five saved DE maps match this exactly and none matches the 4
- * connected reading (`de-beach-maps.json`, checked in `deBeachMaps.test.ts`).
- * RMSTEST_75's two 20 row border cuts have 180 beach tiles where 4 connected
- * gives 140, and RMSTEST_52's ragged shallows coasts 721 and 862 where it
- * gives 538 and 631, so shallows follow the same rule as open water.
- * Neighbours off the map are not deeper, so land running to the map edge
- * takes no beach there, as in DE.
- *
- * `beachTerrain` is `create_terrain`'s own `beach_terrain` attribute, and
- * passing it here rather than letting the command dress its own clump is what
- * keeps the two halves ONE rule: the attribute picks the terrain, this pass
- * picks the tiles. It also makes a `beach_terrain` naming a NON-beach terrain
- * work (guide:1488 warns players then cannot build docks there, so the engine
- * honours it), which a data-default-only pass would overwrite, because a
- * non-beach terrain's own row says it grows a BEACH.
- *
- * ONE THING IT DOES NOT DO, named rather than left to be discovered.
- * **`grid.layer` is left alone.** A beach replaces the tile's terrain, and
- * whether it also strips a `terrain_mask` layer painted over that terrain is
- * unmeasured. Leaving the layer is the reading that changes nothing else.
+ * `beachMark` is the terrain stage's mark (de-terrain-stage.md 6 and 7). A
+ * beached tile whose mark names a terrain takes it instead of its own
+ * beach, which is how `beach_terrain DLC_BEACH2` edges new water with
+ * terrain 51 (t7). The end of the connection stage passes no marks, and its
+ * run leaves such a beach alone because a beach grows no beach of its own
+ * (cn8c).
  */
 export function applyAutomaticBeach(
   grid: TileGrid,
   constants: readonly TerrainConstantForMasks[],
   options: AutomaticBeachOptions = {},
 ): number {
-  const { beachTerrain, beachTerrainScope } = options;
+  const { beachMark } = options;
   const { dim } = grid;
   const n = dim * dim;
   const { depth } = waterDepthMask(grid, constants);
-  // Memoised per terrain id: `beachTerrainFor` scans the constants array, and
+  // Memoised per terrain id, since `beachTerrainFor` scans the constants array and
   // a coastline is thousands of tiles over a handful of distinct terrains.
   const beachById = new Map<number, number | undefined>();
   let written = 0;
 
   for (let i = 0; i < n; i++) {
     const own = depth[i];
-    // ONLY DRY LAND TAKES A BEACH. A shallow facing open water does not, even
-    // though it is the shallower of the two, MEASURED, `RMSTEST_52`, two runs
-    // (BUG-010): land/shallows/open water in a known order gave 336 and 312
-    // beach tiles on the grass/water boundary, 30 and 90 on grass/shallow, and
-    // **3 and 2** where shallow meets water, which is a triple junction rather
-    // than a boundary. See the header for what survives of the depth model.
+    // Only dry land takes a beach. A shallow facing open water does not
+    // (RMSTEST_52: 3 and 2 tiles there, a triple junction, not a boundary).
     if (own !== DEPTH_LAND) continue;
     if (!bordersDeeper(depth, dim, i, own)) continue;
 
     const terrainId = grid.terrain[i];
-    let beach: number | undefined;
-    if (
-      beachTerrain !== undefined &&
-      (beachTerrainScope === undefined || beachTerrainScope[i] !== 0)
-    ) {
-      // The author's own `beach_terrain`, on the tiles their command painted.
-      // Takes precedence over the terrain's data default, which is the whole
-      // point of the attribute.
-      beach = beachTerrain;
-    } else {
-      beach = beachById.get(terrainId);
-      if (beach === undefined && !beachById.has(terrainId)) {
-        beach = beachTerrainFor(constants, terrainId);
-        beachById.set(terrainId, beach);
-      }
+    let beach = beachById.get(terrainId);
+    if (beach === undefined && !beachById.has(terrainId)) {
+      beach = beachTerrainFor(constants, terrainId);
+      beachById.set(terrainId, beach);
     }
-    // The `beach === terrainId` half was once removed as unreachable, and a
-    // mutation test agreed: on the DATA path a beach terrain's own row carries
-    // `beachTerrain: null`, so `beachTerrainFor` returns undefined and the
-    // first half already catches it. `beach_terrain` put it back in reach.
-    // nothing stops a script writing `create_terrain BEACH { beach_terrain
-    // BEACH }`, and without the guard that tile counts as written every run.
-    if (beach === undefined || beach === terrainId) continue;
+    // A terrain that grows no beach of its own, a beach among them, keeps
+    // its tile whatever its mark says.
+    if (beach === undefined) continue;
+    const mark = beachMark?.[i] ?? NO_BEACH_MARK;
+    if (mark !== NO_BEACH_MARK) beach = mark;
+    if (beach === terrainId) continue;
     grid.terrain[i] = beach;
     written++;
   }
@@ -707,11 +842,9 @@ export function applyAutomaticBeach(
 }
 
 /**
- * Whether tile `i` has a deeper tile among its eight neighbours, the beach
- * adjacency measured against DE (see `applyAutomaticBeach`). A loop over the
- * offsets rather than eight spelled out conditions, because the bounds check
- * is the part that goes wrong when written eight times. A neighbour off the
- * map is never deeper.
+ * Whether tile `i` has a deeper tile among its eight neighbours. A loop over
+ * the offsets rather than eight spelled out conditions, because the bounds
+ * check is the part that goes wrong when written eight times.
  */
 function bordersDeeper(
   depth: Uint8Array,
@@ -731,376 +864,4 @@ function bordersDeeper(
     }
   }
   return false;
-}
-
-// ---------------------------------------------------------------------------
-// Orchestration
-// ---------------------------------------------------------------------------
-
-export interface TerrainsResult {
-  reports: CommandReport[];
-  notes: SimulationNote[];
-  /** Tiles this stage turned into beach, across all of its per-command beach passes. Reported, not consumed. index.ts adds it to S1's own count for the drawer note. */
-  beached: number;
-}
-
-/**
- * Sec.6.4: `<TERRAIN_GENERATION>` -> painted terrain patches. Mutates
- * `grid.terrain`/`grid.layer`; returns one CommandReport per `create_terrain`
- * command (Sec.7) plus any SimulationNotes for the two documented
- * approximations (`terrain_mask`'s over/under collapse; `beach_terrain`'s
- * documented no-op under `<CONNECTION_GENERATION>`).
- */
-export function applyTerrains(
-  instantiated: InstantiatedScript,
-  grid: TileGrid,
-  constants: readonly TerrainConstantForMasks[],
-  origins: readonly LandOrigin[],
-  masterSeed: number,
-): TerrainsResult {
-  const commands = instantiated.sections.get("TERRAIN_GENERATION") ?? [];
-  const { dim } = grid;
-  const symbols = instantiated.symbols;
-  const aliases = instantiated.aliases;
-  const hasConnectionSection = instantiated.sections.has(
-    "CONNECTION_GENERATION",
-  );
-  const playerOrigins = origins.filter((o) => o.player !== undefined);
-  // Computed ONCE per applyTerrains call: elevation is final by S4 (S2
-  // already ran), so no command in this loop can change a tile's slope.
-  // There is deliberately no stage-start water mask beside it any more --
-  // the only thing that wanted one was beach placement, and that now happens
-  // after the loop, against the water this stage's own commands left behind.
-  const slope = computeSlopeMask(grid);
-
-  let beached = 0;
-
-  const reports: CommandReport[] = [];
-  const notes: SimulationNote[] = [];
-  let ordinal = 0;
-  const nextSubstream = (): Rng => createSubstream(masterSeed, "S4", ordinal++);
-
-  for (const cmd of commands) {
-    if (cmd.name !== "create_terrain") continue;
-
-    // `terrainRef` is what the script WROTE (a name, or a bare id); the
-    // `?? "GRASS"` on base_terrain is the attribute's own documented default,
-    // applied to the reference rather than to a resolved id so the failure
-    // message below can quote what the author actually typed.
-    const terrainRef = cmd.args[0]?.value;
-    const terrainId = resolveTerrainId(constants, terrainRef, symbols, aliases);
-
-    const baseTerrainRef = argValue(cmd, "base_terrain", 0) ?? "GRASS";
-    const baseLayerRef = argValue(cmd, "base_layer", 0);
-    const baseTerrainId = resolveTerrainId(
-      constants,
-      baseTerrainRef,
-      symbols,
-      aliases,
-    );
-    const baseLayerId =
-      baseLayerRef !== undefined
-        ? resolveTerrainId(constants, baseLayerRef, symbols, aliases)
-        : undefined;
-
-    const clumpCount = resolveClumpCount(cmd, dim);
-    const failures: PlacementFailure[] = [];
-
-    if (terrainId === undefined || baseTerrainId === undefined) {
-      pushFailure(failures, {
-        bucket: "terrainAbsent",
-        commandSpan: cmd.span,
-        stage: "S4",
-        entity: "terrain patch",
-        detail: `This map's reference data doesn't know the terrain "${String(terrainId === undefined ? terrainRef : baseTerrainRef)}", so this create_terrain command could not run.`,
-      });
-      reports.push({
-        commandSpan: cmd.span,
-        stage: "S4",
-        attempted: clumpCount,
-        placed: 0,
-        failures,
-      });
-      continue;
-    }
-
-    const tileBudget = resolveTerrainTileBudget(cmd, dim);
-    const tilesPerClump = Math.max(1, Math.floor(tileBudget / clumpCount));
-    const cf = numAttr(cmd, "clumping_factor", 0, TERRAIN_DEFAULT_CF);
-    const weights = terrainBucketWeights(cf);
-
-    const heightLimits = readHeightLimits(cmd);
-    const otherTerrainSpacing = numAttr(
-      cmd,
-      "spacing_to_other_terrain_types",
-      0,
-      0,
-    );
-    const specificSpacings = specificTerrainSpacings(
-      cmd,
-      constants,
-      symbols,
-      aliases,
-    );
-    const flatOnly = cmd.attributes.has("set_flat_terrain_only");
-    const avoidPlayerDistance = avoidPlayerStartDistance(cmd);
-    // guide:1502-1509 distinguishes the two masking layers, and they differ in
-    // WHICH terrain ends up owning the tile's properties:
-    //   1 - "new terrain is masked over the base terrain and INHERITS its
-    //       properties" -> the base keeps providing properties (placement
-    //       restrictions, automatic objects such as forest trees, minimap
-    //       colour), and the new terrain is purely a visual layer on top.
-    //   2 - "new terrain is masked under the base terrain and PROVIDES new
-    //       properties" -> the new terrain becomes the property-bearing
-    //       terrain and the old base is what is left showing as the layer.
-    // guide:2486 confirms the direction from the object side: `layer_to_place_on`
-    // "works for terrain_mask 1, but not when set to 2 ... because the layer
-    // has become the main terrain".
-    const maskLayer = cmd.attributes.has("terrain_mask")
-      ? numAttr(cmd, "terrain_mask", 0, 1)
-      : 0;
-    const masksOver = maskLayer === 1;
-    const masksUnder = maskLayer === 2;
-
-    const hasBeachTerrain = cmd.attributes.has("beach_terrain");
-    const beachTerrainId = resolveTerrainId(
-      constants,
-      argValue(cmd, "beach_terrain", 0),
-      symbols,
-      aliases,
-    );
-    const applyBeach =
-      hasBeachTerrain && !hasConnectionSection && beachTerrainId !== undefined;
-    // guide:1485: "If a water terrain is specified, it will fully replace the
-    // terrain specified in create_terrain, so this is NOT recommended." That
-    // is the engine cascading, the waterline becomes water, so the next ring
-    // in is now a waterline too, and so on until the clump is gone. Modelled
-    // as the outcome the guide states outright rather than by iterating the
-    // shoreline pass, and it is why that pass can safely be single-pass.
-    const beachDrownsClump =
-      applyBeach && isWaterTerrain(constants, beachTerrainId);
-
-    if (maskLayer !== 0) {
-      notes.push({
-        key: `terrainMaskApproximated:${cmd.span.start}`,
-        prominence: "drawer",
-        stage: "S4",
-        span: cmd.span,
-        text: "terrain_mask blends two terrain textures in game; the preview draws the masked terrain as a flat tint over the one that keeps the tile's properties (Sec.9's terrain_mask exclusion).",
-      });
-    }
-    if (hasBeachTerrain && hasConnectionSection) {
-      notes.push({
-        key: `beachTerrainSkipped:${cmd.span.start}`,
-        prominence: "drawer",
-        stage: "S4",
-        span: cmd.span,
-        text: "beach_terrain has no effect on a map with a <CONNECTION_GENERATION> section — a documented engine bug the preview reproduces rather than silently fixing. This coastline still gets the engine's own default beach, which is what the attribute would have been overriding.",
-      });
-    }
-    if (beachDrownsClump) {
-      notes.push({
-        key: `beachTerrainIsWater:${cmd.span.start}`,
-        prominence: "drawer",
-        stage: "S4",
-        span: cmd.span,
-        text: "beach_terrain names a water terrain here, which the guide warns fully replaces the terrain this command creates rather than edging it — the preview reproduces that, so this command paints water.",
-      });
-    }
-
-    // Computed ONCE for the whole command, not per clump -- see the file
-    // header's ITERATION CAP note. `otherTerrainSpacing`/`specificSpacings`
-    // therefore reflect the grid as it stood when this command STARTED, not
-    // live as earlier clumps of this same command paint: a documented,
-    // conservative simplification (a later clump stays at least as spaced
-    // from an earlier one as the check demands, never less), required to
-    // keep this an O(dim^2)-once cost rather than O(dim^2) per clump, which
-    // is what made a real corpus script (`24hr_Blind Valley.rms`,
-    // `number_of_clumps 9320` under `set_scale_by_groups`) take minutes.
-    const ctx: EligibilityContext = {
-      baseTerrainId,
-      baseLayerId,
-      heightLimits,
-      otherTerrainSpacing,
-      specificSpacings,
-      flatOnly,
-      avoidPlayerDistance,
-    };
-    const candidateResult = eligibleTerrainCandidates(
-      grid,
-      ctx,
-      slope,
-      playerOrigins,
-    );
-    if (!candidateResult.ok) {
-      pushFailure(failures, {
-        ...candidateResult.failure,
-        commandSpan: cmd.span,
-        entity: "terrain patch",
-        detail:
-          candidateResult.failure.bucket === "terrainAbsent"
-            ? `No tile on the map currently matches this patch's base_terrain ("${String(baseTerrainRef)}")${baseLayerRef !== undefined ? ` or base_layer ("${String(baseLayerRef)}")` : ""}, so no seed could be placed.`
-            : `Every candidate tile fails one of this patch's height/spacing/flatness constraints.`,
-      });
-      reports.push({
-        commandSpan: cmd.span,
-        stage: "S4",
-        attempted: clumpCount,
-        placed: 0,
-        failures,
-      });
-      continue;
-    }
-
-    const eligibleMask = new Uint8Array(dim * dim);
-    for (const tile of candidateResult.value) eligibleMask[tile] = 1;
-    const claimed = new Uint8Array(dim * dim); // grows clump by clump; kept separate from eligibleMask -- see growTerrainClump's header
-
-    // An EXACT shrinking pool: a tile leaves it the first time a draw finds
-    // it claimed, by swap-remove. Every tile is removed at most once, so the
-    // whole command pays O(pool) for removals however many clumps it asks
-    // for, and a draw from a pool that still has free tiles in it is O(1)
-    // amortized. Replaces bounded rejection sampling (100 draws then give
-    // up), which was exact while the claimed fraction was low and degenerated
-    // into false `occupancyFull` reports and 100 wasted draws per clump as it
-    // rose -- the coupon-collector tail, paid once per clump.
-    const pool = Int32Array.from(candidateResult.value);
-    let poolCount = pool.length;
-
-    let placed = 0;
-    // Bounded by the pool, not by a [tune] constant. Every successful clump
-    // claims at least its own seed tile, so it removes at least one tile from
-    // the pool -- which makes `pool.length` a genuine upper bound on useful
-    // clumps rather than a guess, and makes the loop terminate on its own
-    // even for `number_of_clumps 999999999`.
-    const maxAttempts = Math.min(clumpCount, pool.length);
-
-    for (let c = 0; c < maxAttempts; c++) {
-      const pickRng = nextSubstream();
-      let seed: number | undefined;
-      while (poolCount > 0) {
-        const index = nextInt(pickRng, 0, poolCount - 1);
-        const candidate = pool[index];
-        if (claimed[candidate] === 0) {
-          seed = candidate;
-          break;
-        }
-        poolCount--;
-        pool[index] = pool[poolCount];
-      }
-      if (seed === undefined) {
-        pushFailure(failures, {
-          bucket: "occupancyFull",
-          commandSpan: cmd.span,
-          stage: "S4",
-          entity: `terrain clump ${c + 1}`,
-          detail: `Every eligible tile is already claimed by an earlier clump of this command, so no further clumps could be seeded.`,
-        });
-        break; // exact now, so this is genuine saturation -- no later clump can succeed either
-      }
-
-      const growthRng = nextSubstream();
-      const clumpTiles = growTerrainClump(
-        dim,
-        seed,
-        tilesPerClump,
-        eligibleMask,
-        claimed,
-        weights,
-        growthRng,
-      );
-
-      for (const tile of clumpTiles) {
-        claimed[tile] = 1;
-        if (masksOver) {
-          // Visual only. `grid.terrain` deliberately keeps the base terrain,
-          // so a later command's `base_terrain` still matches this tile --
-          // which is the guide's "inherits its properties", not an omission.
-          grid.layer[tile] = terrainId;
-        } else if (masksUnder) {
-          // The new terrain takes over the tile's properties and the terrain
-          // that was there becomes what is visible on top of it.
-          grid.layer[tile] = grid.terrain[tile];
-          grid.terrain[tile] = terrainId;
-        } else {
-          // A plain (unmasked) paint replaces the whole tile, layer included:
-          // whatever was layered on the terrain that used to be here was
-          // layered on THAT terrain, and it is gone.
-          grid.terrain[tile] = terrainId;
-          grid.layer[tile] = NO_LAYER;
-        }
-      }
-
-      if (beachDrownsClump) {
-        // The whole clump, not just its edge. See `beachDrownsClump` above.
-        for (const tile of clumpTiles) grid.terrain[tile] = beachTerrainId!;
-      }
-
-      if (clumpTiles.size < tilesPerClump) {
-        pushFailure(failures, {
-          bucket: "growthShortfall",
-          commandSpan: cmd.span,
-          stage: "S4",
-          entity: `terrain clump ${c + 1}`,
-          detail: `This terrain clump grew to ${clumpTiles.size} of its ${tilesPerClump}-tile target before running out of eligible places to grow.`,
-          data: { owned: clumpTiles.size, target: tilesPerClump },
-        });
-      }
-      placed++;
-    }
-
-    if (maxAttempts < clumpCount) {
-      pushFailure(failures, {
-        bucket: "iterationCapped",
-        commandSpan: cmd.span,
-        stage: "S4",
-        entity: "terrain clumps",
-        detail: `This command asked for ${clumpCount} clumps, but only ${pool.length} tiles are eligible for it — one clump needs at least one tile, so the extra clumps had nowhere to go.`,
-        data: { attempted: maxAttempts, requested: clumpCount },
-      });
-      notes.push({
-        key: `terrainIterationCapped:${cmd.span.start}`,
-        prominence: "drawer",
-        stage: "S4",
-        span: cmd.span,
-        text: `This create_terrain command asked for ${clumpCount} clumps but only ${pool.length} tiles match its base_terrain, so the extra clumps could not be placed.`,
-      });
-    }
-
-    // A beach step at the end of EVERY create_terrain command, unconditionally,
-    // not only when the command set `beach_terrain`. Whole grid, because a
-    // command that paints WATER leaves land it never touched newly on the
-    // coast; `beach_terrain` is what is scoped to the command's own tiles
-    // (guide:1483: "where the CURRENT terrain borders water").
-    //
-    // **`create_terrain X { base_terrain BEACH }` is a no-op on an ordinary
-    // map, and that is the correct outcome rather than the objection it looks
-    // like.** The step re-beaches X's waterline, so on a map whose only beach
-    // IS the waterline nothing changes. What the idiom is actually for is a
-    // land made of beach: there the interior converts to X and only the strip
-    // touching water reverts. An earlier version made this step conditional to
-    // "protect" the idiom, which instead broke the case it exists to serve.
-    // Both halves are pinned by tests below.
-    //
-    // `masksOver` withholds only the SCOPE, not the step: a `terrain_mask 1`
-    // command never took ownership of the tile (guide:1502, the base terrain
-    // still provides its properties), so its `beach_terrain` has no tiles of
-    // its own to speak for, but the coastline still gets its data default.
-    // Same for `beachDrownsClump`, whose tiles are water now.
-    const scopedBeach = applyBeach && !masksOver && !beachDrownsClump;
-    beached += applyAutomaticBeach(grid, constants, {
-      beachTerrain: scopedBeach ? beachTerrainId : undefined,
-      beachTerrainScope: scopedBeach ? claimed : undefined,
-    });
-
-    reports.push({
-      commandSpan: cmd.span,
-      stage: "S4",
-      attempted: maxAttempts,
-      placed,
-      failures,
-    });
-  }
-
-  return { reports, notes, beached };
 }

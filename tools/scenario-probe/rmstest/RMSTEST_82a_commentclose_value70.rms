@@ -1,0 +1,47 @@
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<TERRAIN_GENERATION>
+
+/* HOUSE create_terrain SNOW { base_terrain GRASS land_percent 100 } */
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_82a - does a word whose engine number is 70 end a comment?
+Feeds: docs/token-alias-design.md Sec.3.1 and slice B (the comment close).
+
+The header is at the bottom on purpose, below every section. A test about
+words that end comments must not put such words in its own header, so this
+header names no constant whose number is a comment marker or a control word.
+
+THE CASE. The terrain section holds one comment. Its first word is the object
+whose number is 70, the number the RMS Equivalencies sheet gives the comment
+close marker. After it comes a whole create_terrain painting SNOW over all
+GRASS, then the real comment close.
+
+PREDICTIONS, written 2026-11-02 before the run.
+  - The word ends the comment: the create_terrain runs, the map is SNOW
+    everywhere a player land or the base is, and the trailing comment close
+    is a stray token the engine ignores.
+  - It does not: the comment covers the line, the map is GRASS.
+Read: probe_scenario.py, terrain histogram. SNOW above 0 means it ends.
+
+Controls: 82b (an object word with another number, should be GRASS) and 82c
+(the literal number 70, should be GRASS, as the literal 69 did nothing in
+RMSTEST_57).
+
+Generate at: Tiny, 2 players, seed 1000, scenario editor.
+================================================================================
+*/

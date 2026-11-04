@@ -6,7 +6,10 @@ import type {
 } from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
 import type { TilePoint } from "../../preview/render/projection";
-import { usePreviewViewport } from "./PreviewViewContext";
+import { HelpTip } from "../HelpTip";
+import staleStyles from "./PreviewNotes.module.css";
+import { useCurrentFilePath } from "../../settings/DiagnosticDismissalContext";
+import { usePreviewView, usePreviewViewport } from "./PreviewViewContext";
 import { OverlayCanvas } from "./OverlayCanvas";
 import { GenerationSettingsPanel } from "./GenerationSettingsPanel";
 import {
@@ -46,6 +49,10 @@ interface PreviewCanvasProps {
   playerCount: number;
   /** Terrain ids actually on the drawn grid, for the Legend box. */
   terrainsInUse: readonly number[];
+  /** Regenerate on Edit is off and the script changed since this map was drawn. */
+  stale?: boolean;
+  /** Generates from the current script now. Clicking the stale notice calls it. */
+  onRegenerate?: () => void;
   /** Drawn in the map's top left corner under any banner notes. The pane puts the hovered or selected tile's details here. */
   topLeft?: ReactNode;
 }
@@ -68,6 +75,8 @@ export function PreviewCanvas({
   hiddenObjects,
   playerCount,
   terrainsInUse,
+  stale = false,
+  onRegenerate,
   topLeft,
 }: PreviewCanvasProps) {
   // Held above the tab switch (PreviewViewContext.tsx) so zoom/pan survive
@@ -80,7 +89,15 @@ export function PreviewCanvas({
   const [openSection, setOpenSection] = useState<PreviewPanelSection | null>(
     null,
   );
-  const summary = useMemo(() => summarizePreviewResult(result), [result]);
+  const filePath = useCurrentFilePath();
+  const { hiddenNotes, hideNote, restoreNotes } = usePreviewView();
+  const summary = useMemo(
+    () =>
+      summarizePreviewResult(result, (id) =>
+        hiddenNotes.has(`${filePath ?? ""}\0${id}`),
+      ),
+    [result, hiddenNotes, filePath],
+  );
   // The settings box and the Help line share the top right slot, so opening
   // one closes the other: Help closes the settings from here, and the
   // settings (opened by the cog or the hotkey, both outside this component)
@@ -124,6 +141,19 @@ export function PreviewCanvas({
       showExportButton
       showOrientation="full"
       topLeft={topLeft}
+      staleNotice={
+        stale && onRegenerate ? (
+          <HelpTip id="preview.staleNotice">
+            <button
+              type="button"
+              className={staleStyles.staleNotice}
+              onClick={onRegenerate}
+            >
+              Stale, click to generate
+            </button>
+          </HelpTip>
+        ) : undefined
+      }
       topRightControls={
         <PreviewCornerControls
           open={openSection}
@@ -171,6 +201,8 @@ export function PreviewCanvas({
               summary={summary}
               palette={palette}
               terrainsInUse={terrainsInUse}
+              onHideNote={(id) => hideNote(filePath, id)}
+              onRestoreNotes={() => restoreNotes(filePath)}
             />
           )
         )

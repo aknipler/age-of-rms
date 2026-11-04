@@ -1,0 +1,11 @@
+#const A 2.5
+#const B (A * 2)
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT land_position (10 + 20 * 2) 20 number_of_tiles 0 base_size 2 }
+create_land { terrain_type SNOW land_position (7 / 2 * 10) 50 number_of_tiles 0 base_size 2 }
+create_land { terrain_type DIRT land_position 80 (100 / 3) number_of_tiles 0 base_size 2 }
+create_land { terrain_type LEAVES land_position 50 80 number_of_tiles 0 base_size (5 / 2) }
+create_land { terrain_type DIRT3 land_position 80 80 number_of_tiles 0 base_size B }

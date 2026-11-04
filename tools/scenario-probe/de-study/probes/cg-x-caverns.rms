@@ -1,0 +1,880 @@
+/* Caverns */
+
+/*
+by Zetnus
+zetnus@outlook.com
+zetnus on Discord
+Most recent update: 11 January 2026
+Learn about random map scripting: https://tinyurl.com/7xteyu58
+*/
+
+
+/* terrains */
+#const GRAVEL_GREY 70
+#const MUD 76
+#const ROAD_GRAVEL 78
+#const GRAVEL_WET 81
+#const ROCK_WET 82
+#const GRASS_RAINFOREST 83
+#const PASTURE_DEAD 118
+#const BLACK_WALKABLE 129
+
+/* objects */
+#const ONGRID_PLACHOLDER 278
+#const GRASS_PATCH_LARGE 301
+#const STONE_ROCK 839
+#const FALCON 1056
+#const ROCK2 1323
+#const GRASS_PATCH_SMALL 1358
+#const BLOCKER 1776
+#const TEMP_REVEALER_SMALL 1872
+#const ROCK_PILLAR 2008
+#const OWL 2490
+
+
+if 1_PLAYER_GAME	#const PLAYER_COUNT 1
+elseif 2_PLAYER_GAME	#const PLAYER_COUNT 2
+elseif 3_PLAYER_GAME	#const PLAYER_COUNT 3
+elseif 4_PLAYER_GAME	#const PLAYER_COUNT 4
+elseif 5_PLAYER_GAME	#const PLAYER_COUNT 5
+elseif 6_PLAYER_GAME	#const PLAYER_COUNT 6
+elseif 7_PLAYER_GAME	#const PLAYER_COUNT 7
+elseif 8_PLAYER_GAME	#const PLAYER_COUNT 8
+endif
+
+/* scaling */
+if MAPSIZE_NANO			#const RAW_LENGTH 36	#define 36x36	#define MEDIUM_OR_SMALLER #define TINY_OR_SMALLER	#define MINI_OR_SMALLER
+elseif MAPSIZE_MICRO	#const RAW_LENGTH 60	#define 60x60	#define MEDIUM_OR_SMALLER #define TINY_OR_SMALLER	#define MINI_OR_SMALLER
+elseif MAPSIZE_MINI		#const RAW_LENGTH 80	#define 80x80	#define MEDIUM_OR_SMALLER #define TINY_OR_SMALLER	#define MINI_OR_SMALLER
+elseif MAPSIZE_PUNY		#const RAW_LENGTH 100	#define 100x100	#define MEDIUM_OR_SMALLER #define TINY_OR_SMALLER
+elseif MAPSIZE_TINY		#const RAW_LENGTH 120	#define 120x120	#define MEDIUM_OR_SMALLER #define TINY_OR_SMALLER
+elseif MAPSIZE_SMALL	#const RAW_LENGTH 144	#define 144x144 #define MEDIUM_OR_SMALLER
+elseif MAPSIZE_MEDIUM	#const RAW_LENGTH 168	#define 168x168 #define MEDIUM_OR_SMALLER
+elseif MAPSIZE_NORMAL	#const RAW_LENGTH 200	#define 200x200
+elseif MAPSIZE_LARGE	#const RAW_LENGTH 220	#define 220x220
+elseif MAPSIZE_HUGE		#const RAW_LENGTH 240	#define 240x240	#define HUGE_OR_LARGER
+elseif MAPSIZE_GIANT	#const RAW_LENGTH 252	#define 252x252	#define HUGE_OR_LARGER
+elseif MAPSIZE_MASSIVE	#const RAW_LENGTH 276	#define 276x276	#define HUGE_OR_LARGER
+elseif MAPSIZE_ENORMOUS	#const RAW_LENGTH 300	#define 300x300	#define HUGE_OR_LARGER	#define ENORMOUS_OR_LARGER
+elseif MAPSIZE_COLOSSAL	#const RAW_LENGTH 320	#define 320x320	#define HUGE_OR_LARGER	#define ENORMOUS_OR_LARGER
+elseif MAPSIZE_INCREDIBLE	#const RAW_LENGTH 360	#define 360x360	#define HUGE_OR_LARGER	#define ENORMOUS_OR_LARGER	#define INCREDIBLE_OR_LARGER
+elseif MAPSIZE_MONSTROUS	#const RAW_LENGTH 400	#define 400x400	#define HUGE_OR_LARGER	#define ENORMOUS_OR_LARGER	#define INCREDIBLE_OR_LARGER
+elseif MAPSIZE_LUDICROUS	#const RAW_LENGTH 480	#define 480x480	#define HUGE_OR_LARGER	#define ENORMOUS_OR_LARGER	#define INCREDIBLE_OR_LARGER
+endif
+
+#const LENGTH (RAW_LENGTH * 1.2)
+#const AREA (LENGTH * LENGTH)
+#const SCALING_FACTOR (AREA / 10000)
+override_map_size (LENGTH)
+
+/* =================================================================================================== */
+<PLAYER_SETUP>
+
+direct_placement
+behavior_version 2
+ai_info_map_type CUSTOM 0 0 0
+
+/* placeholder for TC placement */
+#const TC_PLACEHOLDER 1870 /* chief's yurt */
+#const TC_PLACEHOLDER_RUBBLE 1871 /* chief's yurt */
+effect_amount SET_ATTRIBUTE TC_PLACEHOLDER ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE TC_PLACEHOLDER ATTR_STANDING_GRAPHIC 12800
+effect_amount SET_ATTRIBUTE TC_PLACEHOLDER_RUBBLE ATTR_STORAGE_VALUE 0
+
+/* =================================================================================================== */
+<LAND_GENERATION>
+
+base_terrain ROAD_GRAVEL
+
+#const BORDER 5
+#const ZONE 20
+
+/* center */
+create_land {
+	terrain_type DLC_JUNGLEGRASS
+	land_percent 100
+	base_size 18
+	set_circular_base
+	left_border 35 right_border 35 top_border 35 bottom_border 35
+	border_fuzziness 20
+	zone (ZONE)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 1
+}
+
+create_player_lands {
+	terrain_type GRASS2
+	land_percent 20
+	base_size 18
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	other_zone_avoidance_distance 6
+	min_placement_distance 40
+	generate_mode 1
+}
+
+#const NEUTRAL_LAND_PERCENT 5
+#const MIN_PLACEMENT_DIST 33
+#const NEUTRAL_BASE_SIZE 12
+
+/* other lands */
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 1)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 2)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 3)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 4)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 5)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 6)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 7)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 8)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 9)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+create_land {
+	terrain_type GRASS_RAINFOREST
+	land_percent (NEUTRAL_LAND_PERCENT)
+	base_size (NEUTRAL_BASE_SIZE)
+	set_circular_base
+	left_border (BORDER) right_border (BORDER) top_border (BORDER) bottom_border (BORDER)
+	border_fuzziness 20
+	zone (ZONE + 10)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 2
+	min_placement_distance (MIN_PLACEMENT_DIST)
+	generate_mode 1
+}
+
+/* center */
+create_land {
+	terrain_type DLC_JUNGLEGRASS
+	land_percent 100
+	base_size 18
+	set_circular_base
+	left_border 35 right_border 35 top_border 35 bottom_border 35
+	border_fuzziness 20
+	zone (ZONE)
+	other_zone_avoidance_distance 6
+	assign_to_player 1
+	land_id 100
+}
+
+/* river anchor points */
+create_land {
+	terrain_type ROAD_GRAVEL
+	land_percent 0
+	base_size 1
+	land_position 0 rnd(10,90)
+	zone 11
+}
+create_land {
+	terrain_type ROAD_GRAVEL
+	land_percent 0
+	base_size 1
+	land_position 99 rnd(10,90)
+	zone 12
+}
+create_land {
+	terrain_type ROAD_GRAVEL
+	land_percent 0
+	base_size 1
+	land_position rnd(10,90) 0
+	zone 13
+}
+create_land {
+	terrain_type ROAD_GRAVEL
+	land_percent 0
+	base_size 1
+	land_position rnd(10,90) 98
+	zone 14
+}
+
+/* =================================================================================================== */
+<ELEVATION_GENERATION> 
+
+create_elevation 16 {
+	base_terrain ROAD_GRAVEL
+	enable_balanced_elevation
+	number_of_tiles (AREA)
+	number_of_clumps (100 * SCALING_FACTOR)
+	set_scale_by_groups
+}
+create_elevation 16 {
+	base_terrain ROAD_GRAVEL
+	enable_balanced_elevation
+	number_of_tiles (AREA)
+	number_of_clumps (100 * SCALING_FACTOR)
+	set_scale_by_groups
+}
+
+/* =================================================================================================== */
+<TERRAIN_GENERATION>
+
+color_correction CC_EVENING
+
+create_terrain DLC_BLACK { base_terrain ROAD_GRAVEL land_percent 100 number_of_clumps 9320 terrain_mask 1 }
+create_terrain DLC_BLACK { base_terrain ROAD_GRAVEL land_percent 100 number_of_clumps 9320 terrain_mask 1 }
+create_terrain DLC_BLACK { base_terrain ROAD_GRAVEL land_percent 100 number_of_clumps 9320 terrain_mask 1 }
+
+create_terrain DLC_BLACK { base_terrain ROAD_GRAVEL land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 2 }
+create_terrain DLC_BLACK { base_terrain ROAD_GRAVEL land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 2 }
+create_terrain DLC_BLACK { base_terrain ROAD_GRAVEL land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 2 }
+
+create_terrain ROCK_WET { base_terrain DLC_BLACK land_percent 100 number_of_clumps 9320 terrain_mask 1 }
+create_terrain ROCK_WET { base_terrain DLC_BLACK land_percent 100 number_of_clumps 9320 terrain_mask 1 }
+create_terrain ROCK_WET { base_terrain DLC_BLACK land_percent 100 number_of_clumps 9320 terrain_mask 1 }
+
+/* neutral */
+create_terrain MUD { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 9 terrain_mask 1 }
+create_terrain MUD { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 9 terrain_mask 1 }
+create_terrain MUD { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 9 terrain_mask 1 }
+
+create_terrain MUD { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 11 }
+create_terrain MUD { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 11 }
+create_terrain MUD { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 11 }
+
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 13 terrain_mask 1 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 13 terrain_mask 1 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 13 terrain_mask 1 }
+
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 15 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 15 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 15 }
+
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 17 terrain_mask 1 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 17 terrain_mask 1 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 17 terrain_mask 1 }
+
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 19 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 19 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 19 }
+
+create_terrain DLC_RAINFOREST { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 1 }
+create_terrain DLC_RAINFOREST { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 1 }
+create_terrain DLC_RAINFOREST { base_terrain GRASS_RAINFOREST land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 1 }
+
+/* players */
+create_terrain MUD { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 9 terrain_mask 1 }
+create_terrain MUD { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 9 terrain_mask 1 }
+create_terrain MUD { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 9 terrain_mask 1 }
+
+create_terrain MUD { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 11 }
+create_terrain MUD { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 11 }
+create_terrain MUD { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 11 }
+
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 13 terrain_mask 1 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 13 terrain_mask 1 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 13 terrain_mask 1 }
+
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 15 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 15 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 15 }
+
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 17 terrain_mask 1 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 17 terrain_mask 1 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 17 terrain_mask 1 }
+
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 19 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 19 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 19 }
+
+create_terrain DLC_RAINFOREST { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 1 }
+create_terrain DLC_RAINFOREST { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 1 }
+create_terrain DLC_RAINFOREST { base_terrain GRASS2 land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 1 }
+
+/* center */
+create_terrain MUD { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 12 terrain_mask 1 }
+create_terrain MUD { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 12 terrain_mask 1 }
+create_terrain MUD { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 12 terrain_mask 1 }
+
+create_terrain MUD { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 14 }
+create_terrain MUD { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 14 }
+create_terrain MUD { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 14 }
+
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 16 terrain_mask 1 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 16 terrain_mask 1 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 16 terrain_mask 1 }
+
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 18 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 18 }
+create_terrain GRAVEL_GREY { base_terrain MUD land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 18 }
+
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 20 terrain_mask 1 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 20 terrain_mask 1 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 20 terrain_mask 1 }
+
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 22 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 22 }
+create_terrain GRAVEL_WET { base_terrain GRAVEL_GREY land_percent 100 number_of_clumps 9320 set_avoid_player_start_areas 22 }
+
+create_terrain DLC_RAINFOREST { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 2 }
+create_terrain DLC_RAINFOREST { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 2 }
+create_terrain DLC_RAINFOREST { base_terrain DLC_JUNGLEGRASS land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 2 }
+
+/* revealer layer */
+create_terrain LEAVES { base_terrain DLC_RAINFOREST land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 3 terrain_mask 1 }
+create_terrain LEAVES { base_terrain DLC_RAINFOREST land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 3 terrain_mask 1 }
+create_terrain LEAVES { base_terrain DLC_RAINFOREST land_percent 100 number_of_clumps 9320 spacing_to_other_terrain_types 3 terrain_mask 1 }
+
+/* small skylights */
+create_terrain PASTURE_DEAD {
+	base_terrain DLC_BLACK
+	number_of_tiles 150
+	number_of_clumps 6
+	set_scale_by_groups
+	spacing_to_other_terrain_types 16
+	height_limits 12 16
+	terrain_mask 2
+}
+create_terrain PASTURE_DEAD {
+	base_terrain PASTURE_DEAD
+	base_layer DLC_BLACK
+	land_percent 100 number_of_clumps 9320
+	spacing_to_other_terrain_types 1
+	terrain_mask 1
+}
+
+/* =================================================================================================== */
+<CONNECTION_GENERATION>
+accumulate_connections
+
+create_connect_all_players_land {
+	replace_terrain DLC_BLACK ROCK_WET
+	replace_terrain ROAD_GRAVEL DLC_ROCK
+	terrain_cost DLC_BLACK 3
+	terrain_cost ROAD_GRAVEL 3
+	
+	terrain_size ROAD_GRAVEL 5 0
+	terrain_size DLC_BLACK 5 0
+	terrain_size ROCK_WET 0 0
+	terrain_size DLC_ROCK 0 0
+	terrain_size GRAVEL_WET 0 0
+	terrain_size GRAVEL_GREY 0 0
+	terrain_size MUD 0 0
+	terrain_size DLC_JUNGLEGRASSK 0 0
+	terrain_size GRASS_RAINFOREST 0 0
+	terrain_size GRASS2 0 0
+	terrain_size DLC_RAINFOREST 0 0
+	terrain_size PASTURE_DEAD 0 0
+}
+
+create_connect_land_zones 11 12 {
+	replace_terrain ROAD_GRAVEL DLC_BOGLAND
+	replace_terrain DLC_ROCK DLC_BOGLAND
+	replace_terrain DLC_BLACK DLC_BOGLAND
+
+	terrain_cost GRAVEL_WET 0
+	terrain_cost GRAVEL_GREY 0
+	terrain_cost MUD 0
+	terrain_cost DLC_RAINFOREST 0
+	
+	terrain_cost DLC_BLACK 2
+	terrain_cost ROCK_WET 2
+	terrain_cost ROAD_GRAVEL 1
+	terrain_cost DLC_ROCK 1
+}
+
+create_connect_land_zones 13 14 {
+	replace_terrain ROAD_GRAVEL DLC_BOGLAND
+	replace_terrain DLC_ROCK DLC_BOGLAND
+	replace_terrain DLC_BLACK DLC_BOGLAND
+
+	terrain_cost GRAVEL_WET 0
+	terrain_cost GRAVEL_GREY 0
+	terrain_cost MUD 0
+	terrain_cost DLC_RAINFOREST 0
+	
+	terrain_cost DLC_BLACK 2
+	terrain_cost ROCK_WET 2
+	terrain_cost ROAD_GRAVEL 1
+	terrain_cost DLC_ROCK 1
+}
+	
+create_connect_all_lands {
+	replace_terrain ROCK_WET DLC_ROCK
+	terrain_size DLC_RAINFOREST 420 0
+}
+
+/* =================================================================================================== */
+<OBJECTS_GENERATION>
+
+#const AA_TC 1
+
+/* skylights in the black */
+create_object MAP_REVEALER {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on PASTURE_DEAD
+	layer_to_place_on PASTURE_DEAD
+	set_place_for_every_player
+	temp_min_distance_group_placement 1
+}
+create_object TEMP_REVEALER_SMALL {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on PASTURE_DEAD
+	set_place_for_every_player
+	temp_min_distance_group_placement 1
+}
+create_object DLC_ROCKBEACH {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on PASTURE_DEAD
+	temp_min_distance_group_placement 2
+	second_object DLC_FERN_PATCH
+}
+create_object ROCK_PILLAR {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on PASTURE_DEAD
+	temp_min_distance_group_placement 1
+}
+create_object DLC_ROCKJUNGLE {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on PASTURE_DEAD
+}
+
+/* skylights on the woodlines */
+create_object MAP_REVEALER {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	layer_to_place_on LEAVES
+	set_place_for_every_player
+	temp_min_distance_group_placement 1
+}
+create_object TEMP_REVEALER_SMALL {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_RAINFOREST
+	set_place_for_every_player
+	temp_min_distance_group_placement 1
+}
+
+/* fill the darkness */
+create_object ROCK {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_BLACK
+	temp_min_distance_group_placement 1
+}
+create_object ROCK2 {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_BLACK
+	temp_min_distance_group_placement 0
+}
+
+/* stalagmites */
+create_object SEA_ROCKS_2 {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_ROCK
+	temp_min_distance_group_placement 0
+}
+
+create_object SEA_ROCKS_1 {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_ROCK
+	temp_min_distance_group_placement 0
+}
+
+/* misc eyecandy */
+create_object CRACKS {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on MUD
+	temp_min_distance_group_placement 12
+}
+create_object CRATER {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on MUD
+	temp_min_distance_group_placement 12
+}
+create_object SEA_ROCKS_1 {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on GRAVEL_WET
+	temp_min_distance_group_placement 6
+}
+
+create_object DLC_FERN_PATCH {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_RAINFOREST
+	temp_min_distance_group_placement 1
+}
+create_object GRASS_PATCH_LARGE {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on DLC_RAINFOREST
+	temp_min_distance_group_placement 2
+}
+
+create_object GRASS_PATCH_SMALL {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on MUD
+	temp_min_distance_group_placement 7
+}
+
+/* =================================================================================================== */
+create_object TC_PLACEHOLDER {
+	second_object TOWN_CENTER
+	set_place_for_every_player 
+	find_closest 
+	place_on_forest_zone
+	actor_area (AA_TC)
+	actor_area_radius 8
+	min_distance_group_placement 4
+}
+
+create_object FORAGE {
+	number_of_objects 10
+	set_place_for_every_player
+	set_gaia_object_only
+	place_on_forest_zone
+	avoid_other_land_zones
+	temp_min_distance_group_placement 2
+}
+create_object FORAGE {
+	number_of_objects 10
+	place_on_specific_land_id 2
+	set_gaia_object_only
+	place_on_forest_zone
+	avoid_other_land_zones
+	temp_min_distance_group_placement 2
+}
+create_object FORAGE {
+	number_of_objects 20
+	place_on_specific_land_id 1
+	set_gaia_object_only
+	place_on_forest_zone
+	avoid_other_land_zones
+	temp_min_distance_group_placement 2
+}
+
+create_object SCOUT {
+	set_place_for_every_player
+	actor_area_to_place_in  (AA_TC)
+	avoid_forest_zone 2
+}
+
+create_object VILLAGER {
+	set_place_for_every_player
+	actor_area_to_place_in  (AA_TC)
+	avoid_forest_zone 2
+}
+
+create_object STONE_ROCK {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on ROAD_GRAVEL
+	temp_min_distance_group_placement 1
+}
+create_object STONE {
+	number_of_objects 9320
+	set_scaling_to_map_size 
+	terrain_to_place_on ROAD_GRAVEL
+}
+
+create_object GOLD {
+	number_of_objects 5
+	number_of_groups 3
+	set_tight_grouping
+	set_place_for_every_player
+	set_gaia_object_only
+	terrain_to_place_on GRAVEL_WET
+	avoid_other_land_zones
+	temp_min_distance_group_placement 15
+}
+
+create_object GOLD {
+	number_of_objects 3
+	number_of_groups 5	set_scaling_to_map_size
+	set_tight_grouping
+	place_on_specific_land_id 1
+	set_gaia_object_only
+	terrain_to_place_on GRAVEL_WET
+	avoid_other_land_zones
+	temp_min_distance_group_placement 12
+}
+
+create_object GOLD {
+	number_of_objects 3
+	number_of_groups 1	set_scaling_to_map_size
+	set_tight_grouping
+	place_on_specific_land_id 2
+	set_gaia_object_only
+	terrain_to_place_on GRAVEL_WET
+	avoid_other_land_zones
+	temp_min_distance_group_placement 24
+}
+
+create_object ONGRID_PLACHOLDER {
+	second_object SHORE_FISH
+	number_of_objects 9320
+	place_on_specific_land_id 2
+	set_gaia_object_only
+	terrain_to_place_on DLC_BOGLAND
+	avoid_other_land_zones
+	temp_min_distance_group_placement 8
+}
+create_object ONGRID_PLACHOLDER {
+	second_object SHORE_FISH
+	number_of_objects 9320
+	place_on_specific_land_id 1
+	set_gaia_object_only
+	terrain_to_place_on DLC_BOGLAND
+	avoid_other_land_zones
+	temp_min_distance_group_placement 8
+}
+
+
+create_object RELIC {
+	number_of_objects 1
+	place_on_specific_land_id 2
+	set_gaia_object_only
+	terrain_to_place_on GRASS_RAINFOREST
+	avoid_other_land_zones
+	min_distance_group_placement 1
+}
+
+create_object DLC_GOAT {
+	set_place_for_every_player
+	actor_area_to_place_in (AA_TC)
+	terrain_to_place_on GRAVEL_GREY
+	find_closest
+	number_of_objects 4
+	avoid_other_land_zones
+	min_distance_group_placement 3
+}
+
+create_object DLC_PIG {
+	number_of_objects 2
+	number_of_groups 2
+	set_loose_grouping
+	set_place_for_every_player
+	set_gaia_object_only
+	avoid_actor_area (AA_TC)
+	terrain_to_place_on GRAVEL_WET
+	avoid_other_land_zones
+	temp_min_distance_group_placement 14
+	find_closest
+	min_distance_group_placement 2
+}
+create_object BOAR {
+	number_of_objects 2
+	set_place_for_every_player
+	set_gaia_object_only
+	avoid_actor_area (AA_TC)
+	terrain_to_place_on GRAVEL_WET
+	avoid_other_land_zones
+	temp_min_distance_group_placement 14
+	find_closest
+	min_distance_group_placement 2
+}
+
+create_object_group WILD_CHICKEN {
+	add_object WILD_CHICKEN_A 10
+	add_object WILD_CHICKEN_A 10
+	add_object WILD_CHICKEN_A 10
+	add_object WILD_CHICKEN_A 10
+	add_object WILD_CHICKEN_A 10
+	add_object WILD_CHICKEN_B 10	/* white */
+	add_object WILD_CHICKEN_C 10
+	add_object WILD_CHICKEN_C 10
+	add_object WILD_CHICKEN_C 10
+	add_object WILD_CHICKEN_C 10
+}
+
+create_object WILD_CHICKEN {
+	number_of_objects 8
+	set_place_for_every_player
+	set_gaia_object_only
+	avoid_actor_area (AA_TC)
+	terrain_to_place_on MUD
+	avoid_other_land_zones
+	temp_min_distance_group_placement 1
+}
+
+create_object WILD_CHICKEN {
+	number_of_objects 8
+	place_on_specific_land_id 2
+	set_gaia_object_only
+	terrain_to_place_on MUD
+	avoid_other_land_zones
+	temp_min_distance_group_placement 1
+}
+create_object WILD_CHICKEN {
+	number_of_objects 24
+	place_on_specific_land_id 1
+	set_gaia_object_only
+	terrain_to_place_on MUD
+	avoid_other_land_zones
+	temp_min_distance_group_placement 1
+}
+
+create_object BLACK_BEAR {
+	number_of_objects 2
+	place_on_specific_land_id 2
+	set_gaia_object_only
+	terrain_to_place_on MUD
+	avoid_other_land_zones
+	temp_min_distance_group_placement 8
+}
+create_object BLACK_BEAR {
+	number_of_objects 2
+	set_scaling_to_player_number
+	place_on_specific_land_id 1
+	set_gaia_object_only
+	terrain_to_place_on MUD
+	avoid_other_land_zones
+	temp_min_distance_group_placement 8
+}
+
+create_object RABID_WOLF {
+	number_of_objects 1
+	set_scaling_to_player_number
+	terrain_to_place_on GRAVEL_WET
+	temp_min_distance_group_placement 40
+	min_distance_to_players 50
+	set_circular_placement
+}
+
+create_object_group BIRD_A {
+	add_object HAWK 25
+	add_object FALCON 25
+	add_object DLC_VULTURE 25
+	add_object OWL 25
+}
+create_object BIRD_A {
+	number_of_objects 6
+	set_scaling_to_map_size
+}

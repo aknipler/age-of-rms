@@ -1,0 +1,14 @@
+#const ROCK_PILLAR 2008
+#const ROCK_PILLAR_B 2009
+#const OBJ_1059 1059
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+<OBJECTS_GENERATION>
+create_object ROCK_PILLAR { set_gaia_object_only number_of_groups 8 }
+create_object DEER { set_gaia_object_only number_of_groups 6 }
+create_object ROCK_PILLAR_B { set_gaia_object_only number_of_groups 8 }
+create_object DEER { set_gaia_object_only number_of_groups 6 }
+create_object OBJ_1059 { set_gaia_object_only number_of_groups 8 }
+create_object DEER { set_gaia_object_only number_of_groups 6 }

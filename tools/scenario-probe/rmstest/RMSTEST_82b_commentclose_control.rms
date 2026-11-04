@@ -1,0 +1,36 @@
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<TERRAIN_GENERATION>
+
+/* TOWN_CENTER create_terrain SNOW { base_terrain GRASS land_percent 100 } */
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_82b - control for 82a. The same comment, opened by an object word
+whose number is not 69 or 70.
+Feeds: docs/token-alias-design.md Sec.3.1 and slice B.
+
+The header is at the bottom on purpose and names no constant whose number is
+a comment marker or a control word.
+
+PREDICTION, written 2026-11-02 before the run. GRASS everywhere, under both
+readings. If this map has SNOW, any object word ends a comment, and 82a tells
+nothing about the number 70.
+Read: probe_scenario.py, terrain histogram.
+
+Generate at: Tiny, 2 players, seed 1000, scenario editor.
+================================================================================
+*/

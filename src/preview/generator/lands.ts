@@ -283,7 +283,15 @@ function computeZone(
   teams: CanonicalTeams,
   playerCount: number,
 ): number {
-  const defaultZone = player !== undefined ? player - 10 : -10;
+  // Only `create_player_lands` gives a land its player's zone. A
+  // `create_land` assigned to a player keeps the neutral -10 unless it says
+  // otherwise (Sec.6.1, rev 11, gm2 and gm3). Under behavior_version 0 that
+  // sends every assigned land's stamp to land 0's counter, so the first one
+  // grows only a few tiles, as in DE.
+  const defaultZone =
+    player !== undefined && cmd.name === "create_player_lands"
+      ? player - 10
+      : -10;
   if (cmd.attributes.has("zone")) return numAttr(cmd, "zone", 0, defaultZone);
   if (cmd.attributes.has("set_zone_by_team")) {
     const p = cmd.name === "create_player_lands" ? (player ?? 1) : 1;
@@ -658,6 +666,12 @@ function runPlayerSetup(
   const together = (a: number, b: number): boolean =>
     a === b || (teamOf(a) !== 0 && teamOf(a) === teamOf(b));
 
+  // A script with no land at all and Team Positions on skips the whole step
+  // and spends none of its draws (Sec.6.1, rev 11). u2, u5 and u9 have no
+  // land commands and match DE only this way. With Team Positions off the
+  // draws are spent, as the land write-up has it.
+  if (teamPositions && lands.length === 0) return;
+
   const order = playerOrder(stream, playerCount, teamOf, teamPositions);
 
   if (playerSetup.directPlacement) {
@@ -683,10 +697,17 @@ function runPlayerSetup(
   }
 
   const rectangle = playerRectangle(players, dim);
-  // Only the final circle_radius applies (guide:856).
+  // Only the final circle_radius applies (guide:856). A `create_land`
+  // assigned to a player counts as a player land here too (rev 11,
+  // Immersion and Blind Valley), so the last player land that writes one
+  // sets the circle.
   const lastPlayerLands = [...lands]
     .reverse()
-    .find((land) => land.cmd.name === "create_player_lands")?.cmd;
+    .find(
+      (land) =>
+        land.origin.player !== undefined &&
+        land.cmd.attributes.has("circle_radius"),
+    )?.cmd;
   const radiusPct = lastPlayerLands
     ? percentAttr(lastPlayerLands, "circle_radius", 0, 0)
     : 0;
@@ -850,6 +871,9 @@ function landHeight(
   return clampElevation(baseElevation);
 }
 
+/** What a land without a terrain paints, the content's default terrain. */
+const UNTYPED_LAND_TERRAIN = 0;
+
 function newOrigin(
   cmd: InstantiatedCommand,
   dim: number,
@@ -860,12 +884,17 @@ function newOrigin(
 ): LandOrigin {
   const terrainTypeValue = argValue(cmd, "terrain_type", 0);
   const baseElevationValue = argValue(cmd, "base_elevation", 0);
-  const terrainId = resolveTerrainId(
-    constants,
-    terrainTypeValue,
-    instantiated.symbols,
-    instantiated.aliases,
-  );
+  // A land with no `terrain_type`, or one naming nothing the script
+  // defines, paints terrain 0, not the map's base terrain (Sec.6.1, rev 11).
+  // Bazi's two untyped player lands shift every clump of its terrain stage
+  // otherwise.
+  const terrainId =
+    resolveTerrainId(
+      constants,
+      terrainTypeValue,
+      instantiated.symbols,
+      instantiated.aliases,
+    ) ?? UNTYPED_LAND_TERRAIN;
   const baseElevation =
     typeof baseElevationValue === "number" ? baseElevationValue : undefined;
   const declaredLandIdValue = argValue(cmd, "land_id", 0);

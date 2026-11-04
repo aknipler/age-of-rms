@@ -77,6 +77,16 @@ export interface LexOptions {
    * vocabulary, so the caller supplies the set from reference data.
    */
   commentOpenAliases?: ReadonlySet<string>;
+
+  /**
+   * Words the engine reads as the closing comment marker, constants whose
+   * value is 70 (RMSTEST_82a, docs/token-alias-design.md Sec.3.1). Like
+   * `commentOpenAliases`, a word in this set lowers the depth by one only while
+   * a comment is open, and when the depth reaches 0 the comment ends after the
+   * word. Outside a comment it is an ordinary word, `create_object HOUSE` is
+   * untouched. Empty by default, the caller supplies the set from reference data.
+   */
+  commentCloseAliases?: ReadonlySet<string>;
 }
 
 export interface LexResult {
@@ -102,6 +112,9 @@ import type {
   AttributeDef,
   DirectiveDef,
 } from "./language";
+// A type-only import in both directions (includeIndex.ts imports ParseResult
+// from here), which TypeScript erases, so there is no runtime cycle.
+import type { IncludeIndex } from "./includeIndex";
 
 // ---------------------------------------------------------------------------
 // Two DEFAULTED TYPE PARAMETERS, per docs/parser-design.md Sec.4's amendment
@@ -318,8 +331,11 @@ export interface ParseOptions {
   nestedComments?: boolean; // default TRUE (docs/parser-design.md Sec.2)
   aliasTable?: ReadonlyMap<string, TokenKind>; // default empty (Sec.2.1); lexer-level classification override
   commentOpenAliases?: ReadonlySet<string>; // default empty; words the engine reads as `/*` INSIDE a comment; see LexOptions
+  commentCloseAliases?: ReadonlySet<string>; // default empty; words the engine reads as the closing marker INSIDE a comment; see LexOptions
   maxNestingDepth?: number; // default 200 (Sec.5.0)
   builtinConstants?: ReadonlySet<string>; // default empty; engine-defined #const names (game-constants.json rmsConstant), resolve in numeric slots like a script #const
+  externalSymbols?: ReadonlySet<string>; // default empty; names an #include_drs file defines (src/parser/includeIndex.ts), resolve in numeric slots like builtinConstants
+  includesUnread?: boolean; // whether a name might come from an include nobody read; default is true when the file has any include (the softening rule before the editor read include files)
 }
 
 export interface ParseResult<N = number, D extends NoDefs = DefSlots> {
@@ -330,4 +346,12 @@ export interface ParseResult<N = number, D extends NoDefs = DefSlots> {
   symbols: SymbolInfo[];
   includes: IncludeInfo[];
   diagnostics: Diagnostic[]; // lexer + parser; validate() adds semantic ones separately
+  /**
+   * What the script's `#include_drs` files define. The parser worker sets it
+   * after validate(), from the same index validate() read, and `parseRms` never
+   * does (it has no files to read). The name lookup reads it so autocomplete
+   * and hover know included names (docs/include-resolution-design.md Sec.4.3).
+   * Left off the tools' wire encoding, which copies named fields only.
+   */
+  includeIndex?: IncludeIndex;
 }

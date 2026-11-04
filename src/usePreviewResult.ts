@@ -12,6 +12,7 @@ import type {
   TeamNumber,
 } from "./generationSettings/generationSettingsConstants";
 import { perfLog, perfTime } from "./perfTrace";
+import { useIncludeFiles } from "./useIncludeFiles";
 
 // docs/preview-design.md Sec.10. Mirrors useParsedDocument.ts's shape
 // closely on purpose (same worker lifecycle, same request-id staleness
@@ -73,6 +74,14 @@ export interface PreviewResultState {
    * figures on a script that takes a while to generate.
    */
   pending: boolean;
+  /**
+   * True when "Regenerate on Edit" is off and the script has changed since
+   * the map on screen was generated. Changing the seed or a generation
+   * setting still regenerates, so it only ever means "the text moved on".
+   */
+  stale: boolean;
+  /** Generates now from the current script, whatever the Regenerate on Edit switch says. */
+  regenerate: () => void;
 }
 
 /**
@@ -91,9 +100,27 @@ export function usePreviewResult(
   teams: readonly TeamNumber[],
   teamPositions: boolean,
   seed: number,
+  regenOnEdit = true,
+  cutOffset: number | null = null,
 ): PreviewResultState {
+  // What crosses to the worker is the TEXT, not the parse. See PreviewRequest.
+  const source = parseResult?.source ?? null;
   const [result, setResult] = useState<PreviewWireResult | null>(null);
   const [pending, setPending] = useState(false);
+  const [stale, setStale] = useState(false);
+  // Bumped by regenerate() so the request effect runs again with nothing else changed.
+  const [manualTick, setManualTick] = useState(0);
+  const regenerate = useCallback(() => setManualTick((n) => n + 1), []);
+  // What the last request was built from. A ref, not state: it is read only
+  // inside the effect below and a write must not schedule a render.
+  const lastSentRef = useRef<{
+    source: string;
+    cutOffset: number | null;
+    settings: PreviewSettings;
+    seed: number;
+    includeFiles: unknown;
+    tick: number;
+  } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   // Only the most recently SENT request's id is "current". This mirrors
   // useParsedDocument.ts's latestRequestIdRef exactly, same reason: a
@@ -108,6 +135,11 @@ export function usePreviewResult(
   const retriesRef = useRef<Map<number, number>>(new Map());
   // When the latest request was posted, for src/perfTrace.ts only.
   const previewSentAtRef = useRef(0);
+
+  // The game files a script includes, read from the install. Their arrival
+  // is a dependency of the request effect below, so a script that includes
+  // files renders once without them and again when they have been read.
+  const includeFiles = useIncludeFiles(parseResult);
 
   const settings: PreviewSettings = useMemo(
     () => ({ playerCount, mapSize, teams, teamPositions }),
@@ -198,8 +230,10 @@ export function usePreviewResult(
 
   const postRequest = useCallback(
     (request: PreviewRequest): void => {
-      // postMessage clones the whole ParseResult synchronously, on this
-      // (main) thread, before it returns. That clone is what perfTime sees.
+      // postMessage clones its payload synchronously, on this (main) thread.
+      // The payload is the script text, so the clone is a string copy. It was
+      // the whole ParseResult (7 MB on a big map, 85 to 160 ms of frozen
+      // typing) until the worker took over the parse. perfTime sees it.
       previewSentAtRef.current = performance.now();
       perfTime(`preview #${request.id} sent, main thread serialize`, () =>
         workerRef.current?.postMessage(request),
@@ -221,21 +255,56 @@ export function usePreviewResult(
   }, []);
 
   useEffect(() => {
-    if (parseResult === null) return;
+    if (source === null) return;
+    // With Regenerate on Edit off, a changed script alone does not send a
+    // request. Anything else that changed (seed, settings, include files, the
+    // Generate button) still does, and it sends the current script.
+    const last = lastSentRef.current;
+    if (
+      !regenOnEdit &&
+      last !== null &&
+      last.settings === settings &&
+      last.seed === seed &&
+      last.includeFiles === includeFiles &&
+      last.tick === manualTick
+    ) {
+      if (last.source !== source || last.cutOffset !== cutOffset)
+        setStale(true);
+      return;
+    }
     const timeoutId = window.setTimeout(() => {
+      lastSentRef.current = {
+        source,
+        cutOffset,
+        settings,
+        seed,
+        includeFiles,
+        tick: manualTick,
+      };
+      setStale(false);
       const id = latestRequestIdRef.current + 1;
       latestRequestIdRef.current = id;
       retriesRef.current.clear(); // every earlier id is superseded and can never retry again
       setPending(true);
       postRequest({
         id,
-        parse: parseResult,
+        source,
+        cutOffset,
         settings,
-        opts: { seed, collectSnapshots: true },
+        opts: { seed, collectSnapshots: true, includeFiles },
       });
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [parseResult, settings, seed, postRequest]);
+  }, [
+    source,
+    cutOffset,
+    settings,
+    seed,
+    includeFiles,
+    manualTick,
+    regenOnEdit,
+    postRequest,
+  ]);
 
-  return { result, pending };
+  return { result, pending, stale, regenerate };
 }

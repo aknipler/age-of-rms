@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_player_lands { terrain_type GRASS base_size 10 land_percent 35 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object HOUSE { set_place_for_every_player number_of_objects 3 min_distance_to_players 5 max_distance_to_players 9 terrain_to_place_on GRASS }
+create_object BARRACKS { set_place_for_every_player min_distance_to_players 6 max_distance_to_players 10 terrain_to_place_on GRASS }
+create_object MILL { set_place_for_every_player min_distance_to_players 6 max_distance_to_players 10 terrain_to_place_on GRASS }
+create_object HOUSE { set_gaia_object_only number_of_objects 3 terrain_to_place_on GRASS min_distance_to_players 12 }
+create_object BARRACKS { set_gaia_object_only number_of_objects 2 terrain_to_place_on GRASS min_distance_to_players 12 }

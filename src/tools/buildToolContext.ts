@@ -21,6 +21,7 @@ import {
   type ToolContext,
 } from "../../tools-api/index";
 import { resolveMapDim } from "../preview/generator/mapDimensions";
+import type { IncludeFiles } from "../preview/generator/includes";
 import type { MapSize } from "../generationSettings/generationSettingsConstants";
 import type { LanguageData } from "../parser/language";
 import type { ParseResult } from "../parser/types";
@@ -38,6 +39,8 @@ export interface BuildToolContextInput {
   };
   lang: LanguageData;
   gameConstants: PublishedGameConstants;
+  /** The install's include files the script names (`useIncludeFiles`), granted with `read-reference`. */
+  includeFiles?: IncludeFiles;
   /**
    * Sec.3.3, the pane's own seed and Current/Final cut, granted only under
    * `read-preview-view`. `cutOffset` is `null` when the pane's Current pin has
@@ -77,6 +80,10 @@ export function buildToolContext(
           referenceData: {
             language: input.lang,
             gameConstants: input.gameConstants,
+            // Same spread pattern one level down, so no files means no key.
+            ...(input.includeFiles !== undefined
+              ? { includeFiles: Object.fromEntries(input.includeFiles) }
+              : {}),
           },
         }
       : {}),

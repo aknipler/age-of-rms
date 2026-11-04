@@ -22,10 +22,26 @@ export type PreviewPanelSection = "help" | "objects" | "notes" | "legend";
  * from a handful of records, and reporting "6 placements failed" for it
  * would be worse than the pre-coalescing wall of text.
  */
-export function summarizePreviewResult(result: PreviewWireResult) {
-  const drawerNotes = result.notes.filter(
+/**
+ * What identifies a note across edits. The key of a per-span note holds
+ * character offsets, which move whenever anything above it is edited, so a
+ * note with a snippet is identified by its sentence and snippet instead.
+ */
+export function noteId(note: PreviewWireResult["notes"][number]): string {
+  return note.snippet !== undefined
+    ? `${note.stage}|${note.text}|${note.snippet}`
+    : note.key;
+}
+
+export function summarizePreviewResult(
+  result: PreviewWireResult,
+  isHidden: (noteId: string) => boolean = () => false,
+) {
+  const allDrawerNotes = result.notes.filter(
     (note) => note.prominence === "drawer",
   );
+  const drawerNotes = allDrawerNotes.filter((note) => !isHidden(noteId(note)));
+  const hiddenCount = allDrawerNotes.length - drawerNotes.length;
   const failureCount = result.reports.reduce(
     (total, report) =>
       total +
@@ -40,7 +56,7 @@ export function summarizePreviewResult(result: PreviewWireResult) {
     (total, report) => total + report.placed,
     0,
   );
-  return { drawerNotes, failureCount, attempted, placed };
+  return { drawerNotes, hiddenCount, failureCount, attempted, placed };
 }
 
 export type PreviewSummary = ReturnType<typeof summarizePreviewResult>;
@@ -192,6 +208,10 @@ interface PreviewPanelProps {
   palette: TerrainPalette;
   /** Terrain ids actually present on the drawn grid, for the legend. */
   terrainsInUse: readonly number[];
+  /** Hides one note for the current script. */
+  onHideNote?: (noteId: string) => void;
+  /** Brings back every hidden note of the current script. */
+  onRestoreNotes?: () => void;
 }
 
 /**
@@ -205,8 +225,10 @@ export function PreviewPanel({
   summary,
   palette,
   terrainsInUse,
+  onHideNote,
+  onRestoreNotes,
 }: PreviewPanelProps) {
-  const { drawerNotes, failureCount, attempted } = summary;
+  const { drawerNotes, hiddenCount, failureCount, attempted } = summary;
 
   if (section === "help") {
     return (
@@ -223,8 +245,34 @@ export function PreviewPanel({
           <li key={note.key} className={styles.note}>
             <span className={styles.stage}>{note.stage}</span>
             {renderProse(note.text)}
+            {note.snippet !== undefined && (
+              <span className={styles.snippet}> {note.snippet}</span>
+            )}
+            {onHideNote && (
+              <HelpTip id="preview.noteHide">
+                <button
+                  type="button"
+                  className={styles.hideButton}
+                  onClick={() => onHideNote(noteId(note))}
+                >
+                  Hide
+                </button>
+              </HelpTip>
+            )}
           </li>
         ))}
+        {hiddenCount > 0 && onRestoreNotes && (
+          <li className={styles.note}>
+            {hiddenCount} hidden.{" "}
+            <button
+              type="button"
+              className={styles.hideButton}
+              onClick={onRestoreNotes}
+            >
+              Show
+            </button>
+          </li>
+        )}
         {result.reports
           .flatMap((report) => report.failures)
           .map((failure, index) => (

@@ -167,10 +167,10 @@ describe("the cleanup note", () => {
     );
   });
 
-  // The land stage cleans against GRASS and leaves the strip alone. The beach
-  // before <TERRAIN_GENERATION> turns it into BEACH, and the cleanup against
-  // WATER at the end of the terrain stage takes it. No land held it, so
-  // nothing is erased.
+  // The land stage cleans against GRASS and leaves the strip alone. The
+  // cleanup against WATER at the end of the terrain stage takes it while it
+  // is still GRASS, since no beach exists before then (rev 11, gt1). No land
+  // held it, so nothing is erased.
   it("counts the end of the terrain stage, base terrain included", () => {
     const source = ["<LAND_GENERATION>", "base_terrain GRASS", ...WATER_STAMPS];
     const result = run(source.join("\n"), "Tiny");
@@ -178,7 +178,7 @@ describe("the cleanup note", () => {
     const note = cleanupNote(result);
     expect(note?.stage).toBe("S4");
     expect(note?.text).toBe(
-      "Cleanup turned 5 tiles into WATER (BEACH 5) because each sat between WATER tiles. " +
+      "Cleanup turned 5 tiles into WATER (GRASS 5) because each sat between WATER tiles. " +
         ALWAYS,
     );
   });
@@ -190,7 +190,7 @@ describe("the cleanup note", () => {
     );
     expect(note?.stage).toBe("S1");
     expect(note?.text).toBe(
-      "Cleanup turned 1 tile into GRASS (BEACH 1) and 5 into WATER (BEACH 5) because each sat between tiles of the terrain it became, erasing the land on line 3. " +
+      "Cleanup turned 1 tile into GRASS (BEACH 1) and 5 into WATER (GRASS 5) because each sat between tiles of the terrain it became, erasing the land on line 3. " +
         ALWAYS,
     );
   });
@@ -202,7 +202,7 @@ describe("the cleanup note", () => {
     );
     expect(note?.stage).toBe("S4");
     expect(note?.text).toBe(
-      "Cleanup turned 5 tiles into WATER (BEACH 5) because each sat between WATER tiles. " +
+      "Cleanup turned 5 tiles into WATER (GRASS 5) because each sat between WATER tiles. " +
         ALWAYS,
     );
   });

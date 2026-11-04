@@ -24,7 +24,13 @@
 
 
 <OBJECTS_GENERATION>
-
+  create_object VILLAGER
+  {
+    number_of_objects 1
+    set_place_for_every_player
+    min_distance_to_players 3
+    max_distance_to_players 3
+  }
 
 <CONNECTION_GENERATION>
 
@@ -94,13 +100,37 @@ PREDICTIONS
 
 GENERATE AT TINY (120), 8 PLAYERS, 4 TEAMS OF 2. THREE RUNS.
 
+REVISION 2026-10-28, AFTER THE FIRST RUN
+The first run read the lands as GRASS2 patches and learned nothing: at
+base_size 20 each land is a square about 41 tiles wide, so eight of them on
+a ring of radius 48 merge into one blob whatever the packing does. A smaller
+base_size cannot fix it, because the overflow itself needs a large one.
+Preview-design Sec.6.1 item 5 puts consecutive teammates 2*base + 5 apart
+along the perimeter and a pair's span at 4*base + 5, against a slot of
+floor(P/4) with P = trunc(48 * 2 * pi) = 301, so a slot is 75. Overflow
+therefore starts at base_size 18, and by then the squares are 37 wide.
+So the lands are left to merge and the ORIGINS are read instead. The
+OBJECTS section places one VILLAGER 3 tiles from every player's start (the
+form RMSTEST p4o in the DE study used), which marks each origin and names
+its player whatever the terrain does. A STONE at 1 to 3 tiles was tried first
+and the editor placed none.
+
+PREDICTIONS, NOW IN TERMS OF THE VILLAGERS (angle taken from the map centre,
+perimeter position = angle / 360 * 301)
+  NO CLAMP, NO EXPANSION (the Sec.6.1 model as written) -> every stone at
+    radius 48 +/- 3; teammates 45 apart on the perimeter; the nearest members
+    of neighbouring teams 30 apart.
+  CLAMP -> teammates closer than 45 and the gaps between teams correspondingly
+    wider or even, up to 37.6 for even spacing.
+  EXPAND -> stones at a radius well above 48.
+  Stones that coincide or sit within a few tiles of each other -> a true
+  collision of origins.
+
 READ WITH
-  python probe_scenario.py "<scenario>" --patches GRASS2
-  python probe_scenario.py "<scenario>" --bbox GRASS2
-  Count patches first (8 vs fewer settles OVERLAP outright). For each
-  patch, read its centroid, compute its distance from the map's true
-  centre (60, 60 on a 120-tile map) against the declared 48-tile radius,
-  and compute pairwise centroid distances within each declared team
-  against RMSTEST_36's ~3.5-4x base_size benchmark (70-80 tiles here).
+  python probe_scenario.py "<scenario>" --clusters VILLAGER
+  or dump every VILLAGER's owner, x and y and convert to radius and angle
+  about (60, 60). Pair them into teams by the declared lobby (1-2, 3-4,
+  5-6, 7-8) and compare the within-team and between-team perimeter gaps
+  with 45 and 30.
 ================================================================================
 */

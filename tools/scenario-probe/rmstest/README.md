@@ -12,9 +12,8 @@ diagnostic counts that every corpus measurement is compared against.
 
 `RMSTEST_1` through `RMSTEST_19` are the engine-verification programme that
 produced rev 6, and their headers carry the read-off tables from those runs.
-`RMSTEST_20` onward are the calibration batches below. **Batches 1 through 9 have
-all been run. Batch 10 was written, generated and read on 2026-08-11** — see its
-results table; five of its scripts (`52`–`56`) are still to generate. Each batch
+`RMSTEST_20` onward are the calibration batches below. **Batches 1 through 20 have
+all been run** (Batch 18 on 2026-10-28, Batch 20 on 2026-11-02). Each batch
 heading carries its own status and that is the one to trust: this line went stale
 for months while results from those very batches were being cited in the specs,
 which is worth one glance before believing any "not yet run" anywhere in the repo.
@@ -50,7 +49,9 @@ diagnose it pits two CLAUDE.md hard rules against each other.
 `random_map.def`, so the marker IDs live in the engine's internal token table.
 The `*/` ID is unknown, so the words that would _close_ a comment early are
 unenumerated — less destructive, since the file still runs, but noisier. That is
-the only part of this that still wants the Equivalencies sheet.
+the only part of this that still wants the Equivalencies sheet. Batch 20
+closed it. `*/` is 70, and `HOUSE`, `ATTR_ATTACK_GRAPHIC` and `CITY_OF_LAKES`
+close a comment (RMSTEST_82a to 82c, 83).
 
 ### The house rule
 
@@ -793,8 +794,10 @@ observed discrepancy turns out not to be explained by RMSTEST_66's read,
 the other two attributes above are where to look next, but re-read what is
 already measured before writing a new script for either.
 
-**Not blocking, not run.** Written together because a session was already in
-this file; none of them requires the others; run in any order.
+**Not blocking, not run, as written on 2026-08-30. Superseded:** the script
+this block describes is `RMSTEST_65_forestmix_and_density`, which ran on
+2026-09-02 and has its result under Batch 14 above. The text below is the
+reasoning from before that run, kept as written.
 
 **Why it is not urgent, in two measurements.** The dat's `terrain_unit_id` /
 `terrain_unit_density` table (read 2026-08-29) answers item (c) outright for
@@ -860,9 +863,65 @@ Batch 15's `RMSTEST_66` reading of the growth-time half of this attribute was wr
 
 **What changed in the app.** `lands.ts`'s `violatesZoneAvoidance` (deleted 2026-09-02) is restored and wired back into `acceptCandidate`; `lands.test.ts`'s matching test is rewritten to assert the correct (avoidance-holds) outcome, plus two new tests for the same-zone exemption and the smaller-of-two-values rule. `docs/known-issues.md` BUG-016 and `docs/preview-design.md` Sec.6.1 are both corrected in place (struck-through claims replaced, not deleted, per this file's own convention). Full corpus (`npm test`, 111/111 files, 2757 tests) green — no tracked corpus map's pinned figures moved. `npm run typecheck` clean.
 
-## Batch 18 (written 2026-09-21, NOT YET RUN) — connection-endpoint consequences, a terrain_size default check, Venn's combined spacing attributes, and two grouped_by_team gaps
+## Batch 18 (written 2026-09-21, RUN 2026-10-28, results below) — connection-endpoint consequences, a terrain_size default check, Venn's combined spacing attributes, and two grouped_by_team gaps
 
-Eight scripts, none generated yet. Three separate open questions, none of
+### Results (run 2026-10-28, 23 maps, seeds 1000 to 1002)
+
+Generated in the scenario editor at typed seeds, one map per seed, saved as `RMSTEST_<script>_<seed>_<lobby>`.
+Normal size with two players and no teams for 75a to 78 (`n2`), Normal with 8 players in teams 1111 2222 for 80
+(`n8t11112222`), Tiny with 8 players in four pairs for 79 (`n8t11223344`). Team Positions ticked throughout. 76 ran at
+two seeds as its sheet asked. Read from the saved terrain with the probe's patch and bbox logic, using
+AoE2ScenarioParser 0.9.8 because scenario version 1.59 is not readable by 0.8.3.
+
+| Script   | Reading                                                                                                                                                                                                                                             | Verdict                                                                                           |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 75a      | One road of 366 tiles joins A and C at every seed (x 39 to 41, y 39 to 160). No ROAD tile comes within 105 tiles of B's DIRT.                                                                                                                       | Blocked. Nothing reaches B from either side.                                                      |
+| 75b      | One connected road of 1329 tiles touches all three lands, 73 to 92 ROAD tiles within 3 of DIRT, at every seed.                                                                                                                                      | Control holds. The geometry can produce roads to B.                                               |
+| 76       | The road reaches the origin tile itself (the origin terrain reads ROAD), the ROAD band spans x 55 to 164 and y 95 to 105, and 97 ROAD tiles sit within 5.5 of the origin. GRASS3 comes out at 557 and 462 tiles against 600 requested.              | Intrudes. The terrain_size disc is painted over the land right up to its origin.                  |
+| 77a, 77b | Identical tile for tile at all three seeds (0 differing tiles). One patch of 377 and one of 370 tiles at seeds 1001 and 1002, and 368 plus a 2-tile piece at seed 1000, in both arms.                                                               | The undeclared default equals radius 1, variance 0. RMSTEST_70's fragmentation did not reproduce. |
+| 78       | DESERT keeps a Chebyshev distance of 3 from DIRT2 and 11 from SNOW at all three seeds. DIRT2 and SNOW, which had no spacing rule, touch at distance 1.                                                                                              | Both rules enforced independently. A spacing of n leaves n empty tiles, so distance n plus 1.     |
+| 79       | First run, read as terrain: GRASS2 covers 12162 to 12934 of 14400 tiles as one patch. Rerun 2026-10-28 (79 r4), read from player start units: teammates 41 to 51 apart on the 301-tile ring, neighbouring teams 29 to 32 apart, at all three seeds. | No clamp, no expansion. The Sec.6.1 packing holds past overflow. See below.                       |
+| 80       | GRASS2 gives 8 patches of 72 to 98 tiles in two clusters of four about 180 degrees apart, at radius 49 to 51. DIRT2 gives a single patch of 39 to 51 tiles at about (150, 100) at every seed, radius 50, angle 0.                                   | The guide's bug reproduces. See below.                                                            |
+
+**75a.** The layout cannot separate "blocked both ways" from "blocked when arriving only". B's whole body is DIRT, so a
+road leaving B has no passable first step either way. Round CO's cn5a and cn5b already found the arriving-only rule
+with a different layout, and 75a is consistent with it.
+
+**76.** A path that ends at the origin paints a full disc of radius 5 around it. Nothing clips the disc at the land's
+edge, as BUG-029's second consequence expected.
+
+**79, first run, read nothing.** `base_size 20` makes each land a square at least 41 tiles wide, and on a Tiny map
+eight of them on a ring of radius 48 merge into one blob whatever the team grouping does. A smaller `base_size`
+cannot fix it, because overflow itself needs a large one: Sec.6.1 item 5 puts a pair's span at `4 * base + 5` against
+a slot of `floor(301 / 4) = 75`, so overflow starts at base 18, where the squares are already 37 wide.
+
+**79, rerun.** The script now places one VILLAGER 3 tiles from each player's start, and the origins are read from the
+player-owned units (every player has three, so an origin is read to within about 3 tiles). Perimeter positions on the
+301-tile ring, taken from the unclamped axis and a radius of 48, come out at 41 to 51 between teammates (the model
+says 45) and 29 to 32 between the nearest members of neighbouring teams (the model says 30), at seeds 1000, 1001 and 1002. The spacing is not compressed to fit and the ring is not enlarged, so the packing runs on past a full ring
+without any clamp. Two things the sheet's predictions did not cover came out of it. A STONE at 1 to 3 tiles was
+tried first and the editor placed none; a VILLAGER at exactly 3 works, the form the DE study's `p4o` probe used.
+Every player unit lies between x and y 17.5 and 101.5, so origins are held to `[base, dim - base]` = `[20, 100]` here
+even though Sec.6.1 item 7 applies that clamp only when the variance is above 0, with the ring at 48 reaching
+107 in x at some angles. That is a possible correction to item 7, and a second map at a smaller `base_size` would
+settle whether the clamp is `base` or something else.
+
+**80.** The first command behaves as RMSTEST_36 found. The second command does not give each player a land on its own
+ring. All eight DIRT2 lands land in one spot, the same at every seed, at radius about 50, which is the last command's
+25 percent of 200 and also the radius of the GRASS2 ring, and they overwrite one another. The total is 39 to 51 DIRT2 tiles where 160 were asked for. Of the
+candidates in the header this is closest to (a), with two differences. The lands collapse to one point and not onto
+each player's own first land, and that point is fixed at angle 0 on the first ring. At seed 1000 it sits on top of
+one GRASS2 patch, which reads 45 tiles against the usual 72 to 75. Sec.6.1's "also emulate" instruction now has a
+shape to emulate.
+
+**Ring radius, resolved.** The measured ring radius of about 50 at size 200 is not an anomaly. Sec.6.1 item 7 takes
+`circle_radius` from the last `create_player_lands`, and 80's last command says 25, which is 50 on a map of 200. Both
+lands therefore share one ring, and 80's GRASS2 lands sit at the radius its second command declared. The first
+command's 40 is not used. Maps were saved in the editor's scenario folder, and the probe
+scripts were run from lowercase copies named `rt75a_...` to `rt80_...` in the game's `random-map-scripts` folder,
+because the editor's script list is sorted so that only lowercase names are reachable by the automation.
+
+As written on 2026-09-21, before the run. Eight scripts, none generated. Three separate open questions, none of
 which needs new tooling — every read is `--patches`/`--bbox` on the existing
 probe. **Ready to run in any DE install with this repo's `rmstest/` copied
 into `random-map-scripts/`.**
@@ -948,6 +1007,44 @@ constants.inc. Raising its `create_terrain BOGLAND` from 4% to 100% painted
 Grass, Flowers 2, so `random_map.def`'s 123 beats the include's 101.
 First-definition-wins holds across an included file, RMS0316 stands as built,
 and DE's Murkwood paints flowery grass where it means bog.
+
+## Batch 20 (written 2026-11-02, RUN 2026-11-02) — words whose engine number is a comment marker or a control word
+
+From `docs/token-alias-design.md` Sec.6. The RMS Equivalencies sheet gives `*/` the number 70, the number of the object `HOUSE`, and gives the control words 3 to 9. These runs ask whether DE reads such words as those tokens in the two places nothing has measured yet. Every header sits at the bottom of its script and names no word with such a number.
+
+| Script                                                     | Asks                                                                                  | Generate at                | Prediction if it acts                                              | Otherwise                                    |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------ | -------------------------------------------- |
+| `RMSTEST_82a_commentclose_value70`                         | Does a word valued 70 end a live comment?                                             | Tiny, 2 players, seed 1000 | SNOW                                                               | GRASS                                        |
+| `RMSTEST_82b_commentclose_control`                         | Control, an object word with another number                                           | Tiny, 2 players, seed 1000 | GRASS                                                              | GRASS                                        |
+| `RMSTEST_82c_commentclose_literal`                         | Control, the literal number 70                                                        | Tiny, 2 players, seed 1000 | GRASS                                                              | GRASS                                        |
+| `RMSTEST_83`, `test-maps/Chaotic_Straitv0.99.rms` as it is | Does that map's nested comment end at the two value-70 words on lines 560 and 561?    | Tiny, 2 players, seed 1000 | Town centres (from line 567), and a house per player from line 562 | No town centres, nothing from below line 547 |
+| `RMSTEST_84a_deadcomment_value6`                           | In a dead branch, does a comment word valued 6 (the close of a conditional) close it? | Tiny, 2 players, seed 1000 | SNOW                                                               | GRASS                                        |
+| `RMSTEST_84b_deadcomment_control`                          | Control, an ordinary lowercase word                                                   | Tiny, 2 players, seed 1000 | GRASS                                                              | GRASS                                        |
+
+Read each map with `probe_scenario.py`'s default histograms. For 82 and 84, the SNOW tile count. For 83, the TOWN_CENTER and HOUSE object counts. 82a means something only if 82b and 82c are GRASS, and 84a only if 84b is.
+
+Already settled without a run, so not in this batch. Words valued as control words in dead CODE do nothing in DE (597 of them sit in dead text in maps the preview matches tile for tile, `docs/token-alias-design.md` Sec.3.2).
+
+An automated session saves these maps with the editor harness. Its run sheet is kept beside the harness outside this repo, since both carry paths from the maintainer's machine.
+
+**Results.** Saved 2026-11-02 by the editor harness (Tiny, 2 players, seed 1000, `RMSTEST_<id>_1000_n2`, every script label crop checked by eye), read 2026-11-03 with `probe_scenario.py`.
+
+| Map | Reading                               | Prediction it matches                  |
+| --- | ------------------------------------- | -------------------------------------- |
+| 82a | SNOW 14400 of 14400 tiles, no objects | SNOW, so a word valued 70 acts         |
+| 82b | GRASS 14400, SNOW 0                   | GRASS (control holds)                  |
+| 82c | GRASS 14400, SNOW 0                   | GRASS (control holds)                  |
+| 83  | TOWN_CENTER 2, HOUSE 0                | Town centres, so the comment ended     |
+| 84a | GRASS 14400, SNOW 0                   | GRASS, so a word valued 6 does not act |
+| 84b | GRASS 14400, SNOW 0                   | GRASS (control holds)                  |
+
+**82.** The "acts" prediction held. A live comment ended at `HOUSE` (70), and not at `TOWN_CENTER` or at the literal `70`, so the engine reads a word by its value and a literal number does not count, the same shape as the 69 runs. Both controls were GRASS, so the SNOW is the word's doing.
+
+**83.** The "acts" prediction held on the part that separates the two readings. Chaotic Strait places one town centre per player, which it could not do if its nested comment ran on past line 547 to the end of the script, so the rest of the script generates and BUG-012's recorded loss of lines 547 to 1109 is wrong. The map's own lines show where it ended, at the value-70 words on lines 560 and 561, which the run does not separate from a close at 563. The sub-prediction of a house per player from line 562 did not show, with no HOUSE in the object histogram. That count cannot tell the readings apart, since lines 559 to 562 place into actor area 2000 and nothing in the script creates it (line 528 only places into it), so a live line 562 would place nothing either way. 82a and 83 agree, so slice B's stop condition is not met.
+
+**84.** The "otherwise" prediction held. A comment word valued 6 (`DIRT`) in a dead branch does not close it, and the control agrees, so slice C's premise (a comment inside dead code ending early on such a word) is not supported and slice C is not built.
+
+Side notes. The four GRASS maps each carry 890 objects of id 1358 and the SNOW map has none, so those are probably terrain auto-spawn on grass, not checked. 82a's first save failed (file not written) and the retry saved it, which is why its log line is the second for that map.
 
 ## Batch 7's scripts — RECOVERED 2026-08-12
 

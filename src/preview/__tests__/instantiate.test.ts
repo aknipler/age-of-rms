@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../parser/parser";
+import { commentOpenAliases } from "../../parser/validate";
 import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
@@ -372,9 +373,7 @@ describe("Sec.3 rule 5: rnd(a,b) (rev 9, measured)", () => {
     }
   });
 
-  it("draws every rnd() inside a start_random block, taken or not, before the block's roll", () => {
-    // p5a-rnd's order, which matched DE at two seeds: the branch rnd() calls,
-    // then the roll, then whatever follows the block.
+  it("draws every rnd() of a start_random block, taken or not, and the block's three draws come before what follows it", () => {
     const source =
       "start_random\npercent_chance 50 #const U1 rnd(1,3)\npercent_chance 50 #const U2 rnd(1,3)\nend_random\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
     for (const seed of [1000, 1001]) {
@@ -384,6 +383,39 @@ describe("Sec.3 rule 5: rnd(a,b) (rev 9, measured)", () => {
       stream.raw();
       expect(sizeOf(source, seed)).toBe(100 + stream.bounded(101));
     }
+  });
+
+  it("rolls a start_random block before reading anything inside it (rev 11, round CG's c3)", () => {
+    // Rev 9 drew the branches' rnd() first and the roll last. With one
+    // branch of weight 100 the roll decides nothing, so the constant shows
+    // which draw it took: the second one, after the roll.
+    const source =
+      "start_random\npercent_chance 100 #const U rnd(100,400)\nend_random\n<PLAYER_SETUP>\noverride_map_size U\n";
+    for (const seed of [1000, 1001]) {
+      const stream = createDeStream(seed);
+      stream.raw();
+      expect(sizeOf(source, seed)).toBe(100 + stream.bounded(301));
+    }
+  });
+
+  it("does not roll a start_random block inside a dead branch, though its rnd() still draws (c5)", () => {
+    const source =
+      "if NOT_A_REAL_LABEL\nstart_random\npercent_chance 100 #const A rnd(1,3)\nend_random\nendif\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
+    const stream = createDeStream(5);
+    stream.raw();
+    expect(sizeOf(source, 5)).toBe(100 + stream.bounded(101));
+  });
+
+  it("reads a constant's name as a bound as 0 and still spends the draw (rev 11, CJ n1)", () => {
+    // rnd(-N,N) is rnd(0,0), always 0, one draw.
+    const value =
+      "#const N 50\n#const A rnd(-N,N)\n<PLAYER_SETUP>\noverride_map_size (A + 100)\n";
+    expect(sizeOf(value, 5)).toBe(100);
+    const drawn =
+      "#const N 50\n#const A rnd(-N,N)\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
+    const stream = createDeStream(5);
+    stream.raw();
+    expect(sizeOf(drawn, 5)).toBe(100 + stream.bounded(101));
   });
 
   it("draws an rnd() in an if branch that is not taken, where it is written (Sec.15 item 49, untested in DE)", () => {
@@ -755,4 +787,98 @@ describe("corpus: instantiateScript never throws", () => {
       }
     });
   }
+});
+
+describe("whole-script rules (rev 11, de-findings-cg-cj.md Section 2)", () => {
+  it("takes a bare elseif, followed by something that cannot be a label, as else (Rage Forest)", () => {
+    const source =
+      "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\noverride_map_size 100\nelseif\n#const X 1\noverride_map_size 150\nendif\n";
+    expect(run(source).dim).toBe(150);
+  });
+
+  it("counts commands before the first section header as <PLAYER_SETUP> (Caverns, Heart)", () => {
+    expect(run("override_map_size 150\n<LAND_GENERATION>\n").dim).toBe(150);
+  });
+
+  it("follows a conditional that spans section headers, through the token filter (Rage Forest)", () => {
+    const source =
+      "if TINY_MAP\n<PLAYER_SETUP>\noverride_map_size 100\nelse\n<PLAYER_SETUP>\noverride_map_size 200\nendif\n";
+    expect(run(source, 1, { mapSize: "Tiny" }).dim).toBe(100);
+    expect(run(source, 1, { mapSize: "Normal" }).dim).toBe(200);
+  });
+
+  it("keeps the draws in order through the token filter", () => {
+    // The same draws as the plain walk: one rnd() in a dead branch, then the
+    // live one.
+    const source =
+      "if TINY_MAP\n<PLAYER_SETUP>\n#const A rnd(1,3)\nelse\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\nendif\n";
+    const stream = createDeStream(9);
+    stream.raw();
+    expect(run(source, 9, { mapSize: "Normal" }).dim).toBe(
+      100 + stream.bounded(101),
+    );
+  });
+
+  it("defines the scenario editor's labels for a map made there, and a game lobby's otherwise (c7)", () => {
+    const source =
+      "<PLAYER_SETUP>\nif RANDOM_MAP\noverride_map_size 100\nelseif FIXED_POSITIONS\noverride_map_size 150\nendif\n";
+    const editor = instantiateScript(
+      parseRms(source, lang),
+      refDb,
+      { ...settings(), lobby: "scenarioEditor" },
+      1,
+    );
+    expect(editor.dim).toBe(150);
+    expect(run(source).dim).toBe(100);
+  });
+});
+
+// docs/token-alias-design.md Sec.5, B2. A word valued 69 inside a comment opens
+// a nested one in the engine, so `/* SHORE_FISH */` runs to the end of the file.
+// The parser worker's parse models that through `commentOpenAliases`, and the
+// token filter then hands `instantiateScript` text to parse a second time.
+describe("comment aliases survive the token filter's second parse (token-alias B2)", () => {
+  const gameConstants = JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as { constants: Parameters<typeof commentOpenAliases>[0] };
+  const aliases = commentOpenAliases(gameConstants.constants);
+  // The order is the point. The conditional spans a section header, so the
+  // input parse holds an RMS0110 region and `instantiateScript` runs the filter.
+  // The comment sits BELOW it. Put it above and the filter never reads it as
+  // anything but the leading text, and this test proves nothing.
+  const source = [
+    "if REGICIDE <PLAYER_SETUP> endif",
+    "<LAND_GENERATION>",
+    "/* SHORE_FISH */",
+    "create_land { land_percent 10 }",
+    "",
+  ].join("\n");
+  const firstParse = parseRms(source, lang, { commentOpenAliases: aliases });
+
+  it("starts from a parse that hides the land, which is the premise", () => {
+    expect(aliases.has("SHORE_FISH")).toBe(true);
+    expect(firstParse.diagnostics.map((d) => d.code)).toContain("RMS0110");
+    const land = firstParse.script.sections.flatMap((s) => s.items);
+    expect(land).toHaveLength(0);
+  });
+
+  it("keeps the land hidden when it is given the options the first parse used", () => {
+    const result = instantiateScript(
+      firstParse,
+      refDb,
+      settings(),
+      1,
+      undefined,
+      { commentOpenAliases: aliases },
+    );
+    expect(commandNames(result)).not.toContain("create_land");
+  });
+
+  it("draws the land without them, which is the defect", () => {
+    const result = instantiateScript(firstParse, refDb, settings(), 1);
+    expect(commandNames(result)).toContain("create_land");
+  });
 });

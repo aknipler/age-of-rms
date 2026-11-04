@@ -1,0 +1,17 @@
+#const T_C62 62
+#const T_40 40
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 5 }
+create_land { terrain_type T_C62 land_position 50 50 number_of_tiles 0 base_size 14 }
+<CONNECTION_GENERATION>
+create_connect_all_players_land {
+  replace_terrain T_C62 T_40
+  replace_terrain GRASS DESERT
+  terrain_cost T_C62 1
+  terrain_cost GRASS 6
+  terrain_cost DIRT 1
+  terrain_size T_C62 1 0
+}

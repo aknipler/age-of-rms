@@ -70,9 +70,15 @@ export type HeaderField = (typeof HEADER_FIELDS)[number];
  */
 export const HEADER_SIGNATURE = "AoRMS";
 
+// The `author` key keeps its name while the label reads "Created by". The
+// label sits beside an "Edited by" row once community maps exist
+// (docs/community-maps-design.md Sec.6.7), where "Author" would not say
+// which of the two roles it means. Headers stamped before the rename still
+// say "Author", which costs nothing: ownership is tracked per session from
+// the rows this module wrote, and an opened file is never refreshed.
 const LABELS: Record<HeaderField, string> = {
   file: "File",
-  author: "Author",
+  author: "Created by",
   created: "Created",
   modified: "Last modified",
   builtWith: `${HEADER_SIGNATURE} version`,
@@ -150,7 +156,7 @@ export interface HeaderEdit {
  * ownership: a row is matched as a whole line, so a value containing a line
  * break could never be found again. A literal comment-close marker typed into
  * the author field would end the comment early, leaving the rest of the
- * header as live script, the engine would then try to run "Author" as a
+ * header as live script, the engine would then try to run "Created" as a
  * command. Windows file names cannot contain either, but the author name is
  * free text.
  */

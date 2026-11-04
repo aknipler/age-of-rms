@@ -1,0 +1,13 @@
+<PLAYER_SETUP>
+random_placement
+effect_amount SET_ATTRIBUTE HOUSE ATTR_HITPOINTS 0
+<LAND_GENERATION>
+effect_amount GAIA_SET_ATTRIBUTE JUNGLETREE ATTR_TERRAIN_ID 3
+base_terrain GRASS
+create_land { terrain_type JUNGLE land_position 25 30 number_of_tiles 0 base_size 9 }
+create_land { terrain_type LUSH_BAMBOO_FOREST land_position 75 30 number_of_tiles 0 base_size 9 }
+create_land { terrain_type DLC_RAINFOREST land_position 25 75 number_of_tiles 0 base_size 9 }
+create_land { terrain_type DESERT land_position 75 75 number_of_tiles 0 base_size 9 }
+<OBJECTS_GENERATION>
+effect_amount GAIA_SET_ATTRIBUTE LUSH_BAMBOO_TREE ATTR_TERRAIN_ID 3
+create_object HOUSE { set_gaia_object_only number_of_groups 3 terrain_to_place_on DESERT }

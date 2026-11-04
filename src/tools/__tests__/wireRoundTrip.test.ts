@@ -116,6 +116,15 @@ describe("(a) an AST containing inf/-inf and an infinite rnd bound", () => {
     });
   }
 
+  it("leaves the parse's includeIndex off the wire", () => {
+    // The worker attaches the include index to the parse for the name lookup.
+    // The encoder copies named fields only, so it must not reach a tool.
+    const parsed = parseRms(SOURCE, lang);
+    parsed.includeIndex = { installFound: true, names: new Map(), missing: [] };
+    const encoded = encodeParseResultForWire(parsed);
+    expect("includeIndex" in encoded).toBe(false);
+  });
+
   it("encodes inf/-inf as the sentinel and strips def, both surviving a real JSON round trip", () => {
     const parsed = parseRms(SOURCE, lang);
     const encoded = encodeParseResultForWire(parsed);

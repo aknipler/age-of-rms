@@ -222,6 +222,33 @@ describe("RmsSuggestInput", () => {
     expect(screen.getByTestId("state").textContent).toBe("GRASS");
   });
 
+  it("tells the caller a row was picked, by mouse and by key", () => {
+    const onAccept = vi.fn((el: HTMLInputElement) => el.value);
+    render(
+      <HelpSettingsProvider>
+        <RmsSuggestInput
+          rowsFor={rowsFor}
+          data-testid="field"
+          defaultValue=""
+          onAccept={onAccept}
+        />
+      </HelpSettingsProvider>,
+    );
+    const el = screen.getByTestId("field") as HTMLInputElement;
+    type(el, "GRA");
+    act(() => {
+      fireEvent.mouseDown(screen.getAllByRole("option")[1]);
+    });
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    expect(onAccept).toHaveReturnedWith("GRASS2");
+    type(el, "GRA");
+    act(() => {
+      fireEvent.keyDown(el, { key: "Tab" });
+      fireEvent.keyDown(el, { key: "Enter" });
+    });
+    expect(onAccept).toHaveBeenCalledTimes(2);
+  });
+
   it("is a plain input when it has no rows to offer", () => {
     const el = setup({ rows: null });
     expect(el.getAttribute("aria-autocomplete")).toBeNull();

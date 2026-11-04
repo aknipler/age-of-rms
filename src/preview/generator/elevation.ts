@@ -72,8 +72,11 @@ const WEIGHT_CAP = 101;
  * `prev` holds the entry before, `-1` for none, or `-2 - q` when the entry
  * is first in list `q`. That last encoding is what lets a stale entry find
  * the list it once headed, which is the quirk this stage depends on.
+ *
+ * Exported for the terrain stage, which uses the same lists with the same
+ * insert rule but starts every pass with fresh ones (`reset`).
  */
-class TileLists {
+export class TileLists {
   readonly head: Int32Array;
   readonly prev: Int32Array;
   readonly next: Int32Array;
@@ -84,6 +87,13 @@ class TileLists {
     this.prev = new Int32Array(tileCount).fill(-1);
     this.next = new Int32Array(tileCount).fill(-1);
     this.cost = new Int32Array(tileCount);
+  }
+
+  /** Every list empty and every link cleared, for a stage whose passes share no state. */
+  reset(): void {
+    this.head.fill(-1);
+    this.prev.fill(-1);
+    this.next.fill(-1);
   }
 
   /** Forget the first entry and touch nothing else, the main list's emptying. */
@@ -301,7 +311,6 @@ function buildLayers(
  */
 function buildWeights(origins: readonly LandOrigin[], dim: number): Uint8Array {
   const weight = new Uint8Array(dim * dim);
-  const seen = new Set<number>();
   const span = AVOID_RADIUS * 2 + 1;
   const table = new Int32Array(span * span);
   for (let dy = -AVOID_RADIUS; dy <= AVOID_RADIUS; dy++)
@@ -315,11 +324,10 @@ function buildWeights(origins: readonly LandOrigin[], dim: number): Uint8Array {
   // Summed in a wider array and capped once at the end, as the game sums
   // every origin's share before it caps.
   const sum = new Int32Array(dim * dim);
+  // Every player land counts, two at one origin twice (rev 11, as in the
+  // terrain stage).
   for (const origin of origins) {
     if (origin.player === undefined) continue;
-    const key = origin.y * dim + origin.x;
-    if (seen.has(key)) continue;
-    seen.add(key);
     for (let dy = -AVOID_RADIUS; dy <= AVOID_RADIUS; dy++) {
       const y = origin.y + dy;
       if (y < 0 || y >= dim) continue;

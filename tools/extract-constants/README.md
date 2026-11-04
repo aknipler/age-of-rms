@@ -381,9 +381,9 @@ slot (`P(slot i) = density_i * product of (1 - density_j) for j < i`), and the
 model is an INFERENCE from the measured wood figures rather than something the
 dat states outright — it is exact for six of the seven (every unit in their
 mix is worth the same 100 wood, so any model that reaches full coverage gives
-the same answer) and inferred for the seventh, `SOUTH_AMERICAN_FOREST`, by
-about 8%. See `replicated-whistling-sparkle.md`'s "Still open" item 1 and
-`RMSTEST_65_forestmix_and_density.rms` for the run that would settle it.
+the same answer) and was inferred for the seventh, `SOUTH_AMERICAN_FOREST`, by
+about 8%. `RMSTEST_65_forestmix_and_density.rms` settled it on 2026-09-02: the
+measured slot shares matched this model on two runs (rmstest README, Batch 14).
 
 **A slot is dropped, not written at density 0, for either of two reasons**,
 both measured rather than assumed: the slot's density is literally 0 (a decoy

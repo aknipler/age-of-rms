@@ -56,14 +56,16 @@ The status bar totals are read from the generation on screen, so they show what 
 
 ## How far to trust the preview
 
-The preview runs the script stage by stage, in the order the game does. The land, elevation and cliff stages draw the game's own random numbers in the game's own order. The stages after them are approximations.
+The preview runs the script stage by stage, in the order the game does. Every stage up to the objects draws the game's own random numbers in the game's own order. Only the objects are an approximation.
 
-| Stage                             | Compared with the game                                     |
-| --------------------------------- | ---------------------------------------------------------- |
-| Lands                             | Tile for tile at the same seed                             |
-| Elevation                         | Tile for tile at the same seed                             |
-| Cliffs                            | Tile for tile at the same seed                             |
-| Terrains, connections and objects | Close approximation that will not line up with a real game |
+| Stage       | Compared with the game                                     |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| Lands, Elevation, Cliffs, Terrains, Connections | Tile for tile at the same seed                             | 
+| Objects                                         | Close approximation |
+
+These were checked against maps saved in the game's scenario editor. The editor and a game lobby define a few different labels (the lobby defines `RANDOM_MAP`, for one), and the preview uses the lobby's, so a script that branches on those labels can differ from the editor.
+
+A script that uses `#include_drs` reads those files from your game install, the same folder the game reads them from. If the app cannot find your install, or a file is missing, a note on the map names it.
 
 To compare with a real game, set Generation Settings to that game's map size, players, teams and Team Positions box, then type its seed into the seed chip. The game shows the seed on the Objectives screen.
 
@@ -110,6 +112,6 @@ Use the bug button in the status bar, or [open an issue](https://github.com/akni
 
 ## Known limits
 
-- Terrains, connections and objects in the preview are approximations, see [How far to trust the preview](#how-far-to-trust-the-preview).
-- Files pulled in with `#include_drs` are not read, so the app cannot see constants or commands defined in them. It holds back warnings it cannot be sure of in such a script.
+- Objects in the preview are an approximation, see [How far to trust the preview](#how-far-to-trust-the-preview).
+- The preview reads files pulled in with `#include_drs` from your game install, but the Code tab's warnings do not, so they cannot see constants or commands defined in those files. It holds back warnings it cannot be sure of in such a script.
 - There is no macOS build yet. The README explains how to build one yourself.

@@ -1577,6 +1577,78 @@ The browser pane copy (mocked Tauri) already showed the bulb, the menus, the hov
 
 ---
 
+## 50. Header row Created by, 2026-10-28 (`src/hooks/scriptHeader.ts`)
+
+1. File > New, type a line, save as a new file. Confirm the header's second row reads `Created by` with the name from Settings > General, aligned with the other values.
+2. Save again on the same file. Confirm Last modified still refreshes and Created by is untouched.
+3. Open a script stamped before this change. Confirm its `Author` row is left as it is on save.
+4. Hover the author name field in Settings > General. Confirm the tip names the Created by row.
+
+---
+
+## 51. DE-exact terrain and connections, 2026-11-02 (`src/preview/generator/terrains.ts`, `connections.ts`, `tokenFilter.ts`)
+
+The generator is held to 328 saved DE maps by `deWholeScriptMaps.test.ts`. These checks cover what the tests cannot, the app drawing it and staying responsive.
+
+1. Open `test-maps/Rage Forest 2026.rms` at Tiny, two players. Confirm the preview draws a forest map with two player clearings, not a flat desert (its land sections sit inside a conditional that spans section headers).
+2. Open the Golden Hill tutorial's finished script. Confirm the roads run on diagonals and reach both town centres, and the forest clumps look compact rather than stringy.
+3. Open `AD4 - Ra.rms` and `Comeer v1.5.rms` and confirm both render with no drawer note about unknown terrains, and that Comeer's player islands show GRASS over a SNOW tint (a composite terrain, resolved).
+4. Open a large map with many `create_terrain` passes (`24hr_Caverns.rms` or `AD4 - Pag - v1.2.rms`) at Normal. Time the preview from a keystroke to the redraw and compare it with the same map before this change, since every pass now shuffles the whole map. Note the time here.
+5. Re-roll the seed a few times on a map with connections and confirm each seed redraws without a watchdog note.
+6. Check the drawer's command report on a map with `create_terrain DIRT { land_percent 100 number_of_clumps 9320 }`. Confirm it reports nothing for that pass, and that a pass on a base terrain the map never has reports that it placed nothing.
+
+## 52. Include files from the game install, 2026-11-02 (`src/useIncludeFiles.ts`, `src/preview/generator/includes.ts`)
+
+The generator reads `#include_drs` files the app passes it, and `deWholeScriptMaps.test.ts` holds the 12 Bazi maps to DE with the real files. These checks cover the app finding and reading them.
+
+1. Open `test-maps/24hr_Bazi is God.rms` at Tiny, two players. Confirm the preview first draws, then redraws within a second or two once the include files are read, and that the map shows Bazi's terrain rather than the flat look it had before.
+2. Confirm the notes banner on that map names only the include files the install lacks (`includes/defend_wonder.inc` if its branch is live), and says nothing when every live include was read.
+3. A failure mark is the red ▲ the preview draws where a land could not be placed. Bazi may show none. If it shows one, or a failure line in the Notes box, that comes from an include file (a town centre or villager from `town_centres.inc` or `villagers.inc`), click it and confirm the editor jumps to the `#include_drs` line that brought it in. If Bazi shows neither at any seed, leave this item open.
+4. Type in the script while it is open. Confirm typing stays smooth and the include files are not read again on every keystroke (no repeated disk activity, the preview keeps its usual delay).
+5. Temporarily rename the `gamedata_x2\includes` folder, restart the app and open Bazi again. Confirm the banner says the preview could not read the include files and names them, then rename the folder back.
+6. With Bazi open, run the Consistency Checker at 2 and 4 players. Confirm it finishes, its report does not say the script includes files the preview could not find, and its land and object findings look like Bazi's map rather than an empty one.
+7. Run the Balance Summary on Bazi. Confirm its resource totals are non-zero for every player.
+8. Open the Land Placement panel on Bazi. Confirm a placement whose expression uses one of Bazi's include constants (for example `MAPSIZE_SIDE`) previews where the map size says, not at 0.
+
+## 53. Include names in the Code tab's checks, 2026-11-02 (`src/editor/includeCache.ts`, `src/parser/includeIndex.ts`)
+
+The editor's checks now read the names a script's `#include_drs` files define, and stop turning missing names down to info once the files were read. The tests hold the rules on made-up files and a probe over 243 scripts gave the counts. These checks cover the app reading the files and the squiggles landing.
+
+1. Open `test-maps/24hr_Bazi is God.rms`. Wait a second or two after it opens and confirm no squiggle (hover each yellow or blue one) and no diagnostic reached from the status bar's counts says "It may come from an include file". There is no separate Problems list.
+2. In the same script, misspell the first use of `MAPSCALE_AREA` in a condition or a number slot by one letter. Confirm a yellow warning appears on the misspelled name, its message ends with `Did you mean "MAPSCALE_AREA"?`, and the bulb offers `Change to MAPSCALE_AREA` (a name in a number slot got no suggestion before 2026-11-04), then undo.
+3. Open DE's `Stranded.rms` from the install. Confirm warnings on `FOREST_IDENTIFICATION` (1,887 of them, one per use) saying the name is not defined, with no include sentence.
+4. Type a new `#include_drs includes/scaling.inc` line near the top of a script that has none. Confirm any missing-name diagnostics show as info for a moment and settle to normal severity once the file is read, with no keystroke needed.
+5. In a script that uses a name only an include file would define (a name that is otherwise undefined, such as a constant from `scaling.inc` with no `#const` in the script), add the line `#include_drs includes/nothing_here.inc`, a file that does not exist. Before that line the undefined name shows as info, since it may come from an include nobody read. Confirm that with the line present the name's diagnostic stays a warning, not info, because the game reads a missing include as empty and the name stays undefined. Remove the line afterwards.
+6. Rename the install's `gamedata_x2\includes` folder, restart the app and open Bazi. Confirm the info lines with "It may come from an include file" come back, then rename the folder back.
+7. With Bazi open, type for a few seconds. Confirm typing stays smooth and the diagnostics keep their usual delay (the files are parsed once in the worker, not on each keystroke).
+
+## 54. Include resolution, the two quieting rules, 2026-11-03 (`src/parser/parser.ts`, `src/parser/validate.ts`)
+
+Two rules keep false warnings quiet now that the include files are read. `npm run measure:includes` pins every warning left on 243 scripts, so these checks cover only that the app shows the same.
+
+1. Open DE's `BR_BattleontheIce.rms` from the install's `gamedata_x2` folder. Confirm no warning on `9_PLAYER_GAME` (a numbered family member).
+2. Open `test-maps/Rage Forest 2026.rms`. Confirm no warning on `PREDATOR_A_POLAR_BEAR` (a lettered family member).
+3. Open `test-maps/Pa_Site_v1.1.rms`. Confirm the 30 `*_CAA_*` names still warn (they are defined nowhere).
+4. Open DE's `special_map_yinyang.rms`. Confirm `PH_TROPICALEAST` on line 931 warns with the did-you-mean `PH_TROPHICALEAST`, since the map spells the label one letter differently from the one DE defines.
+
+---
+
+## 55. Run sheet feedback round, 2026-11-04 (`PreviewControls`, `PreviewNotes`, `ToolsPane`, `balanceSummary.ts`, `parser.ts`)
+
+1. Open Bazi and the preview's Notes box. Confirm each S0 "isn't simulated" note now ends with `line N: first words` naming the part of the script, and that the line number matches the editor.
+2. Click Hide on one note. Confirm it disappears, the Notes count drops by one, and a "1 hidden. Show" row appears. Click Show and confirm it returns. Hide a note, open another script, then come back, and confirm the note is still hidden in the first script only.
+3. Run the Generation Consistency Checker, click a finding to jump to Code, then return to Advanced Tools. Confirm the report is still there. Edit the script, return, and confirm the "The script has been edited since this ran" line shows. Run again and confirm it clears.
+4. Run the Balance Summary. Confirm the table starts with Resource then Player, groups each resource's players together, and carries variance columns. A steady figure shows 0 variance.
+5. In a script with an include file, misspell an include-defined constant in a number slot by one letter. Confirm the warning ends with `Did you mean "..."?` and the bulb offers the change.
+6. Type a word at normal speed in `Stranded.rms` with the preview showing. Confirm the editor no longer freezes for a second or more after a parse or a generation lands (it did before 2026-11-04, see `diagnostics-latency-report.md` Sec.10). A short hitch per key is still expected in `tauri dev`. Stop typing and confirm the squiggles and the map update within about two seconds. Then confirm Current view still follows the cursor and truncates the map as before.
+7. With Regenerate on Edit off, edit the script. Confirm the preview does not redraw and a "Stale, click to generate" chip appears beside the map size. Click it and confirm the map redraws and the chip goes. Confirm Re-roll and a changed player count still redraw while the switch is off, and turning the switch back on redraws at once.
+8. In `Stranded.rms`, type one character and undo it with Ctrl+Z straight away. Wait two seconds and confirm the warning count in the status bar is back to what it was and the squiggles sit on the right words.
+9. Open Advanced Tools, pick Land Placement on a script with a `<LAND_GENERATION>` section, and confirm its canvas draws the map. Edit a land there, Apply, and confirm the canvas redraws. Go back to Code, edit the script, return to Land Placement and confirm the canvas catches up with the edit.
+10. In Breakdown, change a value on a card in a big script (Stranded or Vanguard). Confirm the card shows the new value at once with no flash of another card expanded (BUG-001's check).
+11. Open the map side panel's Reference tab, type a search, switch to Preview and back, and confirm the search is still there. Resize and collapse the side panel and confirm both still work.
+
+---
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

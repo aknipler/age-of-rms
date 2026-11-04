@@ -30,8 +30,22 @@ export function extractComments(tokens: readonly Token[]): Span[] {
   const comments: Span[] = [];
   let depth = 0;
   let start = -1;
+  let lastTriviaEnd = -1;
   for (const token of tokens) {
-    if (!token.isTrivia) continue;
+    if (!token.isTrivia) {
+      // Live code inside an open comment means the lexer closed it with a
+      // word valued 70 (`HOUSE`, RMS0112), which stays a plain word token and
+      // so never shows up as a commentClose here. Without this, the comment
+      // counted as unclosed and its span ran to the end of the file, so no gap
+      // between items contained it and the card vanished.
+      if (depth > 0 && start !== -1) {
+        comments.push({ start, end: lastTriviaEnd });
+        depth = 0;
+        start = -1;
+      }
+      continue;
+    }
+    lastTriviaEnd = token.end;
     if (token.kind === "commentOpen") {
       if (depth === 0) start = token.start;
       depth++;

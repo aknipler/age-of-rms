@@ -103,6 +103,16 @@ describe("useParsedDocument after a card action", () => {
     expect(result.current.source).toBe("AB");
   });
 
+  it("applies reparseNow's reply before the new content has reached the hook", () => {
+    const { result } = settledOnA();
+
+    act(() => result.current.reparseNow("B"));
+    // No rerender with "B" yet, which is the race a card action can lose.
+    reply(2, "B");
+
+    expect(result.current.source).toBe("B");
+  });
+
   it("sends text that matches an older request but not the newest one", () => {
     const { rerender } = settledOnA();
 
@@ -113,5 +123,68 @@ describe("useParsedDocument after a card action", () => {
     advance(DEBOUNCE);
 
     expect(fake.posted.map((p) => p.source)).toEqual(["A", "B", "A"]);
+  });
+});
+
+// While the user types, the newest request is usually for text they have
+// already typed past, because the next request waits for the debounce. On a
+// big map unpacking that reply froze the UI thread for about 125 ms
+// (docs/diagnostics-latency-report.md Sec.10), so it is dropped instead.
+describe("useParsedDocument while typing past an in-flight parse", () => {
+  it("drops the reply for older text and parses the newer text", () => {
+    const { result, rerender } = settledOnA();
+
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    rerender({ content: "ABC" });
+    reply(2, "AB");
+
+    expect(result.current.source).toBe("A");
+    advance(DEBOUNCE);
+    expect(fake.posted.map((p) => p.source)).toEqual(["A", "AB", "ABC"]);
+    reply(3, "ABC");
+    expect(result.current.source).toBe("ABC");
+  });
+
+  it("parses again when an undo returns to the text whose reply was dropped", () => {
+    const { result, rerender } = settledOnA();
+
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    rerender({ content: "ABC" });
+    reply(2, "AB");
+    // Undo, back to the text request 2 was for, before the debounce fires.
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+
+    expect(fake.posted.map((p) => p.source)).toEqual(["A", "AB", "AB"]);
+    reply(3, "AB");
+    expect(result.current.source).toBe("AB");
+  });
+
+  it("never reads a big document's tree for text the user has typed past", () => {
+    const { result, rerender } = settledOnA();
+
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    rerender({ content: "ABC" });
+
+    // A big document's reply is a pair, diagnostics then tree. Reading the
+    // tree message's `data` is the expensive unpack, so the getter counts it.
+    let treeReads = 0;
+    act(() => {
+      fake.worker!.onmessage!({
+        data: { kind: "diagnostics", requestId: 2, diagnostics: [] },
+      });
+      fake.worker!.onmessage!({
+        get data() {
+          treeReads++;
+          return { kind: "result", requestId: 2 };
+        },
+      });
+    });
+
+    expect(treeReads).toBe(0);
+    expect(result.current.source).toBe("A");
   });
 });

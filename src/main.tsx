@@ -1,3 +1,6 @@
+// Must stay the first import. It has to run before react-dom is evaluated,
+// see the file's own header.
+import "./devReactTracks";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import * as monaco from "monaco-editor";

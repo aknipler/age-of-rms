@@ -356,9 +356,15 @@ class Pieces {
       for (let side = 0; side < 4; side++) {
         if (side === incoming) continue;
         legs[side] = 0;
-        const nx = fx + LEG_DIRS[side][0];
-        const ny = fy + LEG_DIRS[side][1];
-        if (nx < 0 || ny < 0) continue;
+        // The game finds the neighbour by cell index, so a step off the
+        // right edge lands on the first cell of the next row, and one off
+        // the left edge on the last cell of the row above (wc2 seed 1000,
+        // a piece at (1.5, 103.5) where a bounds check would put none).
+        const key =
+          fy * this.cw + fx + LEG_DIRS[side][0] + LEG_DIRS[side][1] * this.cw;
+        if (key < 0) continue;
+        const nx = key % this.cw;
+        const ny = (key - nx) / this.cw;
         const theirs = this.take(nx, ny);
         if (theirs === undefined) continue;
         theirs[(side + 2) % 4] = 0;

@@ -1,0 +1,39 @@
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<TERRAIN_GENERATION>
+
+if NOT_A_LABEL_84
+  /* note */
+  create_terrain SNOW { base_terrain GRASS land_percent 100 }
+endif
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_84b - control for 84a. The same dead branch, with an ordinary
+lowercase word in the comment that is no game constant.
+Feeds: docs/token-alias-design.md Sec.3.2 and slice C.
+
+The header is at the bottom on purpose and names no constant whose number is
+a comment marker or a control word.
+
+PREDICTION, written 2026-11-02 before the run. GRASS everywhere, under both
+readings. SNOW here would mean the dead branch runs for some other reason,
+and 84a would tell nothing.
+Read: probe_scenario.py, terrain histogram.
+
+Generate at: Tiny, 2 players, seed 1000, scenario editor.
+================================================================================
+*/

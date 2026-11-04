@@ -1,0 +1,37 @@
+#const MAPLE_LEAVES 2030
+#const LEAVES_PB 2029
+#const LEAVES_MA 2031
+#const FERN 1175
+#const UNDERBRUSH 1353
+#const SHRUB_DRY 1363
+#const UNDERBRUSH_RAIN 1355
+#const GRAVES 820
+#const T_A 14
+#const T_B 32
+#const T_C 5
+#const T_D 11
+#const T_E 76
+#const T_F 101
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type T_A land_position 20 25 number_of_tiles 0 base_size 9 }
+create_land { terrain_type T_B land_position 50 25 number_of_tiles 0 base_size 9 }
+create_land { terrain_type T_C land_position 80 25 number_of_tiles 0 base_size 9 }
+create_land { terrain_type T_D land_position 20 70 number_of_tiles 0 base_size 9 }
+create_land { terrain_type T_E land_position 50 70 number_of_tiles 0 base_size 9 }
+create_land { terrain_type T_F land_position 80 70 number_of_tiles 0 base_size 9 }
+<OBJECTS_GENERATION>
+create_object MAPLE_LEAVES { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_A  }
+create_object FERN { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_A set_facet 1 }
+create_object MAPLE_LEAVES { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_B set_facet 0 }
+create_object LEAVES_PB { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_B  }
+create_object MAPLE_LEAVES { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_C set_facet 3 }
+create_object LEAVES_MA { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_C  }
+create_object FERN { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_D  }
+create_object UNDERBRUSH { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_D set_facet 2 }
+create_object SHRUB_DRY { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_E  }
+create_object GRAVES { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_E  }
+create_object UNDERBRUSH_RAIN { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_F set_facet 1 }
+create_object MAPLE_LEAVES { set_gaia_object_only number_of_groups 10 terrain_to_place_on T_F set_loose_grouping number_of_objects 3 group_placement_radius 3 }

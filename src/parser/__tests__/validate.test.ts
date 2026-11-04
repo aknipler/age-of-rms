@@ -9,7 +9,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
+import { buildIncludeIndex } from "../includeIndex";
 import {
+  isFamilySibling,
   validate,
   type GameConstantsForValidate,
   type ValidateReferenceDb,
@@ -89,6 +91,40 @@ describe("RMS0300 — undefined condition labels", () => {
     const found = only(source, "RMS0300");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
+  });
+});
+
+describe("RMS0300 Rule 2, family siblings (include-resolution-design Sec.4.5)", () => {
+  it("isFamilySibling is true for numbered and single-letter-slot families", () => {
+    expect(isFamilySibling("9_PLAYER_GAME", "8_PLAYER_GAME")).toBe(true);
+    expect(isFamilySibling("BR_CENTRAL_25", "BR_CENTRAL_24")).toBe(true);
+    expect(isFamilySibling("CONFIG_RIVER_A8", "CONFIG_RIVER_A4")).toBe(true);
+    expect(
+      isFamilySibling("PREDATOR_A_POLAR_BEAR", "PREDATOR_B_POLAR_BEAR"),
+    ).toBe(true);
+    expect(isFamilySibling("A_X", "B_X")).toBe(true);
+  });
+
+  it("isFamilySibling is false for ordinary one-character slips", () => {
+    expect(isFamilySibling("REGICIDE", "REGICIDES")).toBe(false);
+    expect(isFamilySibling("TINY_MAP", "TINY_MAPS")).toBe(false);
+    expect(isFamilySibling("MAP_SIZE", "MAPSIZE")).toBe(false);
+    expect(isFamilySibling("ABC_1", "ABD_1")).toBe(false);
+    // A two-letter part is a word, not a slot.
+    expect(isFamilySibling("PLAYER_AA", "PLAYER_AB")).toBe(false);
+  });
+
+  it("a numbered sibling of a defined label draws no RMS0300", () => {
+    const source =
+      "#define BR_CENTRAL_24\n<PLAYER_SETUP>\nif BR_CENTRAL_25\nrandom_placement\nendif\n";
+    expect(codes(source)).not.toContain("RMS0300");
+  });
+
+  it("a real one-letter typo still draws RMS0300", () => {
+    // The same pair the first RMS0300 test uses.
+    const source =
+      "#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n";
+    expect(codes(source)).toContain("RMS0300");
   });
 });
 
@@ -1123,7 +1159,7 @@ describe("pass-level guarantees", () => {
 describe("RMS0111 — a word inside a comment that the engine reads as an opening comment marker", () => {
   // Measured by RMSTEST_55/56a/57/60 (parser-design Sec.2.1 amendment): a
   // leading comment containing a word valued 69 blanks the map, while the bare
-  // literal 69 does not. Reported rather than modelled, decided 2026-08-11.
+  // literal 69 does not.
   it("flags an object constant valued 69", () => {
     const found = only(
       "/* place SHORE_FISH here */\n<PLAYER_SETUP>\nrandom_placement\n",
@@ -1171,5 +1207,209 @@ describe("RMS0111 — a word inside a comment that the engine reads as an openin
     const source =
       "/* SHORE_FISH here */\n/* and ATTR_PROJECTILE_ARC there */\n<PLAYER_SETUP>\nrandom_placement\n";
     expect(only(source, "RMS0111")).toHaveLength(1);
+  });
+});
+
+describe("RMS0111, RMS0113 and RMS0112 — comments as the game reads them (token-alias-design Sec.3.1, slice B)", () => {
+  // `only` parses with no alias sets at all, which is the case the validator's
+  // own comment walk exists for: its answer cannot depend on how the parse was
+  // configured.
+  const SHAPE =
+    "/*\n/* SHORE_FISH */\nHOUSE HOUSE\n*/\n<PLAYER_SETUP>\nrandom_placement\n";
+
+  it("the Chaotic Strait shape gives RMS0113 and no RMS0111", () => {
+    // RMSTEST_83 placed this map's town centres: the comment ends on line 3
+    // and everything it skipped was commented anyway.
+    const found = only(SHAPE, "RMS0113");
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("info");
+    expect(found[0].message).toContain("SHORE_FISH");
+    expect(found[0].message).toContain("continues to line 3");
+    expect(only(SHAPE, "RMS0111")).toEqual([]);
+  });
+
+  it("an extra written closer that shuts the nested level is also RMS0113", () => {
+    // What closes the nested level here is a marker, not a word, which is why
+    // the message says "the first */".
+    const source = "/* SHORE_FISH */ */\n<PLAYER_SETUP>\nrandom_placement\n";
+    expect(only(source, "RMS0113")).toHaveLength(1);
+    expect(only(source, "RMS0111")).toEqual([]);
+  });
+
+  it("RMS0111 names the line where the comment ends when live code is skipped", () => {
+    const source =
+      "/* SHORE_FISH */\n<PLAYER_SETUP>\nrandom_placement\n/* HOUSE */\n<LAND_GENERATION>\n";
+    const found = only(source, "RMS0111");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("up to line 4");
+    expect(only(source, "RMS0113")).toEqual([]);
+  });
+
+  it("two comments that each end, each skipping live code, give two RMS0111", () => {
+    const source = [
+      "/* SHORE_FISH */",
+      "<PLAYER_SETUP>",
+      "random_placement",
+      "/* HOUSE */",
+      "<LAND_GENERATION>",
+      "/* SHORE_FISH */",
+      "<TERRAIN_GENERATION>",
+      "create_terrain GRASS { base_terrain GRASS }",
+      "/* HOUSE */",
+      "",
+    ].join("\n");
+    const found = only(source, "RMS0111");
+    expect(found).toHaveLength(2);
+    expect(found[0].message).toContain("up to line 4");
+    expect(found[1].message).toContain("up to line 9");
+  });
+
+  it("RMS0112 flags an object constant valued 70", () => {
+    const found = only(
+      "/* place a HOUSE here */\n<PLAYER_SETUP>\nrandom_placement\n",
+      "RMS0112",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).toContain("HOUSE");
+    expect(found[0].message).toContain("runs what follows as code");
+  });
+
+  it("RMS0112 flags an attribute constant valued 70 too", () => {
+    expect(
+      only(
+        "/* tweak ATTR_ATTACK_GRAPHIC later */\n<PLAYER_SETUP>\nrandom_placement\n",
+        "RMS0112",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("RMS0112 stays silent on the bare literal 70", () => {
+    expect(
+      codes("/* about 70 tiles */\n<PLAYER_SETUP>\nrandom_placement\n"),
+    ).not.toContain("RMS0112");
+  });
+
+  it("RMS0112 stays silent on the same word as real code", () => {
+    expect(
+      codes(
+        "<OBJECTS_GENERATION>\ncreate_object HOUSE { number_of_objects 1 }\n",
+      ),
+    ).not.toContain("RMS0112");
+  });
+
+  it("RMS0112 flags the script's own #const valued 70", () => {
+    const found = only(
+      "#const MY_HOUSE 70\n/* MY_HOUSE */\n<PLAYER_SETUP>\nrandom_placement\n",
+      "RMS0112",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("this script defines it as 70");
+  });
+
+  it("the Chaotic Strait shape gives two RMS0112, one level then the end", () => {
+    const found = only(SHAPE, "RMS0112");
+    expect(found).toHaveLength(2);
+    expect(found[0].message).toContain("one level");
+    expect(found[1].message).toContain("runs what follows as code");
+  });
+});
+
+describe("validate with resolved includes (docs/include-resolution-design.md Sec.4.3, 4.4)", () => {
+  /** Validates `source` with an index built over `files`, or with no install when `files` is undefined. */
+  function checkWith(
+    source: string,
+    files: Record<string, string> | undefined,
+  ): Diagnostic[] {
+    const parse = parseRms(source, lang);
+    const resolvedIncludes = buildIncludeIndex(
+      parse,
+      files === undefined ? undefined : new Map(Object.entries(files)),
+      (_key, text) => parseRms(text, lang),
+    );
+    return validate(parse, refDb, { resolvedIncludes });
+  }
+  const onlyWith = (
+    source: string,
+    files: Record<string, string> | undefined,
+    code: string,
+  ) => checkWith(source, files).filter((d) => d.code === code);
+
+  it("counts a label an include defines as defined", () => {
+    const source =
+      "#include_drs a.inc\n<PLAYER_SETUP>\nif INC_FLAG\nrandom_placement\nendif\n";
+    expect(
+      onlyWith(source, { "a.inc": "#define INC_FLAG\n" }, "RMS0300"),
+    ).toEqual([]);
+    expect(
+      onlyWith(source, { "a.inc": "#define INC_FLAG\n" }, "RMS0303"),
+    ).toEqual([]);
+  });
+
+  it("reports a name used above the directive that defines it, as a warning", () => {
+    const source =
+      "<PLAYER_SETUP>\nif INC_FLAG\nrandom_placement\nendif\n#include_drs a.inc\n";
+    const found = onlyWith(
+      source,
+      { "a.inc": "#define INC_FLAG\n" },
+      "RMS0303",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).not.toContain("include file");
+  });
+
+  it("softens the same use to info when no install was found", () => {
+    const source =
+      "<PLAYER_SETUP>\nif INC_FLAG\nrandom_placement\nendif\n#include_drs a.inc\n";
+    // No definition is visible without the files, so RMS0303 has nothing to
+    // report. The softening shows on a typo of a script name instead.
+    const typo =
+      '#include_drs "a.inc"\n#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n';
+    const found = onlyWith(typo, undefined, "RMS0300");
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("info");
+    expect(found[0].message).toContain("It may come from an include file");
+    expect(onlyWith(source, undefined, "RMS0303")).toEqual([]);
+  });
+
+  it("stops softening a typo once the files were read", () => {
+    const typo =
+      '#include_drs "a.inc"\n#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n';
+    const found = onlyWith(typo, { "a.inc": "" }, "RMS0300");
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+  });
+
+  it("suggests an included name for a one-letter typo", () => {
+    const source =
+      "#include_drs a.inc\n<PLAYER_SETUP>\nif INC_FLAGG\nrandom_placement\nendif\n";
+    const found = onlyWith(
+      source,
+      { "a.inc": "#define INC_FLAG\n" },
+      "RMS0300",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].suggestion).toBe("INC_FLAG");
+  });
+
+  it("does not report an included name as redefining an engine condition", () => {
+    // RMS0312 judges the script's own #define. The include's definition has
+    // no line in this file to point at but the directive.
+    const found = onlyWith(
+      "#include_drs a.inc\n",
+      { "a.inc": "#define EMPIRE_WARS\n" },
+      "RMS0312",
+    );
+    expect(found).toEqual([]);
+  });
+
+  it("leaves #includeXS out of the softening once an index is passed", () => {
+    const source =
+      "#includeXS x.xs\n#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n";
+    const found = onlyWith(source, {}, "RMS0300");
+    expect(found[0].severity).toBe("warning");
+    // Without an index it still softens, as before.
+    expect(only(source, "RMS0300")[0].severity).toBe("info");
   });
 });

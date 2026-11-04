@@ -1,0 +1,26 @@
+start_random
+percent_chance 1
+#define NEVER
+end_random
+start_random
+end_random
+start_random
+percent_chance 60
+#define FIRST
+percent_chance 60
+#define SECOND
+end_random
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+if NEVER
+create_land { terrain_type DESERT land_position 30 30 number_of_tiles 200 base_size 2 }
+endif
+if FIRST
+create_land { terrain_type SNOW land_position 30 70 number_of_tiles 200 base_size 2 }
+endif
+if SECOND
+create_land { terrain_type DIRT land_position 70 70 number_of_tiles 200 base_size 2 }
+endif
+create_land { terrain_type FOREST land_position 70 30 number_of_tiles 200 base_size 2 }

@@ -2,6 +2,8 @@
 
 A free, open-source desktop app that lowers the barrier of entry to Age of Empires II: Definitive Edition Random Map Script (RMS) creation.
 
+Never coded before? Scared of code? Create maps by clicking buttons in the Breakdown editor. The tutorials will get you started.
+
 ## What it does
 
 - **Breakdown editor**, a beginner-friendly block-based view of our RMS code. Edit dropdowns and value fields instead of raw syntax.
@@ -14,11 +16,11 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 
 Code is the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
-The preview's land generation, elevation and cliff sections are tile-for-tile with the engine, the other sections are close approximations being improved upon.
+The preview's land generation, elevation, cliff, terrain and connection sections are tile-for-tile with the engine at the same seed. Objects are a close approximation being improved upon. Scripts that use `#include_drs` read the game's own include files from your install.
 
 ## Status
 
-Open Beta. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built (tools are beta). The tutorials in the app's Help menu teach it step by step, and the [user guide](docs/user-guide.md) is a reference for hotkeys, settings and how far to trust the preview.
+Open Beta. The editor, the parser, the map preview (if you have any discrepancies with DE, please send in a bug report) and Advanced Tools are all built (tools are beta). The tutorials in the app's Help menu teach it step by step, and the [user guide](docs/user-guide.md) is a reference for hotkeys, settings and how far to trust the preview.
 
 ## Installing
 
@@ -74,9 +76,11 @@ Age of RMS will always be free, with no advertising and no paid tier (which is g
 
 ## Credits
 
-Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Guide and the terrain and object reference sheets, which the hover docs and reference data build on.
+Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Guide, the terrain and object reference sheets and the RMS Equivalencies sheet, which the hover docs and reference data build on. The Equivalencies sheet supplies the engine's token numbers.
 
 [genie-rms](https://github.com/genie-js/genie-rms) by Renée Kooi, an open source reimplementation of the original game's map generator, was a useful resource for how the map preview grows lands. It builds on reverse engineering of the original game by Yvan Burrie, JustTesting123 and others.
+
+[rms-check](https://github.com/Divy1211/rms-check) by Divy1211 is the source of the liveness model that works out under which conditions a `#const` is defined, and of the test scripts that check it.
 
 [AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE) gave the first leads to how Definitive Edition draws its random numbers. Every rule the preview uses was then tested against maps the game generated, and the code is written from those tests.
 

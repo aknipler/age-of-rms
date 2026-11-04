@@ -37,6 +37,19 @@ describe("extractComments", () => {
     );
   });
 
+  it("ends a comment closed by a word valued 70 at that word, not at the end of the file", () => {
+    const src =
+      "<OBJECTS_GENERATION>\n/* create_object HOUSE\n{\n  number_of_objects 1\n}\n*/\n";
+    const r = parseRms(src, langData, {
+      commentCloseAliases: new Set(["HOUSE"]),
+    });
+    const comments = extractComments(r.tokens);
+    expect(comments).toHaveLength(1);
+    expect(src.slice(comments[0].start, comments[0].end)).toBe(
+      "/* create_object HOUSE",
+    );
+  });
+
   it("treats a nested comment as one outer span (default nestedComments: true)", () => {
     const src =
       "<PLAYER_SETUP>\n/* outer /* inner */ still outer */\nnomad_resources\n";

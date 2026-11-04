@@ -13,12 +13,14 @@ import {
   buildStaticNameIndex,
   closestBuiltin,
   defaultConstValue,
+  describeIncludedHover,
   moveUpPlan,
   resolveName,
   suggest,
   unknownNameOffer,
   type SlotKind,
 } from "../nameLookup";
+import { buildIncludeIndex } from "../includeIndex";
 import { parseRms } from "../parser";
 import { validate, type GameConstantsForValidate } from "../validate";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
@@ -449,5 +451,173 @@ describe("move the #const up here (design Sec.9.1)", () => {
       ok: false,
       reason: "notDefinedBelow",
     });
+  });
+});
+
+// docs/include-resolution-design.md Sec.4.3, slice C. The include index is
+// built here from made-up files, the way the parser worker builds it from the
+// install, and set on the parse as the worker does.
+describe("names from include files (include-resolution-design Sec.4.3)", () => {
+  /** A script index over `source` with `files` read, or no install when `files` is undefined. */
+  function withIncludes(source: string, files?: Record<string, string>) {
+    const parse = parseRms(source, lang);
+    parse.includeIndex = buildIncludeIndex(
+      parse,
+      files === undefined ? undefined : new Map(Object.entries(files)),
+      (_key, text) => parseRms(text, lang),
+    );
+    return buildScriptNameIndex(parse);
+  }
+  const offsetOf = (source: string, word: string, nth = 0): number => {
+    let at = -1;
+    for (let i = 0; i <= nth; i++) at = source.indexOf(word, at + 1);
+    return at;
+  };
+  const USE = "create_land { land_percent MAPSCALE_AREA }";
+  const FILES = { "inc/scaling.inc": "#const MAPSCALE_AREA 400\n" };
+
+  it("a name an include defines, used below its directive, resolves as included with its file", () => {
+    const src = `#include_drs inc/scaling.inc\n<LAND_GENERATION>\n${USE}\n`;
+    const script = withIncludes(src, FILES);
+    const r = resolveName(
+      stat,
+      script,
+      "MAPSCALE_AREA",
+      offsetOf(src, "MAPSCALE_AREA"),
+      integerSlot,
+    );
+    expect(r).toMatchObject({
+      kind: "included",
+      name: { file: "inc/scaling.inc", directiveKind: "const" },
+    });
+  });
+
+  it("the same name used above the directive stays unknown", () => {
+    const src = `<LAND_GENERATION>\n${USE}\n#include_drs inc/scaling.inc\n`;
+    const script = withIncludes(src, FILES);
+    const r = resolveName(
+      stat,
+      script,
+      "MAPSCALE_AREA",
+      offsetOf(src, "MAPSCALE_AREA"),
+      integerSlot,
+    );
+    expect(r.kind).toBe("unknown");
+  });
+
+  it("a name both the script and an include define goes to whichever comes first", () => {
+    const both = { "inc/x.inc": "#const SHARED 2\n" };
+    const useLine = "<LAND_GENERATION>\ncreate_land { land_percent SHARED }\n";
+    const scriptFirst = `#const SHARED 1\n#include_drs inc/x.inc\n${useLine}`;
+    const a = resolveName(
+      stat,
+      withIncludes(scriptFirst, both),
+      "SHARED",
+      offsetOf(scriptFirst, "SHARED", 1),
+      integerSlot,
+    );
+    expect(a.kind).toBe("script");
+
+    const includeFirst = `#include_drs inc/x.inc\n#const SHARED 1\n${useLine}`;
+    const b = resolveName(
+      stat,
+      withIncludes(includeFirst, both),
+      "SHARED",
+      offsetOf(includeFirst, "SHARED", 1),
+      integerSlot,
+    );
+    expect(b.kind).toBe("included");
+  });
+
+  it("suggest offers an included const after two letters, not one, and after the script's own", () => {
+    const src =
+      "#const MA_LOCAL 1\n#include_drs inc/scaling.inc\n<LAND_GENERATION>\ncreate_land { land_percent MA }\n";
+    const script = withIncludes(src, FILES);
+    const at = offsetOf(src, "MA }");
+    const two = suggest(stat, script, "MA", at, integerSlot).filter(
+      (s) => s.source === "script" || s.source === "included",
+    );
+    expect(two.map((s) => s.name)).toEqual(["MA_LOCAL", "MAPSCALE_AREA"]);
+    expect(two[1]).toMatchObject({ file: "inc/scaling.inc" });
+    expect(
+      suggest(stat, script, "M", at, integerSlot).some(
+        (s) => s.source === "included",
+      ),
+    ).toBe(false);
+  });
+
+  it("the create offer works once the files were read and stays off when no install was found", () => {
+    // The Stranded case: the script defines FOREST_IDENTIFICATIO and uses
+    // FOREST_IDENTIFICATION.
+    const src =
+      "#include_drs inc/x.inc\n#const FOREST_IDENTIFICATIO 5\n<LAND_GENERATION>\ncreate_land { land_percent FOREST_IDENTIFICATION }\n";
+    const at = offsetOf(src, "FOREST_IDENTIFICATION");
+    const read = unknownNameOffer(
+      stat,
+      withIncludes(src, { "inc/x.inc": "" }),
+      "FOREST_IDENTIFICATION",
+      at,
+      integerSlot,
+    );
+    expect(read?.didYouMean).toBe("FOREST_IDENTIFICATIO");
+    expect(
+      unknownNameOffer(
+        stat,
+        withIncludes(src, undefined),
+        "FOREST_IDENTIFICATION",
+        at,
+        integerSlot,
+      ),
+    ).toBeNull();
+  });
+
+  it("moveUpPlan no longer refuses with includes once the install was found", () => {
+    const src =
+      "#include_drs inc/x.inc\n<LAND_GENERATION>\ncreate_land { land_percent LATE }\n#const LATE 5\n";
+    const at = offsetOf(src, "LATE");
+    expect(
+      moveUpPlan(withIncludes(src, { "inc/x.inc": "" }), "LATE", at).ok,
+    ).toBe(true);
+    expect(moveUpPlan(withIncludes(src, undefined), "LATE", at)).toMatchObject({
+      ok: false,
+      reason: "includes",
+    });
+  });
+});
+
+describe("the hover line for an included name (include-resolution-design Sec.4.6)", () => {
+  const base = {
+    name: "MAPSCALE_AREA",
+    directiveToken: 0,
+    file: "includes/scaling.inc",
+  } as const;
+
+  it("names the file, the directive's line and a #const's value", () => {
+    expect(
+      describeIncludedHover(
+        "MAPSCALE_AREA",
+        {
+          ...base,
+          directiveKind: "const",
+          conditional: false,
+          valueText: "(A * 2)",
+        },
+        13,
+      ),
+    ).toBe(
+      "`MAPSCALE_AREA`, a #const in includes/scaling.inc, brought in by the #include_drs on line 13, value (A * 2).",
+    );
+  });
+
+  it("says a conditional #define is defined by only some maps, and shows no value", () => {
+    expect(
+      describeIncludedHover(
+        "FLAG",
+        { ...base, name: "FLAG", directiveKind: "define", conditional: true },
+        4,
+      ),
+    ).toBe(
+      "`FLAG`, a #define in includes/scaling.inc, brought in by the #include_drs on line 4, inside a branch there, so only some maps define it.",
+    );
   });
 });

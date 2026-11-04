@@ -9,6 +9,7 @@ import { buildLanguageIndex } from "../../parser/language";
 import type { ParseResult } from "../../parser/types";
 import type { InstantiatedScript } from "../../preview/generator/types";
 import { instantiateScript } from "../../preview/generator/instantiate";
+import { parseOptionsFor } from "../../preview/generator/parseOptions";
 import type { PreviewReferenceData } from "../../preview/generator/index";
 import {
   TOOLS_API_VERSION,
@@ -21,6 +22,7 @@ import {
   type ToolRunHandle,
 } from "../../../tools-api/index";
 import {
+  includeFilesFromContext,
   objectConstantsFromPublished,
   previewSettingsFromContext,
   runPreviewFromContext,
@@ -232,6 +234,9 @@ async function runChecker(
     language: languageIndex,
     constants: objectConstantsFromPublished(constants),
   };
+  // The second parse inside `instantiateScript` reads comments the way the
+  // run's first parse did, so a word valued 69 or 70 behaves the same in both.
+  const parseOptions = parseOptionsFor(refDb.constants);
 
   // -------------------------------------------------------------------
   // Sec.3.0 rule 1: the static layer, once per selected player count, at
@@ -244,6 +249,9 @@ async function runChecker(
 
   const astCtx: StaticContext = buildStaticContext(parse);
   const instByCount = new Map<number, InstantiatedScript>();
+  // The static checks read the script as the generations will, include
+  // files read in, or a constant from DE's own files reads as unset here.
+  const includeFiles = includeFilesFromContext(ctx);
   const staticFindings: StaticFinding[] = [];
 
   for (const pc of selectedCounts) {
@@ -266,6 +274,8 @@ async function runChecker(
       languageIndex,
       bridged.settings,
       baseSeed,
+      includeFiles,
+      parseOptions,
     );
     instByCount.set(pc, inst);
     staticFindings.push(...runStaticChecks(inst, parse, constants, astCtx, pc));

@@ -160,3 +160,15 @@
 [data-selected] > [data-card] > [data-card-header] [data-quiet]:not(:disabled) {
   opacity: 1;
 }
+
+/* A selected card is tinted across its whole face. ItemCard's wrapper already
+   carries the tint, but a card's own opaque surface covers it, so only the
+   left bar showed (the const table's rows are transparent, which is why they
+   already looked right). Layered over --surface, not replacing it, so the
+   tint holds in dark mode and where --accent-bg-subtle is translucent. The
+   child selector keeps the cards nested in a block quiet. */
+[data-selected] > [data-card] {
+  background:
+    linear-gradient(var(--accent-bg-subtle), var(--accent-bg-subtle)),
+    var(--surface);
+}

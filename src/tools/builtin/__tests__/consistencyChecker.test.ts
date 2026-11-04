@@ -334,3 +334,46 @@ describe("registry", () => {
     expect(WORKER_RUNTIME_TOOL_IDS.has("consistency-checker")).toBe(true);
   });
 });
+
+describe("consistencyChecker.run — include files (preview-design Sec.3 rule 11)", () => {
+  // The cliff counts are constants from an include, so the static check can
+  // only see that the minimum exceeds the maximum once the file is read in.
+  const INCLUDING = `
+#include_drs includes/cliffs.inc
+<LAND_GENERATION>
+  base_terrain GRASS
+<CLIFF_GENERATION>
+  min_number_of_cliffs MIN_CLIFFS
+  max_number_of_cliffs MAX_CLIFFS
+`;
+
+  function run(files?: Record<string, string>): Promise<string> {
+    const base = context({ params: { staticOnly: true } });
+    const ctx: ToolContext<ParseResult> = {
+      ...base,
+      parseResult: parseRms(INCLUDING, lang),
+      source: INCLUDING,
+      referenceData: {
+        language: lang,
+        gameConstants,
+        ...(files === undefined ? {} : { includeFiles: files }),
+      },
+    };
+    return new Promise((resolve) => {
+      consistencyChecker.run(ctx, (msg) => {
+        if (msg.type === "result" || msg.type === "error")
+          resolve(JSON.stringify(msg));
+      });
+    });
+  }
+
+  it("runs its static checks on the script with the include files read in", async () => {
+    const files = {
+      "includes/cliffs.inc": "#const MIN_CLIFFS 9\n#const MAX_CLIFFS 3\n",
+    };
+    expect(await run(files)).toContain(
+      "min_number_of_cliffs (9) is greater than max_number_of_cliffs (3)",
+    );
+    expect(await run()).not.toContain("min_number_of_cliffs (9)");
+  });
+});

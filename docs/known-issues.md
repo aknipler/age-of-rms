@@ -16,11 +16,7 @@ No open entries.
 
 ## Preview Engine
 
-### BUG-029 — 2026-09-17 — connection endpoints are guide-sourced, not measured
-
-**Status:** OPEN, verify item. **SCRIPTS WRITTEN 2026-09-21, NOT YET RUN.** **Area:** `src/preview/generator/connections.ts`, `docs/preview-design.md` Sec.6.5. The 2026-09-17 fix (roads stopped one land radius short of every TC on the tutorial's Golden Hill) moved connections from nearest-edge to origin-to-origin on the guide's word (guide:1730, 1759, 1792) and one in-game observation that the road reaches the TC. Two consequences of that model have no RMSTEST_* run behind them and are worth one: that a cost-0 terrain under a land ORIGIN blocks connections to that land in BOTH directions (guide:1937, the engine may well still depart from it), and that the road's `terrain_size` disc paints over the player's own land right up to the origin tile rather than stopping at the land edge.
-
-**Both now have scripts, tracked in `tools/scenario-probe/rmstest/README.md`'s Batch 18, ready to run against a real DE install.** `RMSTEST_75a_costzero_origin_blocked` / `RMSTEST_75b_costzero_origin_control` (a matched pair) put three lands under one `create_connect_all_lands`, one of them wholly cost-0 terrain and placed off the other two's line, and check that connections to it fail from BOTH of its potential neighbours rather than just one — the withdrawn per-tile model's own asymmetry (depart from anywhere the land's tiles touched, arrive only through its own passable tiles) is exactly the shape of bug this is checking was not carried forward into the origin-to-origin rewrite. `RMSTEST_76_terrainsize_intrudes_origin` checks the second consequence directly: a deterministic, variance-free `terrain_size` disc on a road running to a land's origin, reading whether ROAD tiles appear inside the land's own former footprint or stop at its edge.
+No open entries.
 
 ---
 

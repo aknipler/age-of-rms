@@ -1,0 +1,145 @@
+#define lower_define
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+if RANDOM_MAP
+create_land { terrain_type DESERT land_position 10 10 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 10 10 number_of_tiles 0 base_size 1 }
+endif
+if TURBO_RANDOM_MAP
+create_land { terrain_type DESERT land_position 26 10 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 26 10 number_of_tiles 0 base_size 1 }
+endif
+if FIXED_POSITIONS
+create_land { terrain_type DESERT land_position 42 10 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 42 10 number_of_tiles 0 base_size 1 }
+endif
+if TEAM_POSITIONS
+create_land { terrain_type DESERT land_position 58 10 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 58 10 number_of_tiles 0 base_size 1 }
+endif
+if DE_AVAILABLE
+create_land { terrain_type DESERT land_position 74 10 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 74 10 number_of_tiles 0 base_size 1 }
+endif
+if DE_GAME_AGE2
+create_land { terrain_type DESERT land_position 90 10 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 90 10 number_of_tiles 0 base_size 1 }
+endif
+if DARK_AGE_START
+create_land { terrain_type DESERT land_position 10 26 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 10 26 number_of_tiles 0 base_size 1 }
+endif
+if LOW_RESOURCES
+create_land { terrain_type DESERT land_position 26 26 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 26 26 number_of_tiles 0 base_size 1 }
+endif
+if DEFAULT_RESOURCES
+create_land { terrain_type DESERT land_position 42 26 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 42 26 number_of_tiles 0 base_size 1 }
+endif
+if MEDIUM_RESOURCES
+create_land { terrain_type DESERT land_position 58 26 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 58 26 number_of_tiles 0 base_size 1 }
+endif
+if HIGH_RESOURCES
+create_land { terrain_type DESERT land_position 74 26 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 74 26 number_of_tiles 0 base_size 1 }
+endif
+if TINY_MAP
+create_land { terrain_type DESERT land_position 90 26 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 90 26 number_of_tiles 0 base_size 1 }
+endif
+if MAPSIZE_TINY
+create_land { terrain_type DESERT land_position 10 42 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 10 42 number_of_tiles 0 base_size 1 }
+endif
+if MAPSIZE_MINI
+create_land { terrain_type DESERT land_position 26 42 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 26 42 number_of_tiles 0 base_size 1 }
+endif
+if 2_PLAYER_GAME
+create_land { terrain_type DESERT land_position 42 42 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 42 42 number_of_tiles 0 base_size 1 }
+endif
+if 0_TEAM_GAME
+create_land { terrain_type DESERT land_position 58 42 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 58 42 number_of_tiles 0 base_size 1 }
+endif
+if 1_TEAM_GAME
+create_land { terrain_type DESERT land_position 74 42 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 74 42 number_of_tiles 0 base_size 1 }
+endif
+if PLAYER1_TEAM0
+create_land { terrain_type DESERT land_position 90 42 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 90 42 number_of_tiles 0 base_size 1 }
+endif
+if TEAM0_SIZE2
+create_land { terrain_type DESERT land_position 10 58 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 10 58 number_of_tiles 0 base_size 1 }
+endif
+if AI_PLAYERS
+create_land { terrain_type DESERT land_position 26 58 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 26 58 number_of_tiles 0 base_size 1 }
+endif
+if FULL_TECH_TREE
+create_land { terrain_type DESERT land_position 42 58 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 42 58 number_of_tiles 0 base_size 1 }
+endif
+if INFINITE_RESOURCES
+create_land { terrain_type DESERT land_position 58 58 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 58 58 number_of_tiles 0 base_size 1 }
+endif
+if REGICIDE
+create_land { terrain_type DESERT land_position 74 58 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 74 58 number_of_tiles 0 base_size 1 }
+endif
+if DEATH_MATCH
+create_land { terrain_type DESERT land_position 90 58 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 90 58 number_of_tiles 0 base_size 1 }
+endif
+if UP_AVAILABLE
+create_land { terrain_type DESERT land_position 10 74 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 10 74 number_of_tiles 0 base_size 1 }
+endif
+if UP_EXTENSION
+create_land { terrain_type DESERT land_position 26 74 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 26 74 number_of_tiles 0 base_size 1 }
+endif
+if tiny_map
+create_land { terrain_type DESERT land_position 42 74 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 42 74 number_of_tiles 0 base_size 1 }
+endif
+if LOWER_DEFINE
+create_land { terrain_type DESERT land_position 58 74 number_of_tiles 0 base_size 1 }
+else
+create_land { terrain_type SNOW land_position 58 74 number_of_tiles 0 base_size 1 }
+endif

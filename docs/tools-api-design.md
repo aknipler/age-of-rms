@@ -155,6 +155,7 @@ export interface ToolContext<
     // iff "read-reference"
     language: LanguageData; // plain data — build your own LanguageIndex (Sec.1)
     gameConstants: PublishedGameConstants; // generated from the schema — see below
+    includeFiles?: Record<string, string>; // amended 2026-11-02, see below
   };
   selection?: { offset: number; item?: Span }; // iff "read-selection" — see below
   // The value union includes string[] for multiSelect, and the widening lands NOW rather
@@ -185,6 +186,8 @@ export interface ToolGenerationSettings {
   teamPositions?: boolean;
 }
 ```
+
+**`referenceData.includeFiles`, amended 2026-11-02.** The preview reads a script's `#include_drs` files from the user's own DE install (preview-design.md, the include rule of its script instantiation section), and a tool that generates must see the same files or it checks a different map from the one the pane draws. The host reads them once (`useIncludeFiles`, shared with the preview pane) and grants them under `read-reference`, keyed by lowercased path relative to `gamedata_x2` with forward slashes. It is a plain record for the reason `language` is plain data. The field is absent without an install, and a path missing from the record is a file the install lacks, which the game reads as empty. `runPreviewFromContext` forwards it to the generator unless the caller passes its own, and the Consistency Checker's static pass hands it to `instantiateScript`. This is game content read from the user's machine, not a file path or fs access, so the "deliberately absent" line above still holds.
 
 **`mapSize.tiles`: where it comes from, and what it is not.**
 

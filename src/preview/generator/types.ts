@@ -13,7 +13,7 @@
 // Nothing in here is implementation. The generator (4.3) fills these in;
 // 4.2 renders them.
 
-import type { ArgNode, ParseResult, Span } from "../../parser/types";
+import type { ArgNode, Span } from "../../parser/types";
 import type { CommandDef } from "../../parser/language";
 import type {
   MapSize,
@@ -22,6 +22,7 @@ import type {
 import type { CanonicalTeams } from "../../generationSettings/teamModel";
 import type { ResourceTotals } from "./resourceSummary";
 import type { DeStreamState } from "./deRandom";
+import type { IncludeFiles } from "./includes";
 
 // ---------------------------------------------------------------------------
 // Inputs (Sec.10)
@@ -64,6 +65,13 @@ export interface PreviewSettings {
    * the one real lobby game checked.
    */
   teamPositions?: boolean;
+  /**
+   * Whose labels the script sees (Sec.3 rule 1, rev 11). A game lobby, the
+   * default, defines RANDOM_MAP. The scenario editor defines its own set,
+   * measured in the DE study, and the DE gates use it because their
+   * reference maps come from the editor.
+   */
+  lobby?: "game" | "scenarioEditor";
 }
 
 /** Structured-cloneable: plain data only, no functions (Sec.10). */
@@ -71,6 +79,12 @@ export interface PreviewOptions {
   seed: number;
   /** false in 5.2 batch mode, the only cost knob. Reports are unconditional (Sec.7). */
   collectSnapshots: boolean;
+  /**
+   * The game's `#include_drs` files from the user's install, keyed by
+   * `includeKey`. Undefined when no install was found, and then an include
+   * reads as empty with a note (includes.ts).
+   */
+  includeFiles?: IncludeFiles;
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +351,7 @@ export interface LandOrigin {
   circularBase: boolean;
   /** The `terrain_type` reference exactly as the script wrote it, a constant name, or a bare terrain id. Kept alongside `terrainId` so a failure message can quote what the author typed. */
   terrainType?: string | number;
-  /** `terrain_type` resolved to a terrain id (grid.ts's `resolveTerrainId`). Undefined when the attribute is absent, or names something nothing can resolve, in which case the land claims tiles but paints no terrain, leaving the base fill showing. */
+  /** `terrain_type` resolved to a terrain id (grid.ts's `resolveTerrainId`). Terrain 0 when the attribute is absent or names something nothing can resolve, as in the game (Sec.6.1, rev 11). Optional only for hand-built origins in tests. */
   terrainId?: number;
   /** Raw declared value (1-16, or negative meaning "maximally elevated"); clamping and application happen in the elevation step (Sec.6.1: "after growth, set elevation = H"), not here. */
   baseElevation?: number;
@@ -393,6 +407,12 @@ export interface SimulationNote {
   span?: Span;
   /** Beginner-first sentence, same register as a parser diagnostic. */
   text: string;
+  /**
+   * The part of the script the note is about, as `line N: first line of it`,
+   * for a note whose sentence cannot name it. Kept out of `text` so the
+   * checker's merge by sentence still groups every occurrence together.
+   */
+  snippet?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -658,7 +678,17 @@ export type PreviewWireResult = Omit<PreviewResult, "grid">;
 
 export interface PreviewRequest {
   id: number;
-  parse: ParseResult;
+  /**
+   * The script text, not its parse. A ParseResult is megabytes on a big map
+   * and `postMessage` copies its payload on the posting thread, so sending
+   * the tree froze the editor for 85 to 160 ms per request
+   * (docs/diagnostics-latency-report.md fix 3). The worker parses the text
+   * itself, with the same lexer options the editor's parser uses, and keeps
+   * the last parse so a re-roll or a settings change costs no second one.
+   */
+  source: string;
+  /** Where Current cuts the script (`truncateAst`), or null for the whole script. */
+  cutOffset: number | null;
   settings: PreviewSettings;
   opts: PreviewOptions;
 }

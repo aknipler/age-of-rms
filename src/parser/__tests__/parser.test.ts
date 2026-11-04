@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseRms } from "../parser";
-import type { LanguageData } from "../language";
+import { buildLanguageIndex, type LanguageData } from "../language";
 import type {
   CommandNode,
   IfNode,
@@ -101,6 +101,88 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     const r = parse("<LAND_GENERATION>\ncreate_land { land_percent MYPCT }");
     const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
     expect(d.message).toContain("isn't defined in this file");
+  });
+
+  describe("RMS0202 Rule 1, a use under its own name's if (include-resolution-design Sec.4.5)", () => {
+    const use = (body: string): ParseResult =>
+      parse(`<OBJECTS_GENERATION>\ncreate_object RELIC {\n${body}\n}`);
+
+    it("an if testing the name guards the use", () => {
+      const r = use("if RELIC_CAA_A avoid_actor_area RELIC_CAA_A endif");
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("the else of that if does not guard it", () => {
+      const r = use(
+        "if RELIC_CAA_A\n number_of_objects 1\nelse\n avoid_actor_area RELIC_CAA_A\nendif",
+      );
+      expect(codes(r)).toContain("RMS0202");
+    });
+
+    it("an if testing another name does not guard it", () => {
+      const r = use("if OTHER avoid_actor_area RELIC_CAA_A endif");
+      expect(codes(r)).toContain("RMS0202");
+    });
+
+    it("a nested if still sees the outer guard", () => {
+      const r = use(
+        "if RELIC_CAA_A if OTHER avoid_actor_area RELIC_CAA_A endif endif",
+      );
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("an elseif testing the name guards its own branch", () => {
+      const r = use(
+        "if A elseif RELIC_CAA_A avoid_actor_area RELIC_CAA_A endif",
+      );
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+  });
+
+  describe("RMS0202 and include files (docs/include-resolution-design.md Sec.4.4)", () => {
+    const withInclude =
+      "#include_drs a.inc\n<LAND_GENERATION>\ncreate_land { land_percent MYPCT }";
+
+    it("a name in externalSymbols used in a number slot draws nothing", () => {
+      const r = parseRms(withInclude, lang, {
+        externalSymbols: new Set(["MYPCT"]),
+        includesUnread: false,
+      });
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("a name one letter off an include's name offers it as the fix", () => {
+      const r = parseRms(withInclude.replace("MYPCT", "MYPCX"), lang, {
+        externalSymbols: new Set(["MYPCT"]),
+        includesUnread: false,
+      });
+      const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
+      expect(d.suggestion).toBe("MYPCT");
+      expect(d.message).toContain('Did you mean "MYPCT"?');
+    });
+
+    it("a name with no near neighbour gets no suggestion", () => {
+      const r = parseRms(withInclude, lang, {
+        externalSymbols: new Set(["SOMETHING_ELSE"]),
+        includesUnread: false,
+      });
+      const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
+      expect(d.suggestion).toBeUndefined();
+    });
+
+    it("includesUnread false makes the undefined name a warning with the plain wording", () => {
+      const r = parseRms(withInclude, lang, { includesUnread: false });
+      const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
+      expect(d.severity).toBe("warning");
+      expect(d.message).not.toContain("include file");
+    });
+
+    it("with no options an include still softens to info (the old rule)", () => {
+      const r = parseRms(withInclude, lang);
+      const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
+      expect(d.severity).toBe("info");
+      expect(d.message).toContain("It may come from an include file");
+    });
   });
 
   it("bare numeric IDs are legal in constant slots — no type diagnostic (Sec.2.1)", () => {
@@ -338,6 +420,32 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       // 33 was the other arm of RMSTEST_61/62 and made no land in either.
       const r = parse(
         "#const AX 33\n<LAND_GENERATION>\nAX { terrain_type SNOW }",
+      );
+      expect(codes(r)).toContain("RMS0200");
+      expect(
+        (r.script.sections[0].items[0] as CommandNode).def,
+      ).toBeUndefined();
+    });
+
+    it("admits only run-measured ids to the alias index, 32 alone", () => {
+      // Every command also carries the sheet's id (docs/token-alias-design.md
+      // Sec.4), so the index has to filter on `tokenIdSource` and not only on
+      // the presence of a `tokenId`.
+      const ids = [...buildLanguageIndex(lang).commandsByTokenId.keys()];
+      expect(ids).toEqual([32]);
+    });
+
+    it("does not resolve a sheet-only id, so #const L 48 is still no command", () => {
+      // 48 is `create_object` in the sheet and in `language.json`, and no run
+      // has measured it. This is the test that fails if `buildLanguageIndex`
+      // stops filtering on the source: `L` would read as `create_object`, and
+      // an alias nobody has seen in a shipped map would start resolving in
+      // every script (Sec.3.3).
+      const sheetOnly = lang.commands.find((c) => c.tokenId === 48);
+      expect(sheetOnly?.name).toBe("create_object");
+      expect(sheetOnly?.tokenIdSource).toMatch(/^equivalencies-/);
+      const r = parse(
+        "#const L 48\n<OBJECTS_GENERATION>\nL { number_of_objects 1 }",
       );
       expect(codes(r)).toContain("RMS0200");
       expect(

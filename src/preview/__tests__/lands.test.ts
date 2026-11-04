@@ -796,13 +796,16 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
     ).toBeGreaterThan(dim * 0.1);
   });
 
-  it("zone still defaults to playerNumber - 10 for an assigned land (Sec.6.1 rev 9, not discriminated by the DE fixture)", () => {
+  it("an assigned create_land keeps the neutral zone -10, and only create_player_lands takes the player's (rev 11, gm2 and gm3)", () => {
     const { origins } = place(
-      "<LAND_GENERATION>\ncreate_land {\nassign_to_player 3\n}\n",
+      "<LAND_GENERATION>\ncreate_player_lands { }\ncreate_land {\nassign_to_player 3\n}\n",
       1,
       { playerCount: 4 },
     );
-    expect(origins[0].zone).toBe(3 - 10);
+    expect(
+      origins.find((o) => o.player === 3 && o.zone === 3 - 10),
+    ).toBeDefined();
+    expect(origins.at(-1)?.zone).toBe(-10);
   });
 });
 

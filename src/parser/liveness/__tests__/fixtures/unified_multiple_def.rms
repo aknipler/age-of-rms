@@ -1,0 +1,26 @@
+/* From rms-check by Divy1211 (github.com/Divy1211/rms-check), GPL-3.0,
+   test_rms folder, copied 2026-11 for Age of RMS's liveness tests. */
+
+if MAPSIZE_MINI
+    #define MAPSIZE_TINY
+endif	
+
+if MAPSIZE_LUDICROUS      #const LENGTH 480
+elseif MAPSIZE_MONSTROUS  #const LENGTH 400
+elseif MAPSIZE_INCREDIBLE #const LENGTH 360
+elseif MAPSIZE_INCREDIBLE #const LENGTH 360
+elseif MAPSIZE_INCREDIBLE #const LENGTH 360
+elseif MAPSIZE_COLOSSAL   #const LENGTH 320
+elseif MAPSIZE_ENORMOUS   #const LENGTH 300
+elseif MAPSIZE_MASSIVE    #const LENGTH 276
+elseif MAPSIZE_GIANT      #const LENGTH 252
+elseif MAPSIZE_HUGE       #const LENGTH 240
+elseif MAPSIZE_LARGE      #const LENGTH 220
+elseif MAPSIZE_NORMAL     #const LENGTH 200
+elseif MAPSIZE_MEDIUM     #const LENGTH 168
+elseif MAPSIZE_SMALL      #const LENGTH 144
+elseif MAPSIZE_TINY       #const LENGTH 120
+elseif MAPSIZE_MINI       #const LENGTH 80
+endif
+
+override_map_size (LENGTH)

@@ -8,90 +8,159 @@
     "CONNECTION_GENERATION",
     "OBJECTS_GENERATION"
   ],
+  "structuralTokens": [
+    {
+      "text": "<PLAYER_SETUP>",
+      "tokenId": 11,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "<LAND_GENERATION>",
+      "tokenId": 17,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "<CLIFF_GENERATION>",
+      "tokenId": 34,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "<TERRAIN_GENERATION>",
+      "tokenId": 42,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "<OBJECTS_GENERATION>",
+      "tokenId": 47,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "<CONNECTION_GENERATION>",
+      "tokenId": 62,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "{",
+      "tokenId": 67,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "}",
+      "tokenId": 68,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "/*",
+      "tokenId": 69,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "*/",
+      "tokenId": 70,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    },
+    {
+      "text": "<ELEVATION_GENERATION>",
+      "tokenId": 79,
+      "tokenIdSource": "equivalencies-2026-11-02"
+    }
+  ],
   "predefinedLabels": [
     {
       "name": "DEATH_MATCH",
       "category": "gameMode",
       "description": "Death match game mode.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "REGICIDE",
       "category": "gameMode",
       "description": "Regicide game mode.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "CAPTURE_THE_RELIC",
       "category": "gameMode",
       "description": "Capture the Relic game mode (HD/DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "CAPTURE_RELICS",
       "category": "gameMode",
       "description": "Capture the Relic game mode under UserPatch (UP only; DE uses CAPTURE_THE_RELIC).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "RANDOM_MAP",
       "category": "gameMode",
       "description": "Standard random map game mode (UP/DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "TURBO_RANDOM_MAP",
       "category": "gameMode",
       "description": "Random map with the turbo mode tickbox enabled (UP/DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "WONDER_RACE",
       "category": "gameMode",
       "description": "Wonder Race game mode (UP/DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "DEFEND_WONDER",
       "category": "gameMode",
       "description": "Defend the Wonder game mode (UP/DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "EMPIRE_WARS",
       "category": "gameMode",
       "description": "Empire Wars game mode (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "BATTLE_ROYALE",
       "category": "gameMode",
       "description": "Battle Royale game mode (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "SUDDEN_DEATH",
       "category": "gameMode",
       "description": "Sudden Death game mode (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "gameMode"
     },
     {
       "name": "KING_OT_HILL",
       "category": "gameMode",
       "description": "King of the Hill game mode (UP/DE only). Note the spelling: OT, not OF.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The guide warns that KING_OF_THE_HILL is a map type rather than a game mode and is always true, so a script testing that name instead is always taking the branch."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The guide warns that KING_OF_THE_HILL is a map type rather than a game mode and is always true, so a script testing that name instead is always taking the branch.",
+      "group": "gameMode"
     },
     {
       "name": "TINY_MAP",
@@ -279,77 +348,88 @@
       "category": "startingResources",
       "description": "High starting resources.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingResources"
     },
     {
       "name": "MEDIUM_RESOURCES",
       "category": "startingResources",
       "description": "Medium starting resources.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingResources"
     },
     {
       "name": "LOW_RESOURCES",
       "category": "startingResources",
       "description": "Low starting resources, which is the AoE2 default.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Same as DEFAULT_RESOURCES in AoE2; the two differ in Return of Rome."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Same as DEFAULT_RESOURCES in AoE2; the two differ in Return of Rome.",
+      "group": "startingResources"
     },
     {
       "name": "DEFAULT_RESOURCES",
       "category": "startingResources",
       "description": "Default starting resources, the same setting as LOW_RESOURCES in AoE2.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Same as LOW_RESOURCES in AoE2; the two differ in Return of Rome."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Same as LOW_RESOURCES in AoE2; the two differ in Return of Rome.",
+      "group": "startingResources"
     },
     {
       "name": "INFINITE_RESOURCES",
       "category": "startingResources",
       "description": "Infinite starting resources (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingResources"
     },
     {
       "name": "RANDOM_RESOURCES",
       "category": "startingResources",
       "description": "Randomized starting resources (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingResources"
     },
     {
       "name": "DARK_AGE_START",
       "category": "startingAge",
       "description": "Game starts in the Dark Age (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingAge"
     },
     {
       "name": "FEUDAL_AGE_START",
       "category": "startingAge",
       "description": "Game starts in the Feudal Age (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingAge"
     },
     {
       "name": "CASTLE_AGE_START",
       "category": "startingAge",
       "description": "Game starts in the Castle Age (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingAge"
     },
     {
       "name": "IMPERIAL_AGE_START",
       "category": "startingAge",
       "description": "Game starts in the Imperial Age (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingAge"
     },
     {
       "name": "POST_IMPERIAL_AGE_START",
       "category": "startingAge",
       "description": "Game starts in the Post-Imperial Age (DE only).",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "startingAge"
     },
     {
       "name": "FIXED_POSITIONS",
@@ -699,280 +779,320 @@
       "category": "playerInTeam",
       "description": "Player 1 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player1Team"
     },
     {
       "name": "PLAYER1_TEAM1",
       "category": "playerInTeam",
       "description": "Player 1 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player1Team"
     },
     {
       "name": "PLAYER1_TEAM2",
       "category": "playerInTeam",
       "description": "Player 1 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player1Team"
     },
     {
       "name": "PLAYER1_TEAM3",
       "category": "playerInTeam",
       "description": "Player 1 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player1Team"
     },
     {
       "name": "PLAYER1_TEAM4",
       "category": "playerInTeam",
       "description": "Player 1 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player1Team"
     },
     {
       "name": "PLAYER2_TEAM0",
       "category": "playerInTeam",
       "description": "Player 2 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player2Team"
     },
     {
       "name": "PLAYER2_TEAM1",
       "category": "playerInTeam",
       "description": "Player 2 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player2Team"
     },
     {
       "name": "PLAYER2_TEAM2",
       "category": "playerInTeam",
       "description": "Player 2 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player2Team"
     },
     {
       "name": "PLAYER2_TEAM3",
       "category": "playerInTeam",
       "description": "Player 2 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player2Team"
     },
     {
       "name": "PLAYER2_TEAM4",
       "category": "playerInTeam",
       "description": "Player 2 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player2Team"
     },
     {
       "name": "PLAYER3_TEAM0",
       "category": "playerInTeam",
       "description": "Player 3 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player3Team"
     },
     {
       "name": "PLAYER3_TEAM1",
       "category": "playerInTeam",
       "description": "Player 3 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player3Team"
     },
     {
       "name": "PLAYER3_TEAM2",
       "category": "playerInTeam",
       "description": "Player 3 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player3Team"
     },
     {
       "name": "PLAYER3_TEAM3",
       "category": "playerInTeam",
       "description": "Player 3 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player3Team"
     },
     {
       "name": "PLAYER3_TEAM4",
       "category": "playerInTeam",
       "description": "Player 3 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player3Team"
     },
     {
       "name": "PLAYER4_TEAM0",
       "category": "playerInTeam",
       "description": "Player 4 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player4Team"
     },
     {
       "name": "PLAYER4_TEAM1",
       "category": "playerInTeam",
       "description": "Player 4 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player4Team"
     },
     {
       "name": "PLAYER4_TEAM2",
       "category": "playerInTeam",
       "description": "Player 4 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player4Team"
     },
     {
       "name": "PLAYER4_TEAM3",
       "category": "playerInTeam",
       "description": "Player 4 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player4Team"
     },
     {
       "name": "PLAYER4_TEAM4",
       "category": "playerInTeam",
       "description": "Player 4 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player4Team"
     },
     {
       "name": "PLAYER5_TEAM0",
       "category": "playerInTeam",
       "description": "Player 5 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player5Team"
     },
     {
       "name": "PLAYER5_TEAM1",
       "category": "playerInTeam",
       "description": "Player 5 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player5Team"
     },
     {
       "name": "PLAYER5_TEAM2",
       "category": "playerInTeam",
       "description": "Player 5 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player5Team"
     },
     {
       "name": "PLAYER5_TEAM3",
       "category": "playerInTeam",
       "description": "Player 5 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player5Team"
     },
     {
       "name": "PLAYER5_TEAM4",
       "category": "playerInTeam",
       "description": "Player 5 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player5Team"
     },
     {
       "name": "PLAYER6_TEAM0",
       "category": "playerInTeam",
       "description": "Player 6 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player6Team"
     },
     {
       "name": "PLAYER6_TEAM1",
       "category": "playerInTeam",
       "description": "Player 6 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player6Team"
     },
     {
       "name": "PLAYER6_TEAM2",
       "category": "playerInTeam",
       "description": "Player 6 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player6Team"
     },
     {
       "name": "PLAYER6_TEAM3",
       "category": "playerInTeam",
       "description": "Player 6 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player6Team"
     },
     {
       "name": "PLAYER6_TEAM4",
       "category": "playerInTeam",
       "description": "Player 6 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player6Team"
     },
     {
       "name": "PLAYER7_TEAM0",
       "category": "playerInTeam",
       "description": "Player 7 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player7Team"
     },
     {
       "name": "PLAYER7_TEAM1",
       "category": "playerInTeam",
       "description": "Player 7 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player7Team"
     },
     {
       "name": "PLAYER7_TEAM2",
       "category": "playerInTeam",
       "description": "Player 7 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player7Team"
     },
     {
       "name": "PLAYER7_TEAM3",
       "category": "playerInTeam",
       "description": "Player 7 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player7Team"
     },
     {
       "name": "PLAYER7_TEAM4",
       "category": "playerInTeam",
       "description": "Player 7 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player7Team"
     },
     {
       "name": "PLAYER8_TEAM0",
       "category": "playerInTeam",
       "description": "Player 8 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player8Team"
     },
     {
       "name": "PLAYER8_TEAM1",
       "category": "playerInTeam",
       "description": "Player 8 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player8Team"
     },
     {
       "name": "PLAYER8_TEAM2",
       "category": "playerInTeam",
       "description": "Player 8 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player8Team"
     },
     {
       "name": "PLAYER8_TEAM3",
       "category": "playerInTeam",
       "description": "Player 8 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player8Team"
     },
     {
       "name": "PLAYER8_TEAM4",
       "category": "playerInTeam",
       "description": "Player 8 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
       "verified": true,
-      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section.",
+      "group": "player8Team"
     },
     {
       "name": "UP_AVAILABLE",
@@ -1010,9 +1130,68 @@
       "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
     }
   ],
+  "labelGroups": [
+    {
+      "id": "gameMode",
+      "cardinality": "atMostOne",
+      "evidence": "A game lobby defines one game mode and the scenario editor defines none (round CG, c7)."
+    },
+    {
+      "id": "startingAge",
+      "cardinality": "atMostOne",
+      "evidence": "The editor defines one starting age (round CG, c7). A game lobby is unmeasured, so the weaker bound is used."
+    },
+    {
+      "id": "startingResources",
+      "cardinality": "atMostOne",
+      "evidence": "The editor defines one starting resources label (round CG, c7). A game lobby is unmeasured, so the weaker bound is used."
+    },
+    {
+      "id": "player1Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player2Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player3Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player4Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player5Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player6Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player7Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    },
+    {
+      "id": "player8Team",
+      "cardinality": "atMostOne",
+      "evidence": "One seat is on one team."
+    }
+  ],
   "commands": [
     {
       "name": "random_placement",
+      "tokenId": 12,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Places player starting positions randomly. Mutually exclusive with grouped_by_team and direct_placement.",
@@ -1021,6 +1200,8 @@
     },
     {
       "name": "grouped_by_team",
+      "tokenId": 13,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Places player starting positions grouped by team.",
@@ -1028,6 +1209,8 @@
     },
     {
       "name": "direct_placement",
+      "tokenId": 96,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Places players directly, in a fixed arrangement rather than randomized.",
@@ -1035,6 +1218,8 @@
     },
     {
       "name": "nomad_resources",
+      "tokenId": 95,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Adds the cost of a town center to every player's starting resources, so a nomad start can build one without gathering wood first. Grants no units and replaces nothing.",
@@ -1043,6 +1228,8 @@
     },
     {
       "name": "force_nomad_treaty",
+      "tokenId": 129,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Forces nomad-treaty rules for this map. DE only.",
@@ -1050,6 +1237,8 @@
     },
     {
       "name": "behavior_version",
+      "tokenId": 122,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Selects generation-behavior version for backward compatibility. DE only.",
@@ -1067,6 +1256,8 @@
     },
     {
       "name": "override_map_size",
+      "tokenId": 140,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Overrides the lobby-selected map size with an explicit tile dimension.",
@@ -1083,6 +1274,8 @@
     },
     {
       "name": "set_gaia_civilization",
+      "tokenId": 119,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Sets the civilization used for Gaia (neutral) units/buildings on this map. DE only.",
@@ -1100,6 +1293,8 @@
     },
     {
       "name": "ai_info_map_type",
+      "tokenId": 90,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Tells the AI what kind of map this is, affecting its strategy choices.",
@@ -1131,6 +1326,8 @@
     },
     {
       "name": "effect_amount",
+      "tokenId": 121,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Applies a flat-amount gameplay effect (resource/attribute/tech modification) at map start.",
@@ -1160,6 +1357,8 @@
     },
     {
       "name": "effect_percent",
+      "tokenId": 124,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Same shape as effect_amount, but the value is treated as a percentage (divided by 100).",
@@ -1190,6 +1389,8 @@
     },
     {
       "name": "guard_state",
+      "tokenId": 98,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Sets a guard-resource state; only one guard_state is allowed per script.",
@@ -1293,6 +1494,8 @@
     },
     {
       "name": "water_definition",
+      "tokenId": 146,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Selects a named water-type definition (must be #const-defined). DE only.",
@@ -1308,6 +1511,8 @@
     },
     {
       "name": "base_terrain",
+      "tokenId": 19,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "LAND_GENERATION",
       "kind": "standalone",
       "description": "Sets the default terrain the whole map starts as, before any lands/terrains are placed.",
@@ -1323,6 +1528,8 @@
     },
     {
       "name": "base_layer",
+      "tokenId": 102,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "LAND_GENERATION",
       "kind": "standalone",
       "description": "Marks every tile no land paints with a second terrain layer. DE only. This also splits where hills can grow. A create_elevation with the same base_layer grows only on those unpainted tiles, and one without a base_layer grows only on tiles a land painted, even a land of the base terrain itself.",
@@ -1337,6 +1544,8 @@
     },
     {
       "name": "enable_waves",
+      "tokenId": 105,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "LAND_GENERATION",
       "kind": "standalone",
       "description": "Toggles shoreline wave visuals. DE only.",
@@ -1352,6 +1561,8 @@
     },
     {
       "name": "create_player_lands",
+      "tokenId": 20,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "LAND_GENERATION",
       "kind": "block",
       "description": "Creates one land per player, distributing them per the block's attributes. Takes the same attribute set as create_land.",
@@ -1388,6 +1599,7 @@
       "section": "LAND_GENERATION",
       "kind": "block",
       "tokenId": 32,
+      "tokenIdSource": "RMSTEST_62",
       "description": "Creates one land mass (typically non-player territory — islands, center land, etc). Takes the same attribute set as create_player_lands.",
       "attributes": [
         "terrain_type",
@@ -1420,6 +1632,8 @@
     },
     {
       "name": "create_elevation",
+      "tokenId": 80,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "ELEVATION_GENERATION",
       "kind": "block",
       "description": "Raises or lowers terrain elevation in clumps.",
@@ -1448,6 +1662,8 @@
     },
     {
       "name": "cliff_type",
+      "tokenId": 142,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Sets the visual cliff material for this map. DE only.",
@@ -1463,6 +1679,8 @@
     },
     {
       "name": "min_number_of_cliffs",
+      "tokenId": 35,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum number of cliff formations to generate.",
@@ -1478,6 +1696,8 @@
     },
     {
       "name": "max_number_of_cliffs",
+      "tokenId": 36,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Upper bound on the number of cliff formations, not itself included. The game draws a count from min_number_of_cliffs up to one less than this, so the defaults give 3 to 8 cliffs. Setting both to the same value gives exactly that many.",
@@ -1494,6 +1714,8 @@
     },
     {
       "name": "min_length_of_cliff",
+      "tokenId": 37,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum length of each cliff formation.",
@@ -1511,6 +1733,8 @@
     },
     {
       "name": "max_length_of_cliff",
+      "tokenId": 38,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Upper bound on each cliff's length, not itself included. Each cliff draws its length from min_length_of_cliff up to one less than this, so the defaults give lengths of 5 to 8. Setting both to the same value gives exactly that length.",
@@ -1527,6 +1751,8 @@
     },
     {
       "name": "cliff_curliness",
+      "tokenId": 39,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "How often a cliff changes direction along its length — low values for straight cliffs, high for winding ones.",
@@ -1545,6 +1771,8 @@
     },
     {
       "name": "min_distance_cliffs",
+      "tokenId": 40,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum distance between separate cliffs, measured in cliff units of 3 tiles. 0 is 0 tiles, 1 is 3 tiles, 2 is 6 tiles.",
@@ -1561,6 +1789,8 @@
     },
     {
       "name": "min_terrain_distance",
+      "tokenId": 41,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum distance cliffs keep from water, measured in cliff units of 3 tiles. Only water placed in <LAND_GENERATION> counts, since terrain generation runs after cliffs.",
@@ -1577,6 +1807,8 @@
     },
     {
       "name": "color_correction",
+      "tokenId": 104,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "TERRAIN_GENERATION",
       "kind": "standalone",
       "description": "Applies a colour correction preset to the map's lighting. Not visible when the Map Lighting game setting is off, and water is controlled separately by water_definition. DE only.",
@@ -1592,6 +1824,8 @@
     },
     {
       "name": "create_terrain",
+      "tokenId": 43,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "TERRAIN_GENERATION",
       "sectionLocked": true,
       "kind": "block",
@@ -1624,6 +1858,8 @@
     },
     {
       "name": "accumulate_connections",
+      "tokenId": 126,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CONNECTION_GENERATION",
       "kind": "standalone",
       "description": "Lets later connection commands see and replace terrain that earlier connections created. Without it every connection reads the terrain as it stood before connection generation began. DE only.",
@@ -1632,6 +1868,8 @@
     },
     {
       "name": "create_connect_all_players_land",
+      "tokenId": 63,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects the origins of every player land, and of every land assigned to a player. Connections may pass through neutral lands where the terrain cost is favourable.",
@@ -1660,6 +1898,8 @@
     },
     {
       "name": "create_connect_all_lands",
+      "tokenId": 66,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects the origins of every land on the map to every other, player and neutral alike.",
@@ -1674,6 +1914,8 @@
     },
     {
       "name": "create_connect_same_land_zones",
+      "tokenId": 65,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Groups lands by zone and connects every pair within each zone, leaving zones unconnected to each other. On a script that sets no zones this reaches only the neutral lands, which all share the default zone, and leaves the player lands alone.",
@@ -1688,6 +1930,8 @@
     },
     {
       "name": "create_connect_land_zones",
+      "tokenId": 150,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects every land belonging to the first zone to every land belonging to the second. DE only.",
@@ -1716,6 +1960,8 @@
     },
     {
       "name": "create_connect_to_nonplayer_land",
+      "tokenId": 103,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects every player land to every neutral land, without connecting players to each other directly. Carries a known engine bug: once used, it blocks all later connection generation. DE only.",
@@ -1730,6 +1976,8 @@
     },
     {
       "name": "create_actor_area",
+      "tokenId": 127,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "OBJECTS_GENERATION",
       "kind": "standalone",
       "description": "Creates an actor area at a fixed map location rather than on an object, with the given identifier and radius, used to constrain later object placement via actor_area_to_place_in/avoid_actor_area.",
@@ -1760,6 +2008,8 @@
     },
     {
       "name": "create_object_group",
+      "tokenId": 147,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "OBJECTS_GENERATION",
       "kind": "block",
       "description": "Defines a named pool of object types. It places nothing itself. A later create_object naming the pool draws one member at random for each object it places, so a group of cow variants gives a mixed herd rather than a themed cluster.",
@@ -1775,6 +2025,8 @@
     },
     {
       "name": "create_object",
+      "tokenId": 48,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "section": "OBJECTS_GENERATION",
       "sectionLocked": true,
       "kind": "block",
@@ -1841,6 +2093,8 @@
   "attributes": [
     {
       "name": "actor_area",
+      "tokenId": 109,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "areaId",
@@ -1854,6 +2108,8 @@
     },
     {
       "name": "actor_area_radius",
+      "tokenId": 110,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "radius",
@@ -1867,6 +2123,8 @@
     },
     {
       "name": "actor_area_to_place_in",
+      "tokenId": 111,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "areaId",
@@ -1880,6 +2138,8 @@
     },
     {
       "name": "add_object",
+      "tokenId": 148,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "type",
@@ -1900,6 +2160,8 @@
     },
     {
       "name": "assign_to",
+      "tokenId": 99,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "target",
@@ -1933,6 +2195,8 @@
     },
     {
       "name": "assign_to_player",
+      "tokenId": 33,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "playerNumber",
@@ -1949,6 +2213,8 @@
     },
     {
       "name": "avoid_actor_area",
+      "tokenId": 112,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "areaId",
@@ -1963,12 +2229,16 @@
     },
     {
       "name": "avoid_all_actor_areas",
+      "tokenId": 113,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Keeps placement out of every actor area.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2875) on 2026-10-25."
     },
     {
       "name": "avoid_cliff_zone",
+      "tokenId": 117,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -1983,6 +2253,8 @@
     },
     {
       "name": "avoid_forest_zone",
+      "tokenId": 107,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -1998,6 +2270,8 @@
     },
     {
       "name": "avoid_other_land_zones",
+      "tokenId": 145,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2012,6 +2286,8 @@
     },
     {
       "name": "base_elevation",
+      "tokenId": 94,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "level",
@@ -2029,6 +2305,8 @@
     },
     {
       "name": "base_layer",
+      "tokenId": 102,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2042,6 +2320,8 @@
     },
     {
       "name": "base_size",
+      "tokenId": 22,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "radius",
@@ -2056,6 +2336,8 @@
     },
     {
       "name": "base_terrain",
+      "tokenId": 19,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2069,6 +2351,8 @@
     },
     {
       "name": "beach_terrain",
+      "tokenId": 136,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2082,6 +2366,8 @@
     },
     {
       "name": "border_fuzziness",
+      "tokenId": 27,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2098,6 +2384,8 @@
     },
     {
       "name": "bottom_border",
+      "tokenId": 26,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2128,6 +2416,8 @@
     },
     {
       "name": "circle_radius",
+      "tokenId": 101,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "radiusPercent",
@@ -2151,6 +2441,8 @@
     },
     {
       "name": "clumping_factor",
+      "tokenId": 73,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "value",
@@ -2165,6 +2457,8 @@
     },
     {
       "name": "default_terrain_replacement",
+      "tokenId": 82,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2178,48 +2472,64 @@
     },
     {
       "name": "enable_balanced_elevation",
+      "tokenId": 120,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Removes the bias of hill placement toward the south. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:1299) on 2026-10-25."
     },
     {
       "name": "enable_tile_shuffling",
+      "tokenId": 137,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Shuffles the candidate tiles so positions are less predictable. Do not use it for exact positions. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2692) on 2026-10-25."
     },
     {
       "name": "find_closest",
+      "tokenId": 108,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on the closest free tile to the land's center. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2647) on 2026-10-25."
     },
     {
       "name": "find_closest_to_map_center",
+      "tokenId": 134,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on the free tile closest to the map center. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2664) on 2026-10-25."
     },
     {
       "name": "find_closest_to_map_edge",
+      "tokenId": 133,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on the free tile closest to the map edge. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2678) on 2026-10-25."
     },
     {
       "name": "force_placement",
+      "tokenId": 115,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Stacks extra objects on used tiles when free tiles run out. Units only, not buildings. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2734) on 2026-10-25."
     },
     {
       "name": "generate_for_first_land_only",
+      "tokenId": 139,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on only the first matching land when several qualify. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2330) on 2026-10-25."
     },
     {
       "name": "generate_mode",
+      "tokenId": 151,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "mode",
@@ -2234,6 +2544,8 @@
     },
     {
       "name": "group_placement_radius",
+      "tokenId": 53,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "tiles",
@@ -2247,6 +2559,8 @@
     },
     {
       "name": "group_variance",
+      "tokenId": 52,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "value",
@@ -2260,6 +2574,8 @@
     },
     {
       "name": "height_limits",
+      "tokenId": 88,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "min",
@@ -2278,6 +2594,8 @@
     },
     {
       "name": "ignore_terrain_restrictions",
+      "tokenId": 130,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Lets the object go on terrains it normally cannot. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
       "requiresOneOf": [
         "set_place_for_every_player",
@@ -2289,6 +2607,8 @@
     },
     {
       "name": "land_conformity",
+      "tokenId": 149,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2304,6 +2624,8 @@
     },
     {
       "name": "land_id",
+      "tokenId": 72,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "id",
@@ -2318,6 +2640,8 @@
     },
     {
       "name": "land_percent",
+      "tokenId": 18,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2334,6 +2658,8 @@
     },
     {
       "name": "land_position",
+      "tokenId": 71,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "x",
@@ -2355,6 +2681,8 @@
     },
     {
       "name": "layer_to_place_on",
+      "tokenId": 114,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "layer",
@@ -2368,6 +2696,8 @@
     },
     {
       "name": "left_border",
+      "tokenId": 23,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2385,6 +2715,8 @@
     },
     {
       "name": "make_indestructible",
+      "tokenId": 131,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Makes a placed building impossible to attack, damage or delete. Buildings only. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2407) on 2026-10-25."
@@ -2397,6 +2729,8 @@
     },
     {
       "name": "max_distance",
+      "tokenId": 15,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Non-functional engine string. The working attribute is max_distance_to_players.",
       "nonFunctional": true,
       "replacedBy": "max_distance_to_players",
@@ -2405,6 +2739,8 @@
     },
     {
       "name": "max_distance_to_other_zones",
+      "tokenId": 91,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2418,6 +2754,8 @@
     },
     {
       "name": "max_distance_to_players",
+      "tokenId": 61,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2431,6 +2769,8 @@
     },
     {
       "name": "min_connected_tiles",
+      "tokenId": 125,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "count",
@@ -2444,6 +2784,8 @@
     },
     {
       "name": "min_distance",
+      "tokenId": 14,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Non-functional engine string. The working attribute is min_distance_to_players.",
       "nonFunctional": true,
       "replacedBy": "min_distance_to_players",
@@ -2452,6 +2794,8 @@
     },
     {
       "name": "min_distance_group_placement",
+      "tokenId": 78,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2465,6 +2809,8 @@
     },
     {
       "name": "min_distance_to_map_edge",
+      "tokenId": 132,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2478,6 +2824,8 @@
     },
     {
       "name": "min_distance_to_players",
+      "tokenId": 60,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2491,6 +2839,8 @@
     },
     {
       "name": "min_placement_distance",
+      "tokenId": 86,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2504,6 +2854,8 @@
     },
     {
       "name": "number_of_clumps",
+      "tokenId": 45,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "count",
@@ -2518,6 +2870,8 @@
     },
     {
       "name": "number_of_groups",
+      "tokenId": 50,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "count",
@@ -2531,6 +2885,8 @@
     },
     {
       "name": "number_of_objects",
+      "tokenId": 51,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "count",
@@ -2544,6 +2900,8 @@
     },
     {
       "name": "number_of_tiles",
+      "tokenId": 74,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "count",
@@ -2572,12 +2930,16 @@
     },
     {
       "name": "override_actor_radius_if_required",
+      "tokenId": 128,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Widens the actor area just enough to fit a building that is too big for it. Needs actor_area_to_place_in. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2799) on 2026-10-25."
     },
     {
       "name": "percent_of_land",
+      "tokenId": 44,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Non-functional engine string. The working attribute is land_percent.",
       "nonFunctional": true,
       "replacedBy": "land_percent",
@@ -2586,6 +2948,8 @@
     },
     {
       "name": "place_on_forest_zone",
+      "tokenId": 106,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["avoid_forest_zone"],
       "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).",
       "verified": true,
@@ -2593,6 +2957,8 @@
     },
     {
       "name": "place_on_specific_land_id",
+      "tokenId": 59,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "landId",
@@ -2607,6 +2973,8 @@
     },
     {
       "name": "replace_terrain",
+      "tokenId": 83,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "from",
@@ -2627,6 +2995,8 @@
     },
     {
       "name": "require_path",
+      "tokenId": 143,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "pathType",
@@ -2641,6 +3011,8 @@
     },
     {
       "name": "resource_delta",
+      "tokenId": 97,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "amount",
@@ -2654,6 +3026,8 @@
     },
     {
       "name": "right_border",
+      "tokenId": 24,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2671,6 +3045,8 @@
     },
     {
       "name": "second_object",
+      "tokenId": 116,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "type",
@@ -2684,6 +3060,8 @@
     },
     {
       "name": "set_avoid_player_start_areas",
+      "tokenId": 77,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2698,6 +3076,8 @@
     },
     {
       "name": "set_building_capturable",
+      "tokenId": 138,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_gaia_unconvertible"],
       "description": "Makes a building switch to whoever most recently has units nearby. Buildings only. DE only.",
       "verified": true,
@@ -2705,18 +3085,24 @@
     },
     {
       "name": "set_circular_base",
+      "tokenId": 144,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Turns the land's starting square into a circle. A base_size of 3 or less stays square. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:784) on 2026-10-25."
     },
     {
       "name": "set_circular_placement",
+      "tokenId": 135,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Measures min and max distance to players as a circle instead of a square. DE only.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2445) on 2026-10-25."
     },
     {
       "name": "set_facet",
+      "tokenId": 141,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "facet",
@@ -2730,18 +3116,24 @@
     },
     {
       "name": "set_flat_terrain_only",
+      "tokenId": 89,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Keeps this terrain off slopes by the distance in spacing_to_other_terrain_types. Needs that attribute above 0.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:1575) on 2026-10-25."
     },
     {
       "name": "set_gaia_object_only",
+      "tokenId": 57,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Makes the placed objects Gaia (neutral). Needed to place gold, stone, berries and animals for every player.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2352) on 2026-10-25."
     },
     {
       "name": "set_gaia_unconvertible",
+      "tokenId": 118,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_building_capturable"],
       "description": "Makes Gaia objects unrescuable and hostile to players. Needs set_gaia_object_only. DE only.",
       "verified": true,
@@ -2749,6 +3141,8 @@
     },
     {
       "name": "set_loose_grouping",
+      "tokenId": 54,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_tight_grouping"],
       "description": "Group members can sit anywhere within group_placement_radius. This is the default grouping.",
       "verified": true,
@@ -2756,6 +3150,8 @@
     },
     {
       "name": "set_place_for_every_player",
+      "tokenId": 58,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["place_on_specific_land_id"],
       "description": "Places this command's objects separately for each player's land. Gaia objects also need set_gaia_object_only.",
       "verified": true,
@@ -2763,6 +3159,8 @@
     },
     {
       "name": "set_position",
+      "tokenId": 16,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Non-functional engine string. The working attribute is land_position.",
       "nonFunctional": true,
       "replacedBy": "land_position",
@@ -2771,6 +3169,8 @@
     },
     {
       "name": "set_scale_by_groups",
+      "tokenId": 75,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_scale_by_size"],
       "mutexNote": "Only the last of the two applies, so the earlier line does nothing. To scale a terrain by both, use set_scale_by_groups on its own — it scales the total tile count as well. Elevation has no combined form; do that by hand with conditionals.",
       "description": "Scales number_of_clumps to the map size. The unscaled value refers to a 100x100 map. For terrains (not elevation) it scales the total tile count too.",
@@ -2779,6 +3179,8 @@
     },
     {
       "name": "set_scale_by_size",
+      "tokenId": 76,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_scale_by_groups"],
       "mutexNote": "Only the last of the two applies, so the earlier line does nothing. To scale a terrain by both, use set_scale_by_groups on its own — it scales the total tile count as well. Elevation has no combined form; do that by hand with conditionals.",
       "description": "Scales number_of_tiles to the map size. The unscaled value refers to a 100x100 map.",
@@ -2786,6 +3188,8 @@
     },
     {
       "name": "set_scaling_to_map_size",
+      "tokenId": 49,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_scaling_to_player_number"],
       "description": "Scales number_of_groups to the map size, or number_of_objects when there are no groups. Values refer to a 100x100 map.",
       "verified": true,
@@ -2793,6 +3197,8 @@
     },
     {
       "name": "set_scaling_to_player_number",
+      "tokenId": 87,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_scaling_to_map_size"],
       "description": "Multiplies number_of_groups by the player count, or number_of_objects when there are no groups.",
       "verified": true,
@@ -2800,6 +3206,8 @@
     },
     {
       "name": "set_tight_grouping",
+      "tokenId": 55,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["set_loose_grouping"],
       "description": "Group members must sit on adjacent tiles. Buildings larger than one tile are not placed.",
       "verified": true,
@@ -2807,6 +3215,8 @@
     },
     {
       "name": "set_zone_by_team",
+      "tokenId": 29,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["zone", "set_zone_randomly"],
       "description": "Gives players on the same team the same zone. Meant for create_player_lands.",
       "verified": true,
@@ -2814,12 +3224,16 @@
     },
     {
       "name": "set_zone_randomly",
+      "tokenId": 30,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["zone", "set_zone_by_team"],
       "description": "Assigns this land's zone randomly.",
       "verified": true
     },
     {
       "name": "spacing",
+      "tokenId": 81,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "tiles",
@@ -2835,6 +3249,8 @@
     },
     {
       "name": "spacing_to_other_terrain_types",
+      "tokenId": 46,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "tiles",
@@ -2848,6 +3264,8 @@
     },
     {
       "name": "spacing_to_specific_terrain",
+      "tokenId": 152,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2867,6 +3285,8 @@
     },
     {
       "name": "temp_min_distance_group_placement",
+      "tokenId": 93,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "distance",
@@ -2888,6 +3308,8 @@
     },
     {
       "name": "terrain_cost",
+      "tokenId": 84,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2907,6 +3329,8 @@
     },
     {
       "name": "terrain_mask",
+      "tokenId": 100,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "mask",
@@ -2920,6 +3344,8 @@
     },
     {
       "name": "terrain_size",
+      "tokenId": 85,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2944,6 +3370,8 @@
     },
     {
       "name": "terrain_to_place_on",
+      "tokenId": 56,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2956,6 +3384,8 @@
     },
     {
       "name": "terrain_type",
+      "tokenId": 21,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "terrain",
@@ -2968,6 +3398,8 @@
     },
     {
       "name": "top_border",
+      "tokenId": 25,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "percent",
@@ -2985,6 +3417,8 @@
     },
     {
       "name": "zone",
+      "tokenId": 28,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "zoneId",
@@ -3000,6 +3434,8 @@
   "directives": [
     {
       "name": "#const",
+      "tokenId": 2,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "name",
@@ -3017,6 +3453,8 @@
     },
     {
       "name": "#define",
+      "tokenId": 0,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "name",
@@ -3028,6 +3466,8 @@
     },
     {
       "name": "#include_drs",
+      "tokenId": 92,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "filename",
@@ -3039,6 +3479,8 @@
     },
     {
       "name": "#includeXS",
+      "tokenId": 123,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "filename",
@@ -3050,6 +3492,8 @@
     },
     {
       "name": "#undefine",
+      "tokenId": 1,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "name",
@@ -3063,6 +3507,8 @@
     },
     {
       "name": "#include",
+      "tokenId": 10,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "arguments": [
         {
           "name": "filename",
@@ -3078,36 +3524,50 @@
   "controlKeywords": [
     {
       "name": "if",
+      "tokenId": 3,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Begins a runtime conditional block, evaluated during generation (not at parse time — contrast with #ifdef).",
       "verified": true
     },
     {
       "name": "elseif",
+      "tokenId": 4,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Additional branch of a runtime if/elseif/else/endif chain.",
       "verified": true
     },
     {
       "name": "else",
+      "tokenId": 5,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Fallback branch of a runtime if/elseif/else/endif chain.",
       "verified": true
     },
     {
       "name": "endif",
+      "tokenId": 6,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Closes a runtime if block.",
       "verified": true
     },
     {
       "name": "start_random",
+      "tokenId": 7,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Begins a block of percent_chance-weighted alternatives, closed by end_random.",
       "verified": true
     },
     {
       "name": "percent_chance",
+      "tokenId": 8,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Inside a start_random block, gives one alternative's weight (should sum to 100 across the block).",
       "verified": true
     },
     {
       "name": "end_random",
+      "tokenId": 9,
+      "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Closes a start_random block.",
       "verified": true
     }

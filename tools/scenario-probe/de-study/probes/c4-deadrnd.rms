@@ -1,0 +1,9 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+if 8_PLAYER_GAME
+create_land { terrain_type FOREST land_position rnd(10,90) rnd(10,90) number_of_tiles 0 base_size 2 }
+#const DEADC rnd(10,90)
+endif
+create_land { terrain_type DIRT land_position rnd(10,90) rnd(10,90) number_of_tiles 0 base_size 2 }

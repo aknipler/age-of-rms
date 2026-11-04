@@ -2,12 +2,14 @@
 
 What Age of Empires II DE does from the seed to the end of `<LAND_GENERATION>`, in our own words, at the level of detail needed to reproduce its maps tile for tile. It is written for the age-of-rms preview spec (`docs/preview-design.md`), whose Sec.1 still lists seed parity as a non-goal. Section 10 lists where this overturns that spec. No code from any other project is reproduced here; Section 12 says where the first leads came from.
 
+**Revision 2026-10-28 (round GP, `tests/run-sheet-gp.md`).** 46 more maps, every reading predicted before the run, each map matching exactly one reading (44 the primary one). Now tested: players at sizes 200 and 220 with 4 players and teams (a real-shaped script through every stage), `circle_radius` with teams, `other_zone_avoidance_distance` 6, 9 and 12, a land with no amount, `start_random` with no branch taken, an empty block and weights over 100, `behavior_version 2`, two `create_player_lands` commands, which player a random `assign_to` picks, and `override_map_size`. The *Tested* notes below say which map settled what, and Section 11 is rewritten.
+
 ## Scope and confidence
 
 - **Build:** DE 101.103.54800.0.
 - **Instrument:** maps generated in the scenario editor (Seed Map, the seed typed in, Team Positions ticked unless stated), saved, and read back tile by tile with AoE2ScenarioParser. One skirmish (seed 370167422, 5 players) gave the same map as the editor and the model.
-- **Map size: Tiny (120 × 120) only.** The rules are written for any size, but no other size has been tested.
-- **Stages: `<PLAYER_SETUP>` and `<LAND_GENERATION>` only,** plus one villager per player as a marker for the player positions. Nothing after the land stage (elevation, cliffs, terrain, connections, objects) has been tested.
+- **Map size:** mostly Tiny (120 × 120). Since round GP (2026-10-28) also 100 and 144 (`override_map_size`, and a Small lobby), and 200 and 220 with 4 players, through every stage up to the terrain stage.
+- **Stages: `<PLAYER_SETUP>` and `<LAND_GENERATION>`,** plus one villager per player as a marker for the player positions. The later stages have their own write-ups (`de-elevation-cliffs.md`, `de-terrain-stage.md`).
 - **Result:** 146 saved maps from 34 probe scripts, 1 to 8 players.
   - 135 match DE tile for tile as saved.
   - 6 more match once the alliances left in the editor's saved diplomacy are read (Section 4.8).
@@ -53,11 +55,12 @@ One generator drives the whole stage, from the script's first `rnd()` to the las
 
 All of these happen before any player-setup draw, wherever they sit in the file.
 
-- **`start_random` takes one draw per block:** `roll = bounded(100)`, 0..99. The first branch whose running total of `percent_chance` values is **at least** the roll is taken. So the first branch wins for `w₁ + 1` of the 100 values and each later branch for exactly its own weight. A block whose weights add up to 99 or 100 always takes a branch. *Tested:* 2026-10-10, 40 blocks with weights set on the roll boundary at two seeds (`p6-range`); "at least" fits all 40 and "more than" fails. Also the four-seed check of Section 1. *Untested:* blocks whose weights add up to less than the roll (no branch taken), empty blocks, nested blocks, totals over 100.
+- **`start_random` takes one draw per block:** `roll = bounded(100)`, 0..99. The first branch whose running total of `percent_chance` values is **at least** the roll is taken. So the first branch wins for `w₁ + 1` of the 100 values and each later branch for exactly its own weight. A block whose weights add up to 99 or 100 always takes a branch. *Tested:* 2026-10-10, 40 blocks with weights set on the roll boundary at two seeds (`p6-range`); "at least" fits all 40 and "more than" fails. Also the four-seed check of Section 1. *Tested 2026-10-28 (round GP, `gl4-random`, seeds 1000 and 1001):* a block whose roll passes every branch takes none; **an empty block still spends its draw**; weights over 100 are just a larger running total (60 + 60: the first branch for rolls 0–60, the second for the rest). The controls (an empty block that draws nothing; a block that falls back to its last branch) fail both maps. *Untested:* nested blocks.
 - **`rnd(a, b)` = `a + bounded(b − a + 1)`.**
 - **`#const NAME rnd(a, b)` draws once, where it is defined.** Every use of `NAME` reads that one value.
 - **Every `rnd()` in every branch of a `start_random` block is drawn before the block's roll,** in textual order, including branches that are then not taken.
-- **`assign_to` in random mode (`0`) takes one draw; ordered mode (`−1`) takes none.** *Untested:* which player the draw picks.
+- **`assign_to` in random mode (`0`) takes one draw; ordered mode (`−1`) takes none.**
+- **Which player the random draw picks** (2026-10-28): the candidates are the players the selector allows, in slot order, **minus those already picked by an earlier `assign_to`**. The draw is `bounded(count)` and indexes that list. For `AT_TEAM t` with `t > 0` the candidates are team `t`'s players; with `t < 0`, every player not on team `−t` (so `−10` means everyone). Teams here are the lobby teams renumbered 1, 2, … by first appearance, and a team with one member counts as no team (0). *Tested:* `gm2-assignall` (`AT_TEAM −10` on four lands, 4 players) and `gm3-assignteam` (`AT_TEAM 1` and `2`, teams 1+2 and 3+4), seeds 1000 and 1001, owners read from villagers. A control that lets a picked player be picked again fails all four.
 - **`set_zone_randomly` takes one draw per land:** zone = `bounded(players) − 8`, so −8 to players − 9.
 
 *Tested 2026-10-10:* `p5a-rnd` (a `#const rnd`, `rnd` inside `land_position`, `rnd` in a branch not taken; seeds 1000 and 1001), `p5b-assign-rand` and `p5b-assign-ord`, and `b3-zonerand` (2 and 4 players).
@@ -128,7 +131,7 @@ Example: Tiny, no borders, base 3 gives `aw = 114`, `sx = sy = 68`, `tw = 22`, `
 
 So the players travel round a rectangle whose sides lie `half` inside the available box. Along each side they use a stretch of `sx` (60% of the box), keeping `tw` clear of the corners, and each is pushed off its side by up to `±tw/2`. In the example the sides lie at 14 and 104, each stretch runs from 25 to 93, and the push is up to ±11. A land that never received a perimeter value keeps 0 and sits at the start of the low-y side, `x = minx + tw` (see 4.8).
 
-*Tested:* every `random_placement` map (`p4-players` with 2 to 8 players; 63 `p4o-players` maps whose villagers give each player's position; `a5-assign`; the 11-draw prelude series).
+*Tested:* every `random_placement` map (`p4-players` with 2 to 8 players; 63 `p4o-players` maps whose villagers give each player's position; `a5-assign`; the 11-draw prelude series). **Several player lands per player** (2026-10-28, `gm1-twoplayer`: two `create_player_lands` commands, 2 players, and 4 players in teams, seeds 1000 and 1001): every land gets its own perimeter value and its own coordinate draw, exactly as written above, so `count` is the number of lands, not players, and a player's lands sit next to each other along the perimeter. A control where a player's lands share one origin fails all four maps.
 
 ### 4.5 `grouped_by_team`
 
@@ -156,7 +159,7 @@ So the players travel round a rectangle whose sides lie `half` inside the availa
 
   There is no rectangle edge draw, and nothing is drawn when `V = 0`. The ring is centred on the map, and the border-derived `minx`/`miny` do not apply.
 
-*Tested:* `a6-circle` (R 35, V 0, 2 and 4 players) and `a6b-circlev` (R 30, V 5, seeds 1000 and 1001). Our model takes cos/sin in single precision and matched. *Untested:* `circle_radius` with teams, and whether DE's cos/sin could differ in the last bit.
+*Tested:* `a6-circle` (R 35, V 0, 2 and 4 players) and `a6b-circlev` (R 30, V 5, seeds 1000 and 1001). Our model takes cos/sin in single precision and matched. *Tested 2026-10-28:* `circle_radius 40 0` with teams 1+2 and 3+4 (`gl1-circle`, seeds 1000 and 1001): the team order of 4.2 and the pass of 4.4, on the circle. *Untested:* whether DE's cos/sin could differ in the last bit.
 
 ### 4.7 `direct_placement`
 
@@ -180,6 +183,7 @@ Alliance tables that are not all-to-all (5–6, 5–8 and 6–7 together) are no
 - **`land_percent P` below 100:** each player land targets round(`W·H·P / (players × 100)`), in single precision.
 - **`land_percent P` of 100 or more:** each player land targets the whole map, `W·H`, not divided. *Tested:* 4, 60, 97, 99 and 100 (2026-10-10/11). A joint budget shared between the lands was ruled out at 60, 97 and 99.
 - **Zone:** player `k`'s lands are in zone `k − 10`.
+- **Several `create_player_lands` commands** each add one land per player (8.3). *Tested:* `gm1-twoplayer` (4.4).
 
 ## 5. Origins of the remaining lands
 
@@ -209,7 +213,7 @@ Each tile holds one byte: `0xFE` = free, `0xFF` = dead (refused by a border roll
   - With `set_circular_base`, only cells with `dx² + dy² ≤ h²` are written.
 - **Tile count** `n_tiles` = the number of cells in the clipped square, even for a circular stamp.
 - **Counters:** these say how many tiles a land has towards its target.
-  - **`behavior_version` 1 or above:** the land's counter starts at `n_tiles`.
+  - **`behavior_version` 1 or above:** the land's counter starts at `n_tiles`. *Tested:* version 1 (`a7-behavior`) and 2 (`gl5-behavior2`, 2026-10-28; the version-0 control fails both seeds).
   - **`behavior_version` 0 (the default):** every counter starts at 0. Then, if the land's zone byte `z` is not greater than the land's own 0-based index `i` in the land list, **the counter of land number `z` is set to `n_tiles`**. This comes from the original 1.0c code. With default zones (`z = 0`), each default-zone land overwrites land 0's counter. In most scripts the effect is that a land grows its full target beyond its stamp.
 - **Seeds:** the cells just outside the clipped square go into the land's queue at cost 0, in this order: the left column top to bottom, the row above left to right, the right column top to bottom, the row below left to right. A side lying on the map edge is skipped. **A circular stamp seeds exactly like a square one** (the sides of its bounding square).
 
@@ -262,7 +266,7 @@ The `n = 0` refusal never fires for a cell pushed by a claim, since the claimed 
   - For example, at `a = 4` (`o = 2`): `dy = −4` counts `|dx| ≤ 2`, `dy = −3` counts `|dx| ≤ 3`, and every other row counts `|dx| ≤ 4`.
 - **Only the growing land's own `a` counts.** With `a = 0` only the cell itself is checked, so there is no effect.
 
-*Tested:* `a` = 0 and 4 (`p3b-avoid`, `b3-zonerand`). *Untested:* other distances, and so the trimming and the factor's effect at `a ≥ 6`.
+*Tested:* `a` = 0 and 4 (`p3b-avoid`, `b3-zonerand`), and 6, 9 and 12 (`gl2-avoid`, 2026-10-28, each pair of lands stacked vertically so the trimmed rows matter). An exact 2/3 factor fails seed 1000 by 1,214 tiles; at seed 1001 it happens to give the same map.
 
 ### 6.8 The border chance (`border_fuzziness f`, default 20)
 
@@ -308,7 +312,11 @@ Lands are listed in script order. `create_player_lands` expands in place to one 
 - `number_of_tiles N` gives `N`.
 - `land_percent P` on `create_land` gives round(`W·H·min(P, 100) / 100`).
 - For `create_player_lands`, see 4.9.
-- *Untested:* the target when neither attribute is given (the guide says `land_percent 100`).
+- **Neither attribute:** `land_percent 100`, as the guide says (so the whole map, W·H). *Tested 2026-10-28:* `gl3-default`, seeds 1000 and 1001; a zero target fails both by about 14,000 tiles.
+
+### 8.5 Map size (`override_map_size N`)
+
+The script's `override_map_size N` makes the map `N × N` for every stage, whatever the lobby size, and the saved map has that size. *Tested 2026-10-28:* 144 from a Tiny lobby (`go1`, seeds 1000 and 1001), 100, a size no lobby offers (`go2`), and go1's script without the line saved from a Small (144) lobby (`go3`), which gives the same map as go1. *Untested:* sizes outside 36–480 (AoE2RMSIDE clamps to that range) and several override lines (AoE2RMSIDE: the last wins).
 
 ## 9. Painting and cleanup
 
@@ -346,17 +354,17 @@ Lands are listed in script order. `create_player_lands` expands in place to one 
 
 ## 11. Not tested
 
-- **Scale and stages:** map sizes other than Tiny. Elevation and cliffs are covered by `de-elevation-cliffs.md`; the terrain, connection and object stages are untested.
-- **Setup:** the selection rule of random `assign_to`; several `create_player_lands`; `grouped_by_team` with a member without a land, or groups that do not fit; `circle_radius` with teams; `direct_placement` with Team Positions off; a script with no land commands.
-- **Zones and growth attributes:** zones −11 and −12; `set_zone_by_team`; avoidance distances other than 0 and 4; negative `border_fuzziness`; `behavior_version` 2.
-- **Other attributes:** `override_map_size`; the default size when no size is given.
-- **`start_random`:** blocks that take no branch, empty or nested blocks, totals over 100.
+After round GP (2026-10-28):
+
+- **Setup:** `grouped_by_team` with a member without a land, or groups that do not fit; `direct_placement` with Team Positions off; a script with no land commands; nested `start_random` blocks.
+- **Zones and growth attributes:** zones −11 and −12; `set_zone_by_team`; negative `border_fuzziness`.
+- **Sizes:** players have been tested at 120, 144, 200 and 220 only; the larger lobby sizes (240, 252 and up) only on scripts without players.
 - **The burned draw:** its purpose. If it belongs to a feature our scripts never use, other scripts could spend more draws there.
 - **Editor-only:** alliance tables that are not all-to-all (4.8).
 
 ## 12. Sources and credit
 
-- **Our tests:** the study's test folder. Its probe scripts, run sheets, predictions and results log are kept beside this file, in `../probes` and here. Its Python tools are not (see ../README.md).
+- **Our tests:** `RMS/de-disassembly/tests/`.
   - `results.md` is the results log.
   - `land_model.py` is our own Python model of everything above.
   - `writeup_check.py` re-implements this document from its text and compares it with the saved DE maps.

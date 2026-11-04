@@ -1,0 +1,11 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type SNOW land_position 80 20 number_of_tiles 0 base_size 1 land_id 9 }
+create_player_lands { terrain_type DIRT base_size 2 number_of_tiles 0 }
+<OBJECTS_GENERATION>
+create_object TURKEY { number_of_objects 30 terrain_to_place_on SNOW }
+create_object SHEEP { number_of_objects 30 force_placement terrain_to_place_on SNOW }
+create_object DEER { set_place_for_every_player set_gaia_object_only number_of_objects 40 max_distance_to_players 2 force_placement }
+create_object GOLD { set_place_for_every_player set_gaia_object_only number_of_objects 30 max_distance_to_players 2 force_placement }

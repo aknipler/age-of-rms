@@ -1,0 +1,1992 @@
+/* Created by Captain Kniples the Fourth */
+/* For funsies */
+/* Created 2024 10 25 for the Blue Carbon Cup 2, hosted by Huehuecoyotl22 */
+/* This is a 2v2 map only (currently) */
+
+/* 
+  
+  This map is designed around the idea of teams trading resources with each other (called slinging in extreme cases). 
+   Teams have one player who has access to lots of gold and wood, but limited food. The other player(s) have access
+   to lots of food and wood, but very limited gold. As such, they need to send each other resources to balance their economies.
+   As such, "slinging" (which is an extreme case of team resource trading) should be allowed from dark age. 
+   
+   Specifically inspired by Rekawa Lagoon, ( http://www.mangrovesforthefuture.org/grants/small-grant-facilities/sri-lanka/phase-1-projects-lk/cultivating-bamboo-as-a-wood-substitute-to-protect-mangroves-and-control-erosion-at-rekawa-lagoon/ )
+   the west cost of Malaysia, specifically around Danau Anak Laut, Twin Lagoon in the Phillippines and the Tropical Mahe Island (aerial shots are awesome) which is part of the Seychelles.
+
+*/
+
+
+/* ***********************************************************************************************
+ *  A possible future edition of this map could be making it so that one of the players          *
+ *  starts with more villagers than                                                              *
+ *  the others. This would be easy to implement and create a different dynamic to any other map  *
+ *  as one player on each team would be given a head start on all the other players              *
+ *********************************************************************************************** */
+
+
+/* controls for game features */
+/* #define BARRACKS_START */
+/* #define DEBUG_MODE */
+
+/* objects */
+#const ONGRID_PLACEHOLDER 1613
+#const INVIS 1291
+#const ONGRID_PLACEHOLDER2 600 /* flag_a */
+/* #const ONGRID_PLACEHOLDER2 278 */ /* dead fish trap */
+#const TREE_50_WOOD       1350
+#const OYSTERS 2170
+#const FISH_PLACEHOLDER 647 
+#const REED 1350
+#const GRASS_PATCH 301
+#const BAMBOO_TREE 348
+#const BONFIRE 304
+#const SEAGULLS 303
+#const FENCE_RUBBLE 1065
+#const ROCK2 1323
+#const BARRELS 1330
+#const PLANT_JUNGLE 1351
+#const PLANT_UNDERBRUSH_TROPICAL 1352
+#const PLANT_UNDERBRUSH 1353
+#const PLANT_RAINFOREST 1354
+#const PLANT_UNDERBRUSH_RAINFOREST 1355
+#const GRASS_GREEN 1358
+#const GRASS_DRY 1359
+#const PLANT_BUSH_GREEN 1360
+#const PLANT_SHRUB_GREEN 1362
+#const PLANT_SHRUB_DRY 1363
+#const PLANT_WEEDS 1364
+#const PLANT_DEAD 1365
+#const PLANT_FLOWERS 1366
+#const OFF_GRID 647
+#const MAKE_MANGROVEFOREST_TERRAIN 1641
+#const MAKE_DIRT3_TERRAIN 1640
+#const MAKE_FOREST_TERRAIN 1639
+
+#const SHIPWRC 2352
+#const STAT_IND 1777
+
+
+/* terrains */
+#const TEMP_TERRAIN 68 
+#const TEMP_TERRAIN2 19
+#const TEMP_TERRAIN3 16
+#const UPPER_LAND_TERRAIN 3
+#const LOWER_LAND_TERRAIN 60
+#const UPPER_LAND_MASK 51 /* beach2 */
+#const UPPER_LAND_MASK2 56 /* rainforest */
+#const UPPER_LAND_MASK3 58 /* water */
+#const LOWER_LAND_MASK 56 /* rainforest */
+#const LOWER_LAND_MASK2 51 /* beach2 */
+#const LOWER_LAND_MASK3 62 /* jungle */
+
+
+/* Temporary placeholder for oysters */
+/* effect_amount SET_ATTRIBUTE OYSTERS ATTR_STANDING_GRAPHIC 7640 */
+
+/* Make it so that the flags disappear at the start of the game */
+effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER2 ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_HITPOINTS 0
+
+/* Make it so that the forests can't be quickly removed by players using building foundations */
+effect_percent SET_ATTRIBUTE MAKE_MANGROVEFOREST_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_MANGROVEFOREST_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_MANGROVEFOREST_TERRAIN ATTR_FOUNDATION_TERRAIN 55 /* mangrove forest */
+
+effect_percent SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_FOUNDATION_TERRAIN 3 /* DIRT3 */
+
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_FOUNDATION_TERRAIN 10 /* forest */
+
+/* Make it so that fence rubble does not disappear */
+effect_amount GAIA_SET_ATTRIBUTE FENCE_RUBBLE ATTR_STORAGE_VALUE 30000
+
+
+
+
+<PLAYER_SETUP>
+direct_placement
+/* behavior_version 1 */
+
+#const TRIBUTE_INEFFICIENCY 46   
+effect_percent MOD_RESOURCE TRIBUTE_INEFFICIENCY ATTR_SET 40
+#const LEMBOS 2123
+#const WARLEMBOS 2124
+effect_amount SET_ATTRIBUTE LEMBOS ATTR_RELOAD_TIME 99000
+effect_amount SET_ATTRIBUTE WARLEMBOS ATTR_RELOAD_TIME 3
+effect_amount SET_ATTRIBUTE LEMBOS ATTR_ATTACK 1025
+effect_amount SET_ATTRIBUTE LEMBOS ATTR_SHOWN_ATTACK 1
+
+#const JUNK 15
+effect_amount SET_ATTRIBUTE JUNK ATTR_POPULATION 0
+
+
+
+
+<LAND_GENERATION>
+
+base_terrain GRASS
+
+
+
+/* Create water */
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 4 30 border_fuzziness 44 left_border -15 top_border -15 bottom_border -15 right_border 93 }
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 4 90 border_fuzziness 44 left_border -15 top_border -15 bottom_border -15 right_border 89 }
+
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 96 30 border_fuzziness 44 right_border -15 top_border -15 bottom_border -15 left_border 93 }
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 96 90 border_fuzziness 44 right_border -15 top_border -15 bottom_border -15 left_border 89 }
+
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 50 8 border_fuzziness 44 right_border -15 top_border -15 bottom_border 81 left_border -15 }
+
+/* forest and rock */
+create_land { terrain_type FOREST base_size 1 land_percent 100 min_placement_distance 6 border_fuzziness 11 right_border 49 top_border 64 bottom_border 6 left_border 49 zone 1 base_elevation 1 }
+create_land { terrain_type FOREST base_size 1 land_percent 100 min_placement_distance 6 border_fuzziness 11 right_border 49 top_border 64 bottom_border 6 left_border 49 zone 1 base_elevation 1 }
+create_land { terrain_type FOREST base_size 1 land_percent 100 min_placement_distance 6 border_fuzziness 11 right_border 49 top_border 64 bottom_border 6 left_border 49 zone 1 base_elevation 1 }
+
+create_land { terrain_type TEMP_TERRAIN2 base_size 1 land_percent 100 land_position 50 91 border_fuzziness 99 right_border 48 top_border 87 bottom_border -15 left_border 48 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN2 base_size 1 land_percent 100 land_position 50 94 border_fuzziness 99 right_border 45 top_border 92 bottom_border -15 left_border 45 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN2 base_size 1 land_percent 100 land_position 50 97 border_fuzziness 99 right_border 42 top_border 95 bottom_border -15 left_border 42 zone 1 base_elevation 1 }
+
+/* Center pond */
+create_land { terrain_type DLC_WATER5 base_size 3 number_of_tiles 600 land_position 50 60 clumping_factor 25 border_fuzziness 100 right_border 47 top_border 57 bottom_border 37 left_border 47 zone 1 land_id 11 }
+
+/* Outlets */
+/* ** left side ** */
+/* bottom */
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 4 64 clumping_factor 25 border_fuzziness 66 right_border 88 top_border 64 bottom_border 33 left_border 4 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 6 69 clumping_factor 25 border_fuzziness 33 right_border 88 top_border 64 bottom_border 28 left_border 5 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 6 70 clumping_factor 25 border_fuzziness 33 right_border 88 top_border 64 bottom_border 28 left_border 5 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 8 73 clumping_factor 25 border_fuzziness 17 right_border 88 top_border 64 bottom_border 23 left_border 7 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 9 79 clumping_factor 25 border_fuzziness 17 right_border 88 top_border 64 bottom_border 18 left_border 9 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 10 86 clumping_factor 25 border_fuzziness 17 right_border 87 top_border 64 bottom_border 13 left_border 11 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 12 rnd(92,94) clumping_factor 25 border_fuzziness 17 right_border 87 top_border 64 bottom_border 5 left_border 12 zone 1 base_elevation 1  }
+/* top */
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 4 56 clumping_factor 25 border_fuzziness 66 right_border 90 top_border 53 bottom_border 44 left_border 4 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 6 51 clumping_factor 25 border_fuzziness 33 right_border 90 top_border 48 bottom_border 44 left_border 5 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 7 50 clumping_factor 25 border_fuzziness 33 right_border 90 top_border 48 bottom_border 44 left_border 6 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 9 46 clumping_factor 25 border_fuzziness 17 right_border 90 top_border 43 bottom_border 44 left_border 8 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 10 rnd(39,42) clumping_factor 25 border_fuzziness 17 right_border 90 top_border 38 bottom_border 43 left_border rnd(7,10) zone 1 base_elevation 1  }
+
+/* ** right side ** */
+/* bottom */
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 96 64 clumping_factor 25 border_fuzziness 66 left_border 88 top_border 64 bottom_border 33 right_border 4 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 94 69 clumping_factor 25 border_fuzziness 33 left_border 88 top_border 64 bottom_border 28 right_border 5 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 94 70 clumping_factor 25 border_fuzziness 33 left_border 88 top_border 64 bottom_border 28 right_border 5 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 92 73 clumping_factor 25 border_fuzziness 17 left_border 88 top_border 64 bottom_border 23 right_border 7 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 91 79 clumping_factor 25 border_fuzziness 17 left_border 88 top_border 64 bottom_border 18 right_border 9 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 90 86 clumping_factor 25 border_fuzziness 17 left_border 87 top_border 64 bottom_border 13 right_border 11 zone 1 base_elevation 1  }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 88 rnd(92,94) clumping_factor 25 border_fuzziness 17 left_border 87 top_border 64 bottom_border 5 right_border 12 zone 1 base_elevation 1  }
+/* top */
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 96 56 clumping_factor 25 border_fuzziness 66 left_border 90 top_border 53 bottom_border 44 right_border 4 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 94 51 clumping_factor 25 border_fuzziness 33 left_border 90 top_border 48 bottom_border 44 right_border 5 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 93 50 clumping_factor 25 border_fuzziness 33 left_border 90 top_border 48 bottom_border 44 right_border 6 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 91 46 clumping_factor 25 border_fuzziness 17 left_border 90 top_border 43 bottom_border 44 right_border 8 zone 1 base_elevation 1  }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 90 rnd(39,42) clumping_factor 25 border_fuzziness 17 left_border 90 top_border 38 bottom_border 43 right_border rnd(7,10) zone 1 base_elevation 1  }
+
+
+/* ***** Market Land Generation ***** */
+/* Team 2 Area */
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 88 24 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 16 99 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+
+/* Team 1 Area */
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 12 24 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 84 99 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+
+/* ***** Player Grass Generation ***** */
+/* Team 2 Area */
+/* top */
+create_land { terrain_type GRASS2 base_size 1 land_percent 100 land_position 87 25 border_fuzziness 6 land_id 8 right_border 7 top_border 24 base_elevation 1 zone 3 }
+/* bot */
+create_land { terrain_type GRASS  base_size 1 land_percent 100 land_position 36 99 border_fuzziness 6 land_id 8 left_border 11 top_border 63 base_elevation 1 zone 3 }
+
+/* Team 1 Area */
+/* top */
+create_land { terrain_type GRASS2 base_size 1 land_percent 100 land_position 13 25 border_fuzziness 6 land_id 8 left_border 7   top_border 24 base_elevation 1 zone 3 }
+/* bot */
+create_land { terrain_type GRASS  base_size 1 land_percent 100 land_position 64 99 border_fuzziness 6 land_id 8 right_border 11 top_border 63 base_elevation 1 zone 3 }
+
+
+if 2_PLAYER_GAME					
+	#define AT_LEAST_2				
+elseif 3_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3				
+	if TEAM1_SIZE2 #define 2V1 endif				
+elseif 4_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4				
+	if TEAM1_SIZE2 if TEAM2_SIZE2 #define 2V2 
+  
+    start_random 
+        percent_chance 50 #define FLIP_TEAMS
+    end_random
+  
+    /* Player lands */
+    create_land { terrain_type GRASS2 if FLIP_TEAMS assign_to AT_COLOR 2 0 0 else assign_to AT_COLOR 1 0 0 endif base_size 3 number_of_tiles 0 land_position 29 40 bottom_border 55 top_border 10 left_border 10 right_border 55 clumping_factor 22 zone 2 base_elevation 1 }
+    create_land { terrain_type GRASS  if FLIP_TEAMS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 4 0 0 endif base_size 3 number_of_tiles 0 land_position 29 80 top_border 55 left_border 10 right_border 55 clumping_factor 22 zone 2 base_elevation 1 }
+    create_land { terrain_type GRASS2 if FLIP_TEAMS assign_to AT_COLOR 1 0 0 else assign_to AT_COLOR 2 0 0 endif base_size 3 number_of_tiles 0 land_position 71 40 bottom_border 40 top_border 10 left_border 55 right_border 10 clumping_factor 22 zone 2 base_elevation 1 }
+    create_land { terrain_type GRASS  if FLIP_TEAMS assign_to AT_COLOR 4 0 0 else assign_to AT_COLOR 3 0 0 endif base_size 3 number_of_tiles 0 land_position 71 80 top_border 55 left_border 55 right_border 10 clumping_factor 22 zone 2 base_elevation 1 }
+
+
+  
+  endif endif				
+elseif 5_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5				
+	if TEAM1_SIZE3 if TEAM2_SIZE2 #define 3V2 endif elseif TEAM2_SIZE3 if TEAM1_SIZE2 #define 3V2 endif endif				
+elseif 6_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6				
+	if TEAM1_SIZE3 if TEAM2_SIZE3 #define 3V3 endif endif			
+  
+	
+elseif 7_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6 #define AT_LEAST_7				
+	if TEAM1_SIZE4 if TEAM2_SIZE3 #define 4V3 endif elseif TEAM2_SIZE4 if TEAM1_SIZE3 #define 4V3 endif endif				
+elseif 8_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6 #define AT_LEAST_7 #define AT_LEAST_8				
+	if TEAM1_SIZE4 if TEAM2_SIZE4 
+  #define 4V4 
+  
+  endif endif				
+endif					
+
+
+
+/* Divide center lands */
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 50 20 border_fuzziness 24 right_border 47 top_border 19 bottom_border 45 left_border 47 zone 1 land_id 3 }
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 50 30 border_fuzziness 24 right_border 47 top_border 19 bottom_border 45 left_border 47 zone 1 land_id 3 }
+
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 33 60 border_fuzziness 24 right_border 52 top_border 57 bottom_border 37 zone 1 }
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 5  60 border_fuzziness 24 right_border 52 top_border 57 bottom_border 37 zone 1 }
+
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 67 60 border_fuzziness 24 top_border 57 bottom_border 37 left_border 52 zone 1 }
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 95 60 border_fuzziness 24 top_border 57 bottom_border 37 left_border 52 zone 1 }
+
+
+
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 3 { base_terrain GRASS number_of_tiles 800 number_of_clumps 115 spacing 0 enable_balanced_elevation } 
+create_elevation 3 { base_terrain GRASS2 number_of_tiles 550 number_of_clumps 135 spacing 0 enable_balanced_elevation } 
+create_elevation 5 { base_terrain TEMP_TERRAIN2 number_of_tiles 2000 number_of_clumps 125 spacing 0 enable_balanced_elevation } 
+create_elevation 3 { base_terrain FOREST number_of_tiles 100 number_of_clumps 15 spacing 0 enable_balanced_elevation } 
+
+
+
+
+
+
+
+/* <CLIFF_GENERATION> */
+
+
+
+
+
+
+
+<TERRAIN_GENERATION>
+
+
+/* Fix the islands to be consistent */ 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+
+
+create_terrain BEACH { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+
+create_terrain BEACH { base_terrain GRASS land_percent 100 number_of_clumps 3000 } 
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 }
+
+
+
+
+/*  Make rock terrain fuzzy */
+create_terrain DLC_ROCK { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 8000 } 
+create_terrain GRASS { base_terrain DLC_ROCK number_of_tiles 5 number_of_clumps 3 spacing_to_other_terrain_types 1 }
+create_terrain GRASS { base_terrain DLC_ROCK number_of_tiles 4 number_of_clumps 3 }
+create_terrain FOREST { base_terrain DLC_ROCK number_of_tiles 4 number_of_clumps 3 spacing_to_other_terrain_types 1 }
+create_terrain FOREST { base_terrain DLC_ROCK number_of_tiles 12 number_of_clumps 7 }
+/* make forest fuzzy */
+create_terrain LEAVES { base_terrain FOREST number_of_tiles 20 number_of_clumps 13 }
+/* masking */
+create_terrain LEAVES { base_terrain DLC_ROCK number_of_tiles 90 number_of_clumps 40 terrain_mask 1 }
+create_terrain DLC_GRAVELBEACH { base_terrain DLC_ROCK number_of_tiles 90 number_of_clumps 40  terrain_mask 1 }
+create_terrain DLC_CRACKED { base_terrain DLC_ROCK number_of_tiles 25 number_of_clumps 19  terrain_mask 1 }
+
+
+/* ** Fix land elevation near waters edge ** */
+/* WATER */
+/* make grass into temp terrain */
+create_terrain TEMP_TERRAIN2 { base_terrain GRASS land_percent 100 number_of_clumps 30000 }
+create_terrain TEMP_TERRAIN2 { base_terrain GRASS land_percent 100 number_of_clumps 30000 }
+create_terrain TEMP_TERRAIN2 { base_terrain GRASS land_percent 100 number_of_clumps 30000 }
+
+/* make water into same temp terrain */
+create_terrain TEMP_TERRAIN2 { base_terrain WATER land_percent 100 number_of_clumps 30000 }
+create_terrain TEMP_TERRAIN2 { base_terrain WATER land_percent 100 number_of_clumps 30000 }
+
+/* make temp terrain into water with hiehgt limits and spacing */
+create_terrain WATER { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain WATER { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain WATER { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+
+/* make temp terrain backj into grass */
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+
+/* Center pond */
+create_terrain GRASS { base_terrain DLC_WATER5 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain DLC_WATER5 land_percent 100 number_of_clumps 30000 }
+
+/* make grass on flat into Azure Water with hiehgt limits and spacing */
+create_terrain DLC_WATER5 { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_WATER5 { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_WATER5 { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+
+/* MANGROVES */
+/* make MANGROVES into grass */
+create_terrain GRASS { base_terrain DLC_MANGROVESHALLOW land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain DLC_MANGROVESHALLOW land_percent 100 number_of_clumps 30000 }
+
+/* make grass on flat into MANGROVES with hiehgt limits and spacing */
+create_terrain DLC_MANGROVESHALLOW { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_MANGROVESHALLOW { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_MANGROVESHALLOW { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+
+/* Center pond masking */
+create_terrain WATER { base_terrain DLC_WATER5 number_of_tiles 400 number_of_clumps 180 terrain_mask 1 spacing_to_other_terrain_types 1 }
+create_terrain WATER { base_terrain DLC_WATER5 number_of_tiles 400 number_of_clumps 180 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain MED_WATER { base_terrain WATER base_layer DLC_WATER5 number_of_tiles 400 number_of_clumps 180 terrain_mask 1 spacing_to_other_terrain_types 1 }
+create_terrain MED_WATER { base_terrain WATER base_layer MED_WATER number_of_tiles 400 number_of_clumps 180 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain DEEP_WATER { base_terrain MED_WATER base_layer WATER number_of_tiles 400 number_of_clumps 180 terrain_mask 1 spacing_to_other_terrain_types 1 }
+create_terrain DEEP_WATER { base_terrain MED_WATER number_of_tiles 400 number_of_clumps 180 spacing_to_other_terrain_types 2 } 
+create_terrain WATER { base_terrain WATER base_layer DLC_WATER5 number_of_tiles 400 number_of_clumps 180 }
+
+/* Fix the islands to be consistent */ 
+create_terrain TEMP_TERRAIN3 { base_terrain GRASS land_percent 100 number_of_clumps 3000   } 
+/* create_terrain TEMP_TERRAIN3 { base_terrain GRASS base_layer FOREST land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  }  */
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5  }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1  } 
+
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000  } 
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000  } 
+
+
+
+/* Generate Forests */
+/* top forests */
+create_terrain TEMP_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 1 }
+create_terrain BAMBOO { base_terrain TEMP_TERRAIN number_of_tiles 50 number_of_clumps 15 set_avoid_player_start_areas 13 spacing_to_other_terrain_types 4 }
+create_terrain BAMBOO { base_terrain GRASS2 number_of_tiles 50 number_of_clumps 15 set_avoid_player_start_areas 13 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 10000 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 10000 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 10000 }
+/* bot forests */
+create_terrain BAMBOO { base_terrain GRASS number_of_tiles 300 number_of_clumps 50 set_avoid_player_start_areas 13 spacing_to_other_terrain_types 4 }
+
+/* islands */
+create_terrain GRASS3 { base_terrain WATER number_of_tiles 400 number_of_clumps 4 set_avoid_player_start_areas 58 spacing_to_other_terrain_types 8 }
+create_terrain GRASS3 { base_terrain WATER number_of_tiles 330 number_of_clumps 7 set_avoid_player_start_areas 56 spacing_to_other_terrain_types 7 }
+create_terrain GRASS3 { base_terrain WATER number_of_tiles 230 number_of_clumps 9 set_avoid_player_start_areas 54 spacing_to_other_terrain_types 6 }
+
+create_terrain SHALLOW { base_terrain GRASS3 number_of_tiles 150 number_of_clumps 11 }
+create_terrain SHALLOW { base_terrain GRASS3 number_of_tiles 70 number_of_clumps 22 }
+create_terrain SHALLOW { base_terrain GRASS3 number_of_tiles 70 number_of_clumps 37 }
+
+/* mixing */
+create_terrain SHALLOW { base_terrain GRASS3 land_percent 100 number_of_clumps 3000 terrain_mask 1 }
+
+
+/* Change bottom forest into final form */
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+
+
+
+/* Mangrove Shallows Masking */
+create_terrain WATER { base_terrain DLC_MANGROVESHALLOW land_percent 100 number_of_clumps 100 terrain_mask 1 spacing_to_other_terrain_types 2 set_scale_by_groups }
+
+/* More Masking */
+create_terrain MED_WATER { base_terrain WATER land_percent 100 number_of_clumps 100 terrain_mask 1 spacing_to_other_terrain_types 3 set_scale_by_groups }
+create_terrain MED_WATER { base_terrain WATER land_percent 100 number_of_clumps 100 spacing_to_other_terrain_types 6 set_scale_by_groups }
+create_terrain DEEP_WATER { base_terrain MED_WATER land_percent 100 number_of_clumps 100 terrain_mask 1 spacing_to_other_terrain_types 2 set_scale_by_groups }
+
+
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+
+
+
+create_terrain LOWER_LAND_MASK { base_terrain LOWER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK { base_terrain LOWER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+
+create_terrain LOWER_LAND_MASK2 { base_terrain LOWER_LAND_TERRAIN number_of_tiles 320 number_of_clumps 34 terrain_mask 1 }
+/* create_terrain LOWER_LAND_MASK2 { base_terrain LOWER_LAND_MASK land_percent 1 number_of_clumps 25 terrain_mask 1 } */
+
+create_terrain LOWER_LAND_MASK3 { base_terrain LOWER_LAND_TERRAIN land_percent 3 number_of_clumps 25 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK3 { base_terrain LOWER_LAND_TERRAIN land_percent 5 number_of_clumps 62 terrain_mask 1 }
+
+create_terrain LOWER_LAND_MASK2 { base_layer LOWER_LAND_MASK number_of_tiles 60 number_of_clumps 25 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK2 { base_layer LOWER_LAND_MASK3 number_of_tiles 40 number_of_clumps 25 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK { base_layer LOWER_LAND_MASK3 land_percent 1 number_of_clumps 122 terrain_mask 1 }
+
+create_terrain UPPER_LAND_MASK { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+create_terrain UPPER_LAND_MASK { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+
+create_terrain UPPER_LAND_MASK2 { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+create_terrain UPPER_LAND_MASK2 { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+
+create_terrain UPPER_LAND_MASK3 { base_terrain UPPER_LAND_TERRAIN number_of_tiles 120 number_of_clumps 27 terrain_mask 1 set_flat_terrain_only height_limits 1 1 spacing_to_other_terrain_types 1 }
+
+create_terrain UPPER_LAND_MASK3 { base_layer LOWER_LAND_MASK number_of_tiles 40 number_of_clumps 18 terrain_mask 1 set_flat_terrain_only height_limits 1 1 spacing_to_other_terrain_types 1 }
+create_terrain UPPER_LAND_MASK3 { base_layer UPPER_LAND_MASK2 number_of_tiles 30 number_of_clumps 18 terrain_mask 1 set_flat_terrain_only height_limits 1 1 spacing_to_other_terrain_types 1 }
+
+
+
+
+<OBJECTS_GENERATION>
+
+
+
+/* Central pond */
+if MEDIUM_MAP
+/* avoid central pond */
+  create_actor_area 84 101 9900 8
+  create_actor_area 84 99 9903 1
+/* avoid mainlands */
+  create_actor_area 84 104 9910 84
+endif 
+
+
+#const STATUE_LEFT 1343
+#const STATUE_RIGHT 1345
+create_object STAT_IND {  actor_area_to_place_in 9903 find_closest_to_map_edge actor_area 7777 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER {  actor_area_to_place_in 9903 avoid_actor_area 7777 find_closest_to_map_edge second_object SHIPWRC }
+
+
+/* fix green patches on upper lands */
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 3010 }
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 3010 }
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 3010 }
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on LOWER_LAND_MASK3 number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 3010 }
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on LOWER_LAND_MASK3 number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 3010 }
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on LOWER_LAND_MASK3 number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 3010 }
+
+
+/* Player Resources */
+create_object MARKET { set_place_for_every_player terrain_to_place_on DIRT2 min_distance_group_placement 4 ignore_terrain_restrictions find_closest actor_area 9610 actor_area_radius 6 }
+if BARRACKS_START
+  create_object BARRACKS { set_place_for_every_player min_distance_group_placement 1  max_distance_to_other_zones 6 actor_area_to_place_in 9610  }
+endif
+/* Oysters */
+create_object OYSTERS { number_of_groups 12 number_of_objects 4 group_variance 1 temp_min_distance_group_placement 10 min_distance_group_placement 1 max_distance_to_other_zones 12 min_distance_to_map_edge 2 set_loose_grouping set_gaia_object_only avoid_actor_area 9910 actor_area 3333 actor_area_radius 3 }
+
+
+/* create_object FLAG_A
+{
+  number_of_objects                 200000
+  terrain_to_place_on LOWER_LAND_TERRAIN
+  set_gaia_object_only
+} */
+
+create_object  FENCE_RUBBLE
+{
+  number_of_objects                 2
+  number_of_groups                  9999
+  group_variance                    1
+  temp_min_distance_group_placement 5
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  set_circular_placement
+  avoid_forest_zone 1
+} 
+create_object  FENCE_RUBBLE
+{
+  number_of_objects                 1
+  number_of_groups                  9999
+  temp_min_distance_group_placement 16
+  terrain_to_place_on               BEACH
+  set_circular_placement
+  avoid_forest_zone 1
+}  
+create_object  FENCE_RUBBLE
+{
+  number_of_objects                 1
+  number_of_groups                  9999
+  temp_min_distance_group_placement 19
+  terrain_to_place_on               BEACH
+  set_circular_placement
+  avoid_forest_zone 1
+}
+create_object  FENCE_RUBBLE
+{
+  number_of_objects                 1
+  number_of_groups                  9999
+  temp_min_distance_group_placement 19
+  layer_to_place_on               DLC_BEACH2
+  set_circular_placement
+  avoid_forest_zone 1
+} 
+
+/* Keep inner forest channel open for ships */
+if MEDIUM_MAP
+  create_actor_area 2 101 8200 1
+  create_actor_area 5 101 8200 1
+  create_actor_area 8 101 8200 1
+  create_actor_area 11 101 8200 1
+  create_actor_area 14 101 8200 1
+  create_actor_area 17 101 8200 1
+  create_actor_area 20 101 8200 1
+
+  create_actor_area 146 101 8200 1
+  create_actor_area 149 101 8200 1
+  create_actor_area 152 101 8200 1
+  create_actor_area 155 101 8200 1
+  create_actor_area 158 101 8200 1
+  create_actor_area 161 101 8200 1
+  create_actor_area 164 101 8200 1
+
+  create_actor_area 84 20 8200 1
+  create_actor_area 84 22 8200 1
+  create_actor_area 84 25 8200 1
+  create_actor_area 84 28 8200 1
+  create_actor_area 84 31 8200 1
+  create_actor_area 84 34 8200 1
+  create_actor_area 84 36 8200 1
+
+  create_actor_area 79 100 8210 0
+  create_actor_area 76 101 8210 0
+  create_actor_area 73 100 8210 0
+  create_actor_area 70 101 8210 0
+  create_actor_area 67 100 8210 0
+  create_actor_area 64 101 8210 0
+  create_actor_area 61 100 8210 0
+  create_actor_area 58 101 8210 0
+  create_actor_area 55 100 8210 0
+
+  create_actor_area 92 101 8210 0
+  create_actor_area 95 100 8210 0
+  create_actor_area 98 101 8210 0
+  create_actor_area 101 100 8210 0
+  create_actor_area 104 101 8210 0
+  create_actor_area 107 100 8210 0
+  create_actor_area 110 101 8210 0
+  create_actor_area 113 100 8210 0
+
+  create_actor_area 84 91 8210 0
+  create_actor_area 84 93 8210 0
+  create_actor_area 84 89 8210 0
+
+  create_actor_area 7 101 8080 10
+  create_actor_area 161 101 8080 10
+
+/* make it so there is path from players to pond */
+  create_actor_area 81 104 8024 1
+  create_actor_area 80 105 8024 1
+  create_actor_area 79 106 8024 1
+  create_actor_area 78 107 8024 1
+  create_actor_area 77 108 8024 1
+  
+  create_actor_area 87 104 8024 1
+  create_actor_area 88 105 8024 1
+  create_actor_area 89 106 8024 1
+  create_actor_area 90 107 8024 1
+  create_actor_area 91 108 8024 1
+
+  create_actor_area 88 97 8024 1
+  create_actor_area 89 96 8024 1
+  create_actor_area 90 95 8024 1
+
+  create_actor_area 80 97 8024 1
+  create_actor_area 79 96 8024 1
+  create_actor_area 78 95 8024 1
+
+  /* To help make paths through the upperland Forest */
+  create_actor_area 50 64 6910 33 /* left side */
+  create_actor_area 118 64 6920 33 /* right side */
+  create_actor_area 49 64 6950 33 /* left side - 1 */
+  create_actor_area 117 64 6960 33 /* right side - 1 */
+  create_actor_area 84 64 6990 24
+
+  create_actor_area 78 95 6800 1
+
+/* Make it so bamboo forest is not trespassable at center pond */
+  create_actor_area 84 109 8050 1
+  create_actor_area 84 106 8050 1
+  create_actor_area 84 103 8050 1
+  create_actor_area 84 101 8050 1
+  
+  /* avoid upper lands */
+ create_actor_area 50  50 3000 50 
+ create_actor_area 118 50 3000 50 
+ /* avoid lower lands */
+ create_actor_area 50  151 3010 50 
+ create_actor_area 118 151 3010 50 
+
+ create_actor_area 42 126 3100 42
+ create_actor_area 126 126 3101 42
+endif 
+
+/* create_object FLAG_A {
+  number_of_groups 9000
+  actor_area_to_place_in 6910
+}
+create_object FLAG_B {
+  number_of_groups 9000
+  actor_area_to_place_in 6920
+}  */
+/* right side */
+/* initialise */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 7 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6990 avoid_actor_area 6910 avoid_actor_area 6920 actor_area 6911 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6911 actor_area 6912 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_B endif avoid_actor_area 6910 avoid_actor_area 6920 avoid_actor_area 6911 actor_area_to_place_in 6912 actor_area 6909 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 }
+
+/* walk 1 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6913 avoid_actor_area 6910 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6916 if DEBUG_MODE second_object FLAG_C endif actor_area 6914 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6917 if DEBUG_MODE second_object FLAG_C endif actor_area 6915 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 2 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600  if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 3 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 }  
+
+/* walk 4 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 5 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 6 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 7 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 8 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* walk 9 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6912 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6910 avoid_actor_area 6913 actor_area 6916 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6913 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6912 avoid_actor_area 6910 actor_area 6917 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6909 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6909 actor_area 6913 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6912 avoid_actor_area 6910 avoid_actor_area 6916 avoid_actor_area 6917 avoid_actor_area 6909 avoid_actor_area 6908 avoid_actor_area 6911 actor_area 6908 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6908 actor_area 6912 actor_area_radius 1 } 
+
+/* ***** left side ***** */
+/* initialise */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 6 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6990 avoid_actor_area 6950 avoid_actor_area 6960 avoid_actor_area 6912 avoid_actor_area 6913 avoid_actor_area 6916 avoid_actor_area 6917 actor_area 6921 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6921 actor_area 6922 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_D endif avoid_actor_area 6950 avoid_actor_area 6960 avoid_actor_area 6921 actor_area_to_place_in 6922 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_D endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+
+/* walk 1 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6926 if DEBUG_MODE second_object FLAG_C endif actor_area 6924 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW actor_area_to_place_in 6927 if DEBUG_MODE second_object FLAG_C endif actor_area 6925 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 terrain_to_place_on DLC_MANGROVESHALLOW if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 2 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 3 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 4 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 5 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 6 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 7 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 8 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+/* walk 9 */
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6922 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6923 avoid_actor_area 6960 actor_area 6926 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 actor_area_to_place_in 6923 if DEBUG_MODE second_object FLAG_C endif avoid_actor_area 6922 avoid_actor_area 6960 actor_area 6927 actor_area_radius 0 } 
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6939 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_B endif actor_area_to_place_in 6939 actor_area 6923 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 5 temp_min_distance_group_placement 4 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6922 avoid_actor_area 6960 avoid_actor_area 6926 avoid_actor_area 6927 avoid_actor_area 6939 avoid_actor_area 6938 avoid_actor_area 6921 actor_area 6938 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER2 { number_of_groups 600 if DEBUG_MODE second_object FLAG_A endif actor_area_to_place_in 6938 actor_area 6922 actor_area_radius 1 }
+
+
+/* Create mangrove forests */
+/* block off the inside of the mangroves */
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 set_gaia_object_only actor_area_to_place_in 8210 actor_area 8211 actor_area_radius 1 /* second_object FLAG_A */ } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 set_gaia_object_only actor_area_to_place_in 8211 actor_area 8212 actor_area_radius 1 /* second_object FLAG_C */ } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on DLC_MANGROVESHALLOW layer_to_place_on WATER number_of_objects 200000 temp_min_distance_group_placement 1 set_gaia_object_only actor_area 8000 actor_area_radius 1 /* second_object FLAG_B  */ } 
+/* cosmetics under the trees */
+create_object    DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(10,20) terrain_to_place_on DLC_MANGROVESHALLOW temp_min_distance_group_placement 2 set_circular_placement }   
+create_object    DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(10,20) terrain_to_place_on DLC_MANGROVESHALLOW temp_min_distance_group_placement 2 avoid_actor_area 8200 avoid_actor_area 8000  avoid_actor_area 8211  avoid_actor_area 8212 set_circular_placement } 
+/* create trees */
+create_object  MAKE_MANGROVEFOREST_TERRAIN { second_object REED terrain_to_place_on DLC_MANGROVESHALLOW resource_delta 50 number_of_objects 200000 temp_min_distance_group_placement 3 set_gaia_object_only set_gaia_unconvertible min_distance_to_map_edge 2 avoid_actor_area 8000 avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 avoid_actor_area 6912 actor_area 8010 actor_area_radius 1 } 
+create_object MAKE_MANGROVEFOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 set_gaia_object_only set_gaia_unconvertible min_distance_to_map_edge 2 avoid_actor_area 8000 avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 avoid_actor_area 6912 actor_area 8010 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on BEACH number_of_objects 200000 set_gaia_object_only min_distance_to_map_edge 2 second_object REED resource_delta 50 temp_min_distance_group_placement 3 avoid_actor_area 8000 avoid_actor_area 8200 avoid_actor_area 8212 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8211 actor_area 8010 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on BEACH number_of_objects 200000 set_gaia_object_only min_distance_to_map_edge 2 second_object DLC_MANGROVE_TREE avoid_actor_area 8000 avoid_actor_area 8200 avoid_actor_area 8212 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8211 actor_area 8010 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on BEACH number_of_objects 200000 set_gaia_object_only min_distance_to_map_edge 2 second_object DLC_MANGROVE_TREE avoid_actor_area 8000 avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8212 actor_area 8010 actor_area_radius 1 }
+create_object   MAKE_MANGROVEFOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 set_gaia_object_only set_gaia_unconvertible min_distance_to_map_edge 2 avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 6912 avoid_actor_area 6922 avoid_actor_area 8024 actor_area_to_place_in 8010 }
+create_object MAKE_MANGROVEFOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 set_gaia_object_only set_gaia_unconvertible min_distance_to_map_edge 2 avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 } 
+create_object ONGRID_PLACEHOLDER { resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on BEACH number_of_objects 200000 set_gaia_object_only min_distance_to_map_edge 1 second_object REED avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 6912 avoid_actor_area 6922 avoid_actor_area 8024 actor_area_to_place_in 8010 } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on BEACH number_of_objects 200000 set_gaia_object_only min_distance_to_map_edge 1 second_object DLC_MANGROVE_TREE avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 actor_area 8010 actor_area_radius 1 } 
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on BEACH number_of_objects 200000 set_gaia_object_only min_distance_to_map_edge 1 second_object DLC_MANGROVE_TREE avoid_actor_area 8200 avoid_actor_area 8211 avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8080 actor_area 8010 actor_area_radius 1 }
+
+/* Make it so that the entryway to the centre pond does not get blocked off */
+/* create_object SHORE_FISH { terrain_to_place_on WATER number_of_objects 200 min_distance_to_map_edge 62 set_gaia_object_only resource_delta -200 actor_area 8024 actor_area_radius 4 } */
+create_object MAKE_FOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 }
+create_object MAKE_FOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 }
+create_object MAKE_FOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 }
+create_object MAKE_FOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 }
+create_object MAKE_FOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 }
+create_object MAKE_FOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8024 avoid_actor_area 6912 avoid_actor_area 6922 actor_area_to_place_in 8010 }
+
+/* Make path through upperland trees thinner */
+create_object MAKE_MANGROVEFOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6909 }
+create_object MAKE_MANGROVEFOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6939 }
+create_object MAKE_FOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6909 }
+create_object MAKE_FOREST_TERRAIN { second_object REED resource_delta 50 temp_min_distance_group_placement 3 terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6939 }
+create_object ONGRID_PLACEHOLDER { second_object REED resource_delta 50 temp_min_distance_group_placement 3 number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6909 }
+create_object ONGRID_PLACEHOLDER { second_object REED resource_delta 50 temp_min_distance_group_placement 3 number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6939 }
+create_object MAKE_MANGROVEFOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6909 }
+create_object MAKE_MANGROVEFOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on DLC_MANGROVESHALLOW number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6939 }
+create_object MAKE_FOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6909 }
+create_object MAKE_FOREST_TERRAIN { second_object DLC_MANGROVE_TREE terrain_to_place_on UPPER_LAND_TERRAIN number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6939 }
+create_object ONGRID_PLACEHOLDER { second_object DLC_MANGROVE_TREE number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6909 }
+create_object ONGRID_PLACEHOLDER { second_object DLC_MANGROVE_TREE number_of_objects 200000 min_distance_to_map_edge 1 set_gaia_object_only set_gaia_unconvertible avoid_actor_area 8000 actor_area_to_place_in 6939 }
+
+create_object    DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(10,20) terrain_to_place_on BEACH temp_min_distance_group_placement 2 set_circular_placement place_on_forest_zone } 
+
+
+
+
+
+
+
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on BEACH number_of_objects 200 second_object BAMBOO_TREE set_gaia_object_only ignore_terrain_restrictions actor_area_to_place_in 8050 }
+create_object ONGRID_PLACEHOLDER { terrain_to_place_on LOWER_LAND_TERRAIN number_of_objects 200 second_object BAMBOO_TREE set_gaia_object_only ignore_terrain_restrictions actor_area_to_place_in 8050 }
+
+
+/* COSMETICS */
+create_object GRASS_PATCH { terrain_to_place_on SHALLOW number_of_groups rnd(10,18) number_of_objects 2 group_variance 1 temp_min_distance_group_placement 2 set_gaia_object_only }
+create_object GRASS_PATCH { terrain_to_place_on GRASS3 number_of_groups rnd(3,5) number_of_objects 2 group_variance 1 temp_min_distance_group_placement 2 set_gaia_object_only }
+create_object GRASS_PATCH { terrain_to_place_on DLC_MANGROVESHALLOW number_of_groups rnd(35,52) number_of_objects 3 group_variance 2 set_gaia_object_only }
+create_object SEAGULLS { number_of_objects rnd(13,18) set_scaling_to_map_size }
+create_object BIRD_A { number_of_objects rnd(3,5) set_scaling_to_map_size }
+create_object BIRD_B { number_of_objects rnd(3,5) set_scaling_to_map_size }
+create_object PLANT_DEAD { number_of_objects 2 number_of_groups rnd(37,42) group_variance 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_BUSH_GREEN { number_of_objects 2 number_of_groups rnd(3,7) group_variance 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_SHRUB_GREEN { number_of_objects 2 number_of_groups rnd(3,7) group_variance 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_SHRUB_DRY { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_WEEDS { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_FLOWERS { number_of_objects 1 number_of_groups rnd(6,12) terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+
+/* lower land */
+create_object PLANT_DEAD { number_of_objects 2 number_of_groups rnd(6,12) group_variance 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_BUSH_GREEN { number_of_objects 2 number_of_groups rnd(25,35) group_variance 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_SHRUB_GREEN { number_of_objects 2 number_of_groups rnd(33,44) group_variance 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_SHRUB_DRY { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_WEEDS { number_of_objects 1 number_of_groups rnd(33,44) terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_FLOWERS { number_of_objects 1 number_of_groups rnd(33,44) terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object GRASS_DRY { number_of_objects 2 number_of_groups rnd(37,42) group_variance 2 terrain_to_place_on UPPER_LAND_TERRAIN layer_to_place_on UPPER_LAND_MASK set_circular_placement avoid_forest_zone 1 actor_area 9080 actor_area_radius 2 }
+create_object GRASS_GREEN { number_of_objects 2 number_of_groups rnd(54,61) group_variance 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement avoid_actor_area 9080 }
+create_object GRASS_GREEN { number_of_objects 2 number_of_groups rnd(110,122) group_variance 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+/* upper land */
+create_object PLANT_JUNGLE { number_of_objects 1 number_of_groups rnd(11,16) temp_min_distance_group_placement 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_UNDERBRUSH_TROPICAL { number_of_objects 1 number_of_groups rnd(11,17) temp_min_distance_group_placement 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_UNDERBRUSH { number_of_objects 1 number_of_groups rnd(4,6) temp_min_distance_group_placement 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_RAINFOREST { number_of_objects 1 number_of_groups rnd(12,19) temp_min_distance_group_placement 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_UNDERBRUSH_RAINFOREST { number_of_objects 1 number_of_groups rnd(3,5) temp_min_distance_group_placement 2 terrain_to_place_on UPPER_LAND_TERRAIN set_circular_placement }
+
+/* lower land */
+create_object PLANT_JUNGLE { number_of_objects 1 number_of_groups rnd(17,22) temp_min_distance_group_placement 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_UNDERBRUSH_TROPICAL { number_of_objects 1 number_of_groups rnd(16,22) temp_min_distance_group_placement 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_UNDERBRUSH { number_of_objects 1 number_of_groups rnd(7,9) temp_min_distance_group_placement 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_RAINFOREST { number_of_objects 1 number_of_groups rnd(17,23) temp_min_distance_group_placement 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object PLANT_UNDERBRUSH_RAINFOREST { number_of_objects 1 number_of_groups rnd(6,8) temp_min_distance_group_placement 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object DLC_FERN_PATCH { number_of_objects 1 number_of_groups rnd(10,20) temp_min_distance_group_placement 2 terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement }
+create_object DLC_BUDDHA_STATUE_C { number_of_objects 1 number_of_groups rnd(0,1) terrain_to_place_on LOWER_LAND_TERRAIN min_distance_to_players 25 set_circular_placement }
+create_object DLC_SAVANNAHPATCH { number_of_objects 1 number_of_groups rnd(12,17) temp_min_distance_group_placement 5 terrain_to_place_on UPPER_LAND_TERRAIN layer_to_place_on UPPER_LAND_MASK }
+create_object DLC_STORK { number_of_objects 1 number_of_groups rnd(8,14) group_variance 2 temp_min_distance_group_placement 5 }
+create_object FLOWER_BED { number_of_objects 1 number_of_groups rnd(2,8) terrain_to_place_on LOWER_LAND_TERRAIN avoid_forest_zone 1 }
+create_object OLD_STONE_HEAD { number_of_objects 1 number_of_groups rnd(0,3) terrain_to_place_on LOWER_LAND_TERRAIN set_circular_placement avoid_forest_zone 1 }
+
+create_object TORCH { set_place_for_every_player number_of_objects 1 number_of_groups rnd(2,3) temp_min_distance_group_placement 9 group_variance 3 min_distance_to_players 8 max_distance_to_players 12 set_circular_placement set_loose_grouping avoid_forest_zone 1 }
+create_object GRAVE { number_of_objects 4 number_of_groups rnd(0,3) terrain_to_place_on UPPER_LAND_TERRAIN min_distance_to_players 16 group_variance 3 temp_min_distance_group_placement 22 set_circular_placement avoid_forest_zone 1 }
+create_object GRAVE { number_of_objects 4 number_of_groups rnd(0,3) terrain_to_place_on LOWER_LAND_TERRAIN min_distance_to_players 16 group_variance 3 temp_min_distance_group_placement 22 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(5,15) terrain_to_place_on UPPER_LAND_TERRAIN group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(40,60) terrain_to_place_on LOWER_LAND_TERRAIN group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(13,33) terrain_to_place_on SHALLOW group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(30,55) terrain_to_place_on DLC_MANGROVESHALLOW group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object PLANTS { number_of_objects 3 number_of_groups rnd(3,7) terrain_to_place_on BEACH group_variance 3 temp_min_distance_group_placement 3 set_circular_placement avoid_forest_zone 1 }
+create_object SIGN { number_of_objects 1 number_of_groups rnd(0,2) terrain_to_place_on UPPER_LAND_TERRAIN min_distance_to_players 24 temp_min_distance_group_placement 32 set_circular_placement avoid_forest_zone 2 }
+create_object SIGN { number_of_objects 1 number_of_groups rnd(0,2) terrain_to_place_on LOWER_LAND_TERRAIN min_distance_to_players 24 temp_min_distance_group_placement 32 set_circular_placement avoid_forest_zone 2 }
+
+/* Upper land flowers */
+create_object FLOWERS_1 { number_of_objects 1 number_of_groups rnd(1,4) terrain_to_place_on UPPER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_2 { number_of_objects 1 number_of_groups rnd(1,4) terrain_to_place_on UPPER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_3 { number_of_objects 1 number_of_groups rnd(1,4) terrain_to_place_on UPPER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_4 { number_of_objects 1 number_of_groups rnd(1,4) terrain_to_place_on UPPER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+
+/* Lower land flowers */
+create_object FLOWERS_1 { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on LOWER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_2 { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on LOWER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_3 { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on LOWER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+create_object FLOWERS_4 { number_of_objects 1 number_of_groups rnd(9,15) terrain_to_place_on LOWER_LAND_TERRAIN max_distance_to_other_zones 3 temp_min_distance_group_placement 7 set_circular_placement avoid_forest_zone 1 }
+
+/* mangrove flowers */
+create_object FLOWERS_1 { number_of_objects 1 number_of_groups rnd(4,9) terrain_to_place_on DLC_MANGROVESHALLOW temp_min_distance_group_placement 7 set_circular_placement }
+create_object FLOWERS_2 { number_of_objects 1 number_of_groups rnd(4,9) terrain_to_place_on DLC_MANGROVESHALLOW temp_min_distance_group_placement 7 set_circular_placement }
+create_object FLOWERS_3 { number_of_objects 1 number_of_groups rnd(4,9) terrain_to_place_on DLC_MANGROVESHALLOW temp_min_distance_group_placement 7 set_circular_placement }
+create_object FLOWERS_4 { number_of_objects 1 number_of_groups rnd(4,9) terrain_to_place_on DLC_MANGROVESHALLOW temp_min_distance_group_placement 7 set_circular_placement }
+
+
+
+/*  PLAYER RESOURCES */
+if MEDIUM_MAP
+  create_actor_area 84 167 2799 15
+endif
+
+create_object TOWN_CENTER
+{
+    set_place_for_every_player
+    min_distance_to_players 0
+    max_distance_to_players 0
+    actor_area 2800
+    actor_area_radius 0
+} 
+
+
+/* Player forests */
+create_object  MAKE_FOREST_TERRAIN { second_object DLC_RAINTREE set_place_for_every_player number_of_objects 44 number_of_groups 2 group_placement_radius 5 set_loose_grouping
+min_distance_to_players 17 max_distance_to_players 19 temp_min_distance_group_placement 20 set_gaia_object_only set_gaia_unconvertible set_circular_placement ignore_terrain_restrictions terrain_to_place_on LOWER_LAND_TERRAIN } 
+
+create_object  MAKE_FOREST_TERRAIN { second_object PALMTREE set_place_for_every_player number_of_objects 32 number_of_groups 3 group_placement_radius 5 set_loose_grouping
+min_distance_to_players 17 max_distance_to_players 19 temp_min_distance_group_placement 16 set_gaia_object_only set_gaia_unconvertible set_circular_placement ignore_terrain_restrictions terrain_to_place_on UPPER_LAND_TERRAIN }
+
+/*
+#const OFF_GRID 647
+create_object OFF_GRID
+{
+    set_place_for_every_player
+    actor_area_to_place_in 2800
+	second_object OYSTERS
+    actor_area 3331
+    actor_area_radius 18
+}
+*/
+
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2815
+    actor_area_radius 15
+}
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2818
+    actor_area_radius 18
+}
+
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2820
+    actor_area_radius 20
+}
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2822
+    actor_area_radius 22
+}
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2826
+    actor_area_radius 26
+}
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2834
+    actor_area_radius 34
+}
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    set_gaia_object_only
+    actor_area_to_place_in 2800
+
+    actor_area 2837
+    actor_area_radius 37
+}
+
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    number_of_objects 2
+    min_distance_to_players 7
+    max_distance_to_players 9
+    temp_min_distance_group_placement 6
+    avoid_forest_zone 3
+    /* second_object FLAG_A */
+
+    set_gaia_object_only
+    /* find_closest */
+    set_circular_placement
+
+    actor_area 1500
+    actor_area_radius 1
+}
+create_object VILLAGER
+{
+    set_place_for_every_player
+    number_of_objects 3
+    min_distance_to_players     7
+    temp_min_distance_group_placement 1
+
+    find_closest
+    set_circular_placement
+
+    actor_area_to_place_in 1500
+
+    actor_area 1510
+    actor_area_radius 2
+} 
+create_object SCOUT
+{
+    set_place_for_every_player
+    min_distance_to_players 7
+    max_distance_to_players 10
+    min_distance_group_placement 2
+
+    find_closest
+
+    avoid_actor_area 1510
+} 
+
+create_object DLC_GOAT 
+{
+ set_place_for_every_player
+ number_of_objects 3
+ max_distance_to_other_zones 3
+ avoid_forest_zone 2
+ min_distance_to_players 8
+ max_distance_to_players 13
+
+ find_closest
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+ 
+ avoid_actor_area 3001
+ avoid_actor_area 1510
+ actor_area 6107
+ actor_area_radius 1
+}
+create_object DLC_GOAT 
+{
+  set_place_for_every_player
+  actor_area_to_place_in 6107
+  find_closest
+  actor_area 7010
+  actor_area_radius 5
+}
+create_object STONE 
+{
+  set_place_for_every_player
+  number_of_objects 2
+  number_of_groups 1
+  min_distance_to_players 12
+  max_distance_to_players 15
+  min_distance_group_placement 3
+
+  avoid_forest_zone 2
+
+  set_tight_grouping
+  set_gaia_object_only
+  ignore_terrain_restrictions
+
+  actor_area 8000
+  actor_area_radius 14
+}
+create_object STONE 
+{
+  set_place_for_every_player
+  number_of_objects 2
+  number_of_groups 2
+  min_distance_to_players 23
+  max_distance_to_players 32
+  temp_min_distance_group_placement 13
+  min_distance_group_placement 3
+
+  avoid_forest_zone 2
+
+  set_tight_grouping
+  set_gaia_object_only
+  ignore_terrain_restrictions
+
+  avoid_actor_area 8000
+
+  actor_area 4400
+  actor_area_radius 10
+}
+create_object GOLD 
+{
+  set_place_for_every_player
+
+  number_of_objects 2
+  min_distance_to_players 11
+  max_distance_to_players 15
+  max_distance_to_other_zones 1
+  avoid_forest_zone 2
+  min_distance_group_placement 3
+    
+  group_placement_radius 1
+
+  set_tight_grouping
+  set_gaia_object_only
+  ignore_terrain_restrictions
+  set_circular_placement
+
+  avoid_actor_area 8000 
+  avoid_actor_area 4400  /* avoid player stone */ 
+
+  actor_area 4100
+  actor_area_radius 15
+}
+/* Players 1 and 2 small golds */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on UPPER_LAND_TERRAIN
+
+  number_of_objects 2
+  number_of_groups 2
+  temp_min_distance_group_placement 17
+  min_distance_group_placement 2
+  max_distance_to_other_zones 4
+  avoid_forest_zone 2
+    
+  group_placement_radius 1
+
+  set_tight_grouping
+  set_gaia_object_only
+  ignore_terrain_restrictions
+  set_circular_placement
+
+  actor_area_to_place_in 2834
+  avoid_actor_area 2822 
+  avoid_actor_area 8000 
+  avoid_actor_area 4400  /* avoid player stone */ 
+  avoid_actor_area 4100 /* avoid other golds */
+
+  actor_area 4200
+  actor_area_radius 4
+}
+
+/* deers and boars */
+create_object DLC_ELEPHANT 
+{
+  set_place_for_every_player
+  min_distance_group_placement 1
+  max_distance_to_other_zones 3
+
+  actor_area_to_place_in 2818
+  avoid_actor_area 2815
+  avoid_actor_area 4000
+
+  find_closest
+  set_gaia_object_only
+  set_circular_placement
+
+  actor_area 7000
+  actor_area_radius 6
+}
+create_object DLC_ELEPHANT 
+{
+ set_place_for_every_player
+ min_distance_group_placement 1
+ max_distance_to_other_zones 3
+ min_distance_to_players 19
+ max_distance_to_players 24
+ avoid_actor_area 7000
+ avoid_actor_area 4000
+ find_closest
+ set_gaia_object_only
+ set_circular_placement
+ actor_area 7000
+ actor_area_radius 6
+}
+create_object DLC_ELEPHANT 
+{
+ set_place_for_every_player
+ terrain_to_place_on LOWER_LAND_TERRAIN
+ min_distance_group_placement 1
+ max_distance_to_other_zones 3
+ min_distance_to_players 21
+ max_distance_to_players 29
+ avoid_actor_area 3000 /* avoid upper lands */
+ avoid_actor_area 7000
+ avoid_actor_area 4000
+ find_closest
+ set_gaia_object_only
+ set_circular_placement
+ actor_area 7000
+ actor_area_radius 6
+}
+create_object DEER 
+{
+ set_place_for_every_player
+ if CUSTOM_OSTRICH_BALANCE
+    number_of_objects rnd(6,7)
+ else
+    number_of_objects rnd(2,3)
+endif
+terrain_to_place_on UPPER_LAND_TERRAIN
+ /* min_distance_group_placement 3 */
+ max_distance_to_other_zones 3
+ min_distance_to_players 17
+ max_distance_to_players 24
+ min_distance_group_placement 2
+ avoid_forest_zone      2
+ avoid_actor_area 3001
+ avoid_actor_area 7000
+ avoid_actor_area 4000
+ /* find_closest_to_map_center */
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+ actor_area 7000
+ actor_area_radius 6
+}
+create_object DEER 
+{
+ set_place_for_every_player
+ if CUSTOM_OSTRICH_BALANCE
+    number_of_objects rnd(6,7)
+ else
+    number_of_objects rnd(3,4)
+endif
+terrain_to_place_on LOWER_LAND_TERRAIN
+ /* min_distance_group_placement 3 */
+ max_distance_to_other_zones 3
+ min_distance_to_players 17
+ max_distance_to_players 24
+ min_distance_group_placement 2
+ avoid_forest_zone      2
+ avoid_actor_area 3001
+ avoid_actor_area 7000
+ avoid_actor_area 4000
+ /* find_closest_to_map_center */
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+ actor_area 7000
+ actor_area_radius 6
+}
+create_object DEER 
+{
+ set_place_for_every_player
+ if CUSTOM_OSTRICH_BALANCE
+    number_of_objects rnd(6,7)
+ else
+    number_of_objects rnd(3,4)
+endif
+ /* min_distance_group_placement 3 */
+ max_distance_to_other_zones 3
+ min_distance_to_players 19
+ max_distance_to_players 30
+ min_distance_group_placement 2
+ avoid_forest_zone      2
+ avoid_actor_area 3000 /* avoid upper lands */
+ avoid_actor_area 3001
+ avoid_actor_area 7000
+ avoid_actor_area 4000
+ /* find_closest_to_map_center */
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+ actor_area 7000
+ actor_area_radius 6
+}
+create_object DLC_ORANGEBUSH 
+{
+ set_place_for_every_player
+ terrain_to_place_on UPPER_LAND_TERRAIN
+ number_of_objects 3
+ min_distance_group_placement 2
+ group_placement_radius 1
+ min_distance_to_players 11
+ max_distance_to_players 14
+ avoid_forest_zone 3
+ /* avoid_actor_area 3000 */
+ avoid_actor_area 1510
+ find_closest
+ set_tight_grouping
+ set_gaia_object_only
+ avoid_actor_area 8000
+ avoid_actor_area 7000
+ avoid_actor_area 7010
+ actor_area 4000
+ actor_area_radius 4
+}
+create_object DLC_ORANGEBUSH 
+{
+ set_place_for_every_player
+ terrain_to_place_on LOWER_LAND_TERRAIN
+ number_of_objects 6
+ min_distance_group_placement 2
+ group_placement_radius 1
+ min_distance_to_players 11
+ max_distance_to_players 17
+ avoid_forest_zone 3
+ /* avoid_actor_area 3000 */
+ avoid_actor_area 1510
+ find_closest
+ set_tight_grouping
+ set_gaia_object_only
+ avoid_actor_area 8000
+ avoid_actor_area 7000
+ avoid_actor_area 7010
+ actor_area 4000
+ actor_area_radius 4
+}
+
+create_object DLC_WATERBUFFALO 
+{
+ set_place_for_every_player
+ min_distance_group_placement 2
+ /* max_distance_to_other_zones 3 */
+ terrain_to_place_on UPPER_LAND_TERRAIN
+ min_distance_to_players 15
+ max_distance_to_players 24
+ avoid_forest_zone 1
+ 
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+ find_closest
+
+ avoid_actor_area 4000 /* avoid orange bushes */
+ avoid_actor_area 7000 /* avoid wild life */
+}
+create_object DLC_WATERBUFFALO 
+{
+ set_place_for_every_player
+ number_of_objects 2
+ number_of_groups 2
+ min_distance_group_placement 2
+ /* max_distance_to_other_zones 3 */
+ terrain_to_place_on LOWER_LAND_TERRAIN
+ min_distance_to_players 15
+ max_distance_to_players 24
+ temp_min_distance_group_placement 11
+ avoid_forest_zone 1
+ 
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+ find_closest
+
+ avoid_actor_area 3000 /* avoid upper lands */
+ avoid_actor_area 4000 /* avoid orange bushes */
+ avoid_actor_area 7000 /* avoid wild life */
+}
+/* extra sheep */
+create_object DLC_WATERBUFFALO 
+{
+ set_place_for_every_player
+ number_of_objects 1
+ number_of_groups 1
+ min_distance_group_placement 1
+ temp_min_distance_group_placement 6
+ max_distance_to_other_zones 1
+ avoid_forest_zone 4
+ terrain_to_place_on UPPER_LAND_TERRAIN
+ 
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+
+ actor_area_to_place_in 2837
+ avoid_actor_area 2820
+ avoid_actor_area 2799 /* avoid rock area between lower land players */
+ avoid_actor_area 4000
+ avoid_actor_area 7000
+}
+create_object DLC_WATERBUFFALO 
+{
+ set_place_for_every_player
+ number_of_objects 1
+ number_of_groups 2
+ min_distance_group_placement 1
+ temp_min_distance_group_placement 6
+ max_distance_to_other_zones 1
+ avoid_forest_zone 4
+ terrain_to_place_on LOWER_LAND_TERRAIN
+ 
+ set_tight_grouping
+ set_gaia_object_only
+ set_circular_placement
+
+ actor_area_to_place_in 2837
+ avoid_actor_area 2820
+ avoid_actor_area 2799 /* avoid rock area between lower land players */
+ avoid_actor_area 3000 /* avoid upper lands */
+ avoid_actor_area 4000
+ avoid_actor_area 7000
+}
+
+/* *** Fish and other things *** */
+create_object RELIC 
+{
+  terrain_to_place_on LOWER_LAND_TERRAIN
+  number_of_groups                  2
+  min_distance_group_placement      1
+  temp_min_distance_group_placement 58
+  max_distance_to_other_zones       4
+  avoid_forest_zone                 3
+  avoid_actor_area                  2826 /* stay 28 away from TC */
+  avoid_actor_area                  3000 /* avoid upper lands */
+  set_gaia_object_only
+} 
+create_object RELIC 
+{
+  terrain_to_place_on UPPER_LAND_TERRAIN
+  number_of_groups                  2
+  min_distance_group_placement      1
+  temp_min_distance_group_placement 58
+  max_distance_to_other_zones       4
+  avoid_forest_zone                 3
+  avoid_actor_area                  2826
+  set_gaia_object_only
+} 
+create_object RELIC 
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_objects                 rnd(4,5)
+  min_distance_group_placement      1
+  temp_min_distance_group_placement 17
+  max_distance_to_other_zones       2
+  min_distance_to_players           12
+  set_gaia_object_only
+} 
+
+create_object SHORE_FISH 
+{
+  terrain_to_place_on               WATER
+  number_of_groups                 100
+  temp_min_distance_group_placement 6
+  min_distance_group_placement      2
+  set_gaia_object_only
+  avoid_actor_area 3000
+  avoid_actor_area 3100
+  avoid_actor_area 9900
+}
+create_object SHORE_FISH 
+{
+  terrain_to_place_on               WATER
+  number_of_groups                 100
+  temp_min_distance_group_placement 6
+  min_distance_group_placement      2
+  set_gaia_object_only
+  avoid_actor_area 3000
+  avoid_actor_area 3101
+  avoid_actor_area 9900
+}
+create_object SHORE_FISH 
+{
+  terrain_to_place_on               WATER
+  number_of_objects                 20000
+  temp_min_distance_group_placement 10
+  min_distance_group_placement      1
+  set_gaia_object_only
+  avoid_actor_area 9900
+  avoid_actor_area 3100
+  avoid_actor_area 3101
+  actor_area                        2220
+  actor_area_radius                 7
+}
+
+/* Mangrove stones */
+create_object STONE 
+{
+  terrain_to_place_on                 DLC_MANGROVESHALLOW
+  number_of_objects                   4
+  number_of_groups                    6
+  temp_min_distance_group_placement   18
+  min_distance_group_placement        1
+  max_distance_to_other_zones         3
+  avoid_forest_zone                   2
+  group_placement_radius              1
+  set_tight_grouping
+  set_gaia_object_only
+}
+
+
+#const DOLPHIN 61
+create_object DOLPHIN 
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_groups                 3000
+  temp_min_distance_group_placement 49
+  min_distance_group_placement      2
+  avoid_forest_zone                 1
+}  
+create_object ONGRID_PLACEHOLDER 
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_groups                  16
+  temp_min_distance_group_placement 8
+  min_distance_group_placement      2
+  second_object DLC_BOXTURTLE
+  avoid_forest_zone                 1
+  avoid_actor_area 2220
+}  
+create_object ONGRID_PLACEHOLDER 
+{
+  terrain_to_place_on               SHALLOW
+  number_of_groups                  7
+  temp_min_distance_group_placement 8
+  min_distance_group_placement      1
+  second_object DLC_BOXTURTLE
+  avoid_forest_zone                 1
+}  
+create_object DOLPHIN 
+{
+  number_of_groups                 5
+  temp_min_distance_group_placement 20
+  min_distance_group_placement      2
+  avoid_forest_zone                 4
+  max_distance_to_other_zones       5
+  avoid_actor_area 3100
+  avoid_actor_area 3101
+  avoid_actor_area 3333
+}  
+create_object DOLPHIN 
+{
+  number_of_groups                  2
+  temp_min_distance_group_placement 7
+  min_distance_group_placement      2
+  max_distance_to_other_zones       5
+  avoid_forest_zone                 5
+  avoid_actor_area 3000
+  avoid_actor_area 3100
+  avoid_actor_area 9900
+}  
+
+create_object DOLPHIN 
+{
+  number_of_groups                  2
+  temp_min_distance_group_placement 7
+  min_distance_group_placement      2
+  max_distance_to_other_zones       5
+  avoid_forest_zone                 5
+  avoid_actor_area 3000
+  avoid_actor_area 3101
+  avoid_actor_area 9900
+}  
+create_object TUNA 
+{
+  number_of_groups                  8
+  temp_min_distance_group_placement 5
+  min_distance_group_placement      2
+  max_distance_to_other_zones       4
+  set_gaia_object_only
+  avoid_actor_area 3000
+  avoid_actor_area 3100
+  avoid_actor_area 9900
+}
+create_object TUNA 
+{
+  number_of_groups                  8
+  temp_min_distance_group_placement 5
+  min_distance_group_placement      2
+  max_distance_to_other_zones       4
+  set_gaia_object_only
+  avoid_actor_area 3000
+  avoid_actor_area 3101
+  avoid_actor_area 9900
+}
+
+create_object TUNA 
+{
+  terrain_to_place_on               WATER
+  number_of_groups                  200000
+  temp_min_distance_group_placement 13
+  min_distance_group_placement      1
+  max_distance_to_other_zones       4
+  set_gaia_object_only
+  avoid_actor_area 9900
+  avoid_actor_area 3100
+  avoid_actor_area 3101
+}
+
+
+
+
+create_object  DLC_ROCKJUNGLE
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(1,4)
+  temp_min_distance_group_placement 14
+  terrain_to_place_on UPPER_LAND_TERRAIN
+  set_circular_placement
+  avoid_actor_area 3000 
+  avoid_actor_area 9900
+  min_distance_to_players           20
+}  
+create_object  DLC_ROCKJUNGLE
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(2,9)
+  temp_min_distance_group_placement 14
+  terrain_to_place_on LOWER_LAND_TERRAIN
+  set_circular_placement
+  avoid_actor_area 3000 
+  avoid_actor_area 9900
+  min_distance_to_players           20
+}  
+/* sea rocks */
+create_object  DLC_ROCKBEACH
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(2,4)
+  group_variance                    2
+  temp_min_distance_group_placement 17
+  terrain_to_place_on BEACH
+  set_circular_placement
+  avoid_actor_area 3000 
+  avoid_actor_area 9900
+}  
+create_object  DLC_ROCKBEACH
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(0,2)
+  group_variance                    2
+  temp_min_distance_group_placement 14
+  terrain_to_place_on WATER
+  set_circular_placement
+  avoid_actor_area 3000 
+  avoid_actor_area 9900
+}  
+create_object  SEA_ROCKS_1
+{
+  number_of_objects                 2
+  number_of_groups                  rnd(4,7)
+  terrain_to_place_on               WATER
+  min_distance_to_map_edge 1
+  group_variance                    1
+  avoid_forest_zone 3
+  max_distance_to_other_zones 3
+}  
+create_object  SEA_ROCKS_2
+{
+  number_of_objects                 2
+  number_of_groups                  rnd(4,7)
+  terrain_to_place_on               WATER
+  min_distance_to_map_edge 1
+  group_variance                    1
+  avoid_forest_zone 3
+  max_distance_to_other_zones 3
+}  
+create_object  ROCK
+{
+  number_of_objects                 2
+  number_of_groups                  rnd(4,6)
+  terrain_to_place_on               WATER
+  min_distance_to_map_edge 1
+  group_variance                    2
+  avoid_forest_zone 3
+  max_distance_to_other_zones 3
+}  
+create_object  ROCK2
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(3,5)
+  terrain_to_place_on               WATER
+  min_distance_to_map_edge 1
+  avoid_forest_zone 3
+  max_distance_to_other_zones 3
+}  
+
+create_object  SEA_ROCKS_1
+{
+  number_of_objects                 2
+  number_of_groups                  rnd(0,2)
+  terrain_to_place_on               MED_WATER
+  temp_min_distance_group_placement 3
+  min_distance_to_map_edge 1
+  group_variance                    1
+  avoid_forest_zone 3
+  max_distance_to_other_zones 2
+}  
+create_object  SEA_ROCKS_2
+{
+  number_of_objects                 2
+  number_of_groups                  rnd(0,2)
+  terrain_to_place_on               MED_WATER
+  temp_min_distance_group_placement 3
+  min_distance_to_map_edge 1
+  group_variance                    1
+  avoid_forest_zone 3
+  max_distance_to_other_zones 2
+}  
+create_object  ROCK
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(0,1)
+  terrain_to_place_on               MED_WATER
+  temp_min_distance_group_placement 3
+  min_distance_to_map_edge 1
+  avoid_forest_zone 3
+  max_distance_to_other_zones 2
+}  
+
+
+create_object DLC_MANGROVE_TREE 
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_groups                 rnd(29,39)
+  temp_min_distance_group_placement 1
+  avoid_forest_zone                 1
+  set_gaia_object_only
+} 
+
+create_object REED 
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_groups                 rnd(30,60)
+  number_of_objects                 2
+  group_variance                    1
+  temp_min_distance_group_placement 1
+  avoid_forest_zone                 1
+  min_distance_to_map_edge          3
+
+  set_gaia_object_only
+} 
+
+create_object REED 
+{
+  terrain_to_place_on               SHALLOW
+  number_of_groups                  rnd(38,52)
+  number_of_objects                 2
+  group_variance                    2
+  temp_min_distance_group_placement 4
+  set_gaia_object_only
+} 
+create_object PALMTREE 
+{
+  terrain_to_place_on               LOWER_LAND_TERRAIN
+  number_of_objects                 rnd(42,60)
+  temp_min_distance_group_placement 12
+  max_distance_to_other_zones       2
+  min_distance_to_players           13
+  set_gaia_object_only
+} 
+create_object BAMBOO_TREE
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  number_of_groups                  5
+  min_distance_to_players           4
+  max_distance_to_players           7
+  temp_min_distance_group_placement 4
+  min_distance_group_placement      1
+  find_closest
+  set_gaia_object_only
+} 
+/* MORE COSMETICS */
+create_object FORAGE 
+{
+  number_of_objects                 2
+  number_of_groups                  16
+  second_object BONFIRE
+  temp_min_distance_group_placement 10
+  resource_delta -125
+  avoid_forest_zone 1
+  group_variance                    2
+  min_distance_to_players           15
+}  
+
+create_object  DLC_ACACIATREE
+{
+  number_of_objects                 rnd(7,12)
+  set_circular_placement
+  second_object BROKEN_CART
+  resource_delta -150
+  avoid_forest_zone 2
+  min_distance_to_players   25
+  actor_area 7050
+  actor_area_radius 2
+}  
+
+create_object  BARRELS
+{
+  number_of_objects                 2
+  number_of_groups                  9000
+  temp_min_distance_group_placement 30
+  group_variance                    1
+  set_circular_placement
+  actor_area_to_place_in 7050
+}  
+
+create_object  DLC_ORANGEBUSH
+{
+  number_of_objects                 2
+  number_of_groups                  rnd(8,16)
+  temp_min_distance_group_placement 4
+  group_variance                    1
+  max_distance_to_other_zones   3
+  set_circular_placement
+  avoid_forest_zone 2
+  min_distance_to_players   25
+}  
+
+
+create_object  DLC_CROCODILE
+{
+  number_of_objects                 1
+  number_of_groups                  rnd(7,12)
+  temp_min_distance_group_placement 18
+  terrain_to_place_on DLC_MANGROVESHALLOW
+  min_distance_to_players   25
+}  
+create_object INVIS {
+	set_place_for_every_player
+	second_object JUNK
+  avoid_forest_zone 2
+	find_closest
+	terrain_to_place_on WATER
+}
+
+
+create_object  DLC_RAINTREE
+{
+  number_of_objects                 1
+  number_of_groups                  30
+  group_variance                    2
+  terrain_to_place_on               LOWER_LAND_TERRAIN
+  max_distance_to_other_zones   2
+  set_circular_placement
+  avoid_forest_zone 2
+  min_distance_to_players   16
+}  

@@ -17,7 +17,7 @@ import {
   type StaticNameIndex,
 } from "../parser/nameLookup";
 import type { Diagnostic, Item, ParseResult, Token } from "../parser/types";
-import { COMMENT_OPEN_ID } from "../parser/validate";
+import { COMMENT_CLOSE_ID, COMMENT_OPEN_ID } from "../parser/validate";
 import { caretContext } from "./caretContext";
 
 // Which #const offers the word under the caret gets (docs/name-lookup-design.md
@@ -94,12 +94,15 @@ function valueSuffix(d: DefaultConstValue): string {
   const meaning = d.meaning
     ? ` (${d.value} is ${d.meaning.name}${d.meaning.descriptiveName ? `, ${d.meaning.descriptiveName}` : ""})`
     : "";
-  // Sec.7.4. The default can land on 69 (an object id), and a word valued
-  // 69 opens a nested comment wherever it later sits inside one.
+  // Sec.7.4. The default can land on 69 or 70 (an object id), and a word
+  // valued 69 opens a nested comment wherever it later sits inside one while
+  // a word valued 70 closes one.
   const warning =
     d.value === COMMENT_OPEN_ID
       ? ". 69 opens a comment wherever this name appears inside one (RMS0111)"
-      : "";
+      : d.value === COMMENT_CLOSE_ID
+        ? ". 70 ends a comment wherever this name appears inside one (RMS0112)"
+        : "";
   return meaning + warning;
 }
 

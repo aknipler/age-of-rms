@@ -1,0 +1,12 @@
+/* From rms-check by Divy1211 (github.com/Divy1211/rms-check), GPL-3.0,
+   test_rms folder, copied 2026-11 for Age of RMS's liveness tests. */
+
+start_random 
+    percent_chance 50    #const WATER_MASK 95    /* green */
+    percent_chance 50    #define NO_GREEN_MASKING
+end_random
+
+if NO_GREEN_MASKING
+else
+    create_terrain WATER_MASK { base_terrain WATER }
+endif

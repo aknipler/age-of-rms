@@ -8,7 +8,7 @@ import type { SlotKind } from "../../parser/nameLookup";
 import { parseRms } from "../../parser/parser";
 import { loadLanguage } from "../../parser/__tests__/testUtils";
 import {
-  commentOpenWarning,
+  commentMarkerWarning,
   defaultMeaning,
   moveUpRefusal,
   reviewCommit,
@@ -147,8 +147,10 @@ describe("strip wording", () => {
     expect(defaultMeaning(r.defaultValue)).toMatch(/^10 is FOREST/);
   });
 
-  it("warns about 69 and only 69 (RMS0111)", () => {
-    expect(commentOpenWarning(69)).toMatch(/RMS0111/);
-    expect(commentOpenWarning(70)).toBeUndefined();
+  it("warns about 69 and 70 and nothing else (RMS0111, RMS0112)", () => {
+    expect(commentMarkerWarning(68)).toBeUndefined();
+    expect(commentMarkerWarning(69)).toMatch(/RMS0111/);
+    expect(commentMarkerWarning(70)).toMatch(/RMS0112/);
+    expect(commentMarkerWarning(71)).toBeUndefined();
   });
 });

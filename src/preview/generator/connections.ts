@@ -1,80 +1,39 @@
-// S5: connections, docs/preview-design.md Sec.6.5. PURE (CLAUDE.md hard
-// rule / preview-design Sec.2).
+// S5: connections, docs/preview-design.md Sec.6.5 (rev 11). PURE (CLAUDE.md
+// hard rule / preview-design Sec.2).
 //
-// Per connection command, resolve a NODE SET (which lands are eligible) and
-// a PAIRING rule (which pairs among them get a connection attempt), then A*
-// a path between each pair's regions and paint terrain along it. All six
-// `create_connect_*` commands reduce to "resolve nodes, connect every pair",
-// even `create_connect_to_nonplayer_land`, whose pairing is bipartite
-// (player x neutral) rather than within one set.
+// THIS STAGE REPRODUCES THE GAME TILE FOR TILE. It is the connection stage
+// the owner's DE study measured (`tools/scenario-probe/de-study/evidence/
+// de-connections-objects.md` Sections 2 and 3, rounds CO and CF, and
+// `de-findings-cg-cj.md` 5.3), on the same stream as every stage before it.
 //
-// `create_connect_same_land_zones` GROUPS by `.zone` and connects only
-// WITHIN each group (`sameZonePairs`), it is NOT a synonym for
-// `create_connect_all_lands`. An earlier draft of this file read Sec.6.5's
-// compressed "`…all_lands` / `…same_land_zones` -> all land origins, all
-// pairs" as describing identical behaviour for both commands; that was
-// wrong, caught in review, and cross-checked against two independent
-// community RMS references (an AoE2 RMS command-table page and a
-// zone-semantics summary), both agreeing on zone-partitioned grouping and
-// consistent with this codebase's own already-measured zone defaults
-// (Sec.6.1: neutral `create_land` shares zone -10, each player land gets
-// its own `playerNumber - 10`). This is guide/community-sourced, not
-// confirmed in-game the way this project's RMSTEST_* runs confirm other
-// facts, worth an actual RMSTEST if this command's exact behaviour ever
-// matters for something load-bearing. `preview-design.md` Sec.6.5 carries
-// the corrected reading since 2026-08-06.
+// THE MODEL, in brief.
+//   - The section burns one draw. Each `create_connect_*` builds a table of
+//     cost, size, variance and replacement per terrain, and a list of
+//     endpoints, which are land origins. Every pair of endpoints, in order,
+//     gets one path.
+//   - A path is a best-first search over 8 neighbours, not a shortest path. A
+//     tile is queued once, when first reached, and never improved, so the
+//     heuristic's quirks shape the road.
+//   - Each tile of the path but the target paints a rectangle whose four
+//     sides each reach a random distance, and then every tile of the path's
+//     rectangles takes its terrain's replacement.
+//   - Between commands the game undoes each command's paint except where the
+//     command painted a tile twice, and puts every road back at the end. So
+//     commands do not see each other's roads, unless `accumulate_connections`
+//     says they should.
+//   - `create_connect_teams_lands` and `create_connect_to_nonplayer_land`
+//     each turn into several commands. The second one's copies overwrite the
+//     commands after it, which is the guide's "blocks the commands after it"
+//     seen exactly.
 //
-// PATHFINDING: ONE multi-goal Dijkstra per SOURCE land, with a binary
-// heap (Sec.11), yielding the cheapest path to every one of that source's
-// targets from a single search (`findConnectionPaths`). A connection runs
-// between land ORIGINS, "along a path between the origins of lands"
-// (guide:1730, restated per command at guide:1759/1774/1792), so the
-// search is seeded from the source land's origin tile alone and a target
-// counts as reached only when its origin tile closes. An earlier version
-// seeded EVERY tile of the source land at cost 0 and accepted the first
-// tile of a target land the search closed, which joins the two lands'
-// nearest edges: on the tutorial's Golden Hill every road stopped 24 to 36
-// tiles short of the TC, one land radius, while in game the road runs up
-// to it. The origin is where the TC sits (`max_distance_to_players 0` in
-// objects.ts is a band around the same `LandOrigin.x/y`), so the path has
-// to cross the player's own land to get there, and its paint goes over
-// that land's terrain like any other tile's. A pair-at-a-time A* ran
-// C(L,2) searches where this runs L, which
-// on ~25 lands is 12x fewer (Sec.15 item 22). There is no heuristic: A*'s
-// admissibility guarantee covers only the FIRST goal popped out of a goal
-// set, so a heuristic aimed at the nearest remaining target would return
-// non-optimal paths to the rest. `grid.terrain` already holds the terrain
-// UNDER any cliff (cliffs.ts never writes to `terrain`, only to `cliff`),
-// which is exactly Sec.9 item 7's own resolution of "what does the
-// pathfinder see under a cliff", no special cliff handling is needed
-// here, the grid already reads that way for free.
+// The stage reads terrain as painted. A tile the terrain stage painted with a
+// composite terrain still reads as the composite here, though the map shows
+// it resolved (`CompositeRecord` in terrains.ts).
 //
-// ACCUMULATE_CONNECTIONS is a standalone stream-state toggle sitting
-// directly in the section (`kind: "standalone"`, not an attribute of any
-// block), same shape as cliffs.ts's own standalone attributes: it is a
-// plain `InstantiatedCommand` in `sections.get("CONNECTION_GENERATION")`,
-// encountered in script order alongside the six `create_connect_*` block
-// commands. Once seen, every LATER command in the section reads terrain
-// state (for both `terrain_cost` and `replace_terrain`'s "from" matching)
-// from the output of the commands before it rather than from the state
-// frozen at the start of S5, "costs/replacements see prior connections'
-// output" (Sec.6.5).
-//
-// It accumulates BETWEEN commands and NOT WITHIN one, which is why the
-// read state is a per-command snapshot rather than the live grid.
-// `RMSTEST_43a`/`43b` measured the same map with the flag on and off, four
-// generations each: 456 road tiles in all eight, exactly, while a control
-// quantity that is random but irrelevant (automatic decoration objects)
-// varied normally across the same exports, so every export was a distinct
-// generation and the measured quantity had zero spread. Sec.15 item 22.
-// The earlier live-grid reading let pair N+1 of one command route over
-// pair N's paint; nothing observable depends on it, and freezing per
-// command is what makes batching a pure speedup rather than a deviation.
-//
-// TO_NONPLAYER_LAND'S DOCUMENTED BUG is emulated deliberately: once that
-// command runs, every `create_connect_*` command AFTER it in the section
-// is skipped outright (still gets a CommandReport, per "never silently
-// drop content", plus a SimulationNote explaining why).
+// This file replaced a multi-goal Dijkstra with disc painting, grouping
+// `same_land_zones` by zone, and a frozen snapshot per command. Each was a
+// reasonable reading of the guide and each is refuted by a DE map. Its
+// history is in docs/build-log.md.
 
 import type {
   CommandReport,
@@ -85,705 +44,21 @@ import type {
   SimulationNote,
   TileGrid,
 } from "./types";
-import { createSubstream, nextInt, type Rng } from "./rng";
+import { resumeDeStream, type DeStream, type DeStreamState } from "./deRandom";
+import { f32Add, f32Mul, f32Sqrt, f32Sub } from "./float32";
 import {
+  NO_LAYER,
   resolveTerrainId,
-  tileIndex,
   type TerrainConstantForMasks,
 } from "./grid";
 import { pushFailure } from "./placement";
+import { COMPOSITE_AS_TERRAIN, type CompositeRecord } from "./terrains";
 
-// ---------------------------------------------------------------------------
-// Attribute reading, duplicated per-file convention (see elevation.ts's
-// header for why: small, stage-agnostic, not worth a shared module).
-// ---------------------------------------------------------------------------
-
-/**
- * The script's own `#const` table (`InstantiatedScript.symbols`), threaded
- * into every terrain lookup below. Optional on the exported readers purely so
- * their unit tests can keep calling them with two arguments, a script that
- * defines no constants and one whose constants are withheld are the same
- * thing to `resolveTerrainId`.
- */
-type Symbols = ReadonlyMap<string, number>;
-/** BUG-015's name-to-name `#const`s, travelling with `Symbols` everywhere it goes. */
-type Aliases = ReadonlyMap<string, string>;
-
-/**
- * Upper bound for the flat `terrain_cost` table below. Not a claim about
- * which terrains exist, a script can write any id, and ids above this fall
- * back to the Map, only about where a dense array stops paying for itself.
- * DE's own table ends at 130 and `grid.terrain` is a `Uint16Array`.
- */
-const MAX_TERRAIN_ID = 255;
-
-// ---------------------------------------------------------------------------
-// Node-set resolution (Sec.6.5's own list, one function per command)
-// ---------------------------------------------------------------------------
-
-function playerLandIndices(origins: readonly LandOrigin[]): number[] {
-  const out: number[] = [];
-  origins.forEach((o, i) => {
-    if (o.player !== undefined) out.push(i);
-  });
-  return out;
-}
-
-function neutralLandIndices(origins: readonly LandOrigin[]): number[] {
-  const out: number[] = [];
-  origins.forEach((o, i) => {
-    if (o.player === undefined) out.push(i);
-  });
-  return out;
-}
-
-/** Every unique unordered pair within one set. */
-function allPairs(indices: readonly number[]): Array<[number, number]> {
-  const pairs: Array<[number, number]> = [];
-  for (let i = 0; i < indices.length; i++) {
-    for (let j = i + 1; j < indices.length; j++)
-      pairs.push([indices[i], indices[j]]);
-  }
-  return pairs;
-}
-
-/** Bipartite pairs between two disjoint sets, `create_connect_to_nonplayer_land`'s "player x neutral pairs only". */
-export function crossPairs(
-  a: readonly number[],
-  b: readonly number[],
-): Array<[number, number]> {
-  const pairs: Array<[number, number]> = [];
-  for (const i of a) for (const j of b) pairs.push([i, j]);
-  return pairs;
-}
-
-/**
- * `create_connect_teams_lands`: all pairs WITHIN each canonical team,
- * independently, never across teams, and canonical team 0 (un-teamed)
- * produces no pairs at all, "not the team of everyone left over" (Sec.6.5).
- */
-export function teamPairs(
-  origins: readonly LandOrigin[],
-  teams: InstantiatedScript["teams"],
-): Array<[number, number]> {
-  const byTeam = new Map<number, number[]>();
-  origins.forEach((o, i) => {
-    if (o.player === undefined) return;
-    const team = teams.canonical[o.player - 1] ?? 0;
-    if (team === 0) return;
-    const list = byTeam.get(team);
-    if (list) list.push(i);
-    else byTeam.set(team, [i]);
-  });
-  const pairs: Array<[number, number]> = [];
-  for (const indices of byTeam.values()) pairs.push(...allPairs(indices));
-  return pairs;
-}
-
-export function landZonePairs(
-  origins: readonly LandOrigin[],
-  zoneA: number,
-  zoneB: number,
-): Array<[number, number]> {
-  const indices: number[] = [];
-  origins.forEach((o, i) => {
-    if (o.zone === zoneA || o.zone === zoneB) indices.push(i);
-  });
-  return allPairs(indices);
-}
-
-/**
- * `create_connect_same_land_zones`: all pairs WITHIN each zone,
- * independently, GROUPS by `.zone`, unlike `create_connect_all_lands`,
- * which ignores zone entirely (see this file's header for the correction
- * this represents). By default every `create_land` shares zone -10 while
- * every player land gets its own zone (`playerNumber - 10`, Sec.6.1), so
- * on an unmodified script this connects the neutral lands to each other
- * and does NOT connect player lands to anything, which is the whole point
- * of the command existing as something other than a synonym for
- * `create_connect_all_lands`. Zone -12 ("belongs to no zone", Sec.6.1) is
- * excluded from grouping, mirroring lands.ts's own exemption for it.
- */
-export function sameZonePairs(
-  origins: readonly LandOrigin[],
-): Array<[number, number]> {
-  const byZone = new Map<number, number[]>();
-  origins.forEach((o, i) => {
-    if (o.zone === -12) return;
-    const list = byZone.get(o.zone);
-    if (list) list.push(i);
-    else byZone.set(o.zone, [i]);
-  });
-  const pairs: Array<[number, number]> = [];
-  for (const indices of byZone.values()) pairs.push(...allPairs(indices));
-  return pairs;
-}
-
-// ---------------------------------------------------------------------------
-// Binary min-heap (Sec.11: "A* uses a binary heap"), exported for direct
-// unit testing, matching this codebase's convention for a risky, easy-to-
-// get-subtly-wrong mechanism (bucketWeights, growClump, ...).
-// Lazy-deletion: a stale, superseded entry may still sit in the heap when
-// popped; the caller checks it against its own closed/gScore state and
-// skips it rather than this heap supporting decrease-key.
-// ---------------------------------------------------------------------------
-
-export class MinHeap {
-  private readonly priorities: number[] = [];
-  private readonly values: number[] = [];
-
-  get size(): number {
-    return this.values.length;
-  }
-
-  /** Empties the heap so one instance can serve every search in a command, see PathScratch. */
-  clear(): void {
-    this.values.length = 0;
-    this.priorities.length = 0;
-  }
-
-  push(value: number, priority: number): void {
-    this.values.push(value);
-    this.priorities.push(priority);
-    let i = this.values.length - 1;
-    while (i > 0) {
-      const parent = (i - 1) >> 1;
-      if (this.priorities[parent] <= this.priorities[i]) break;
-      this.swap(i, parent);
-      i = parent;
-    }
-  }
-
-  pop(): number | undefined {
-    if (this.values.length === 0) return undefined;
-    const top = this.values[0];
-    const lastValue = this.values.pop()!;
-    const lastPriority = this.priorities.pop()!;
-    if (this.values.length > 0) {
-      this.values[0] = lastValue;
-      this.priorities[0] = lastPriority;
-      let i = 0;
-      const n = this.values.length;
-      for (;;) {
-        const left = 2 * i + 1;
-        const right = 2 * i + 2;
-        let smallest = i;
-        if (left < n && this.priorities[left] < this.priorities[smallest])
-          smallest = left;
-        if (right < n && this.priorities[right] < this.priorities[smallest])
-          smallest = right;
-        if (smallest === i) break;
-        this.swap(i, smallest);
-        i = smallest;
-      }
-    }
-    return top;
-  }
-
-  private swap(i: number, j: number): void {
-    const v = this.values[i];
-    this.values[i] = this.values[j];
-    this.values[j] = v;
-    const p = this.priorities[i];
-    this.priorities[i] = this.priorities[j];
-    this.priorities[j] = p;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Pathfinding
-// ---------------------------------------------------------------------------
-
-/**
- * The tile index of each land's origin, the endpoint every connection to or
- * from that land uses. Index matches `origins`. `-1` for an origin off the
- * grid, which lands.ts clamps against, so today it cannot happen; kept as a
- * guard because the guide records the engine CRASHING on exactly that case
- * (guide:818, a `land_position` outside the map "will crash the game if
- * your map uses <CONNECTION_GENERATION>"), and the preview's answer to a
- * crash is a `connectionBlocked` failure, never a throw.
- */
-export function landOriginTiles(
-  grid: TileGrid,
-  origins: readonly LandOrigin[],
-): number[] {
-  const { dim } = grid;
-  return origins.map((o) =>
-    o.x >= 0 && o.x < dim && o.y >= 0 && o.y < dim
-      ? tileIndex(grid, o.x, o.y)
-      : -1,
-  );
-}
-
-/**
- * Which lands can possibly reach which, under ONE command's cost table.
- *
- * Batching the searches per source land is only a saving when a search can
- * stop early, and one unreachable target denies that: the Dijkstra has to
- * exhaust its whole component before it can conclude the target is not in
- * it. `24hr_Caverns.rms` has 46 unreachable pairs out of 468, spread widely
- * enough that nearly every source had one, so batching alone bought it 15%
- * against Pag's 3.7x (measured 2026-08-11).
- *
- * So the unreachable pairs are answered before any search runs, by flooding
- * the passable tiles once per command into connected components and asking
- * whether the two lands' ORIGIN tiles share one. That is the same question
- * the exhausted search was answering, at O(dim^2) for the whole command
- * rather than per pair. One component per land, `-1` when its origin tile
- * is impassable (or off the grid): the guide reads a cost-0 terrain under
- * a land origin as "the connections to that land will not be generated at
- * all" (guide:1937), which makes departing and arriving the same test.
- * The earlier per-tile model needed two sets per land because a land
- * seeded from all its tiles could DEPART over impassable terrain while
- * only being ARRIVED AT through passable tiles; with a single origin tile
- * at both ends that asymmetry has nothing left to describe.
- */
-export interface ConnectivityIndex {
-  component: Int32Array;
-}
-
-export function buildConnectivityIndex(
-  grid: TileGrid,
-  terrainOf: Uint16Array,
-  costOf: (terrainId: number) => number,
-  originTiles: readonly number[],
-): ConnectivityIndex {
-  const { dim } = grid;
-  const n = dim * dim;
-  const component = new Int32Array(n).fill(-1);
-  const stack = new Int32Array(n);
-  let next = 0;
-
-  for (let start = 0; start < n; start++) {
-    if (component[start] !== -1 || costOf(terrainOf[start]) <= 0) continue;
-    const id = next++;
-    let top = 0;
-    stack[top++] = start;
-    component[start] = id;
-    while (top > 0) {
-      const tile = stack[--top];
-      const x = tile % dim;
-      const y = (tile - x) / dim;
-      if (x > 0) top = visit(tile - 1, id, top);
-      if (x < dim - 1) top = visit(tile + 1, id, top);
-      if (y > 0) top = visit(tile - dim, id, top);
-      if (y < dim - 1) top = visit(tile + dim, id, top);
-    }
-  }
-
-  const index: ConnectivityIndex = {
-    component: new Int32Array(originTiles.length).fill(-1),
-  };
-  originTiles.forEach((tile, land) => {
-    if (tile >= 0 && tile < n) index.component[land] = component[tile];
-  });
-  return index;
-
-  function visit(tile: number, id: number, top: number): number {
-    if (component[tile] !== -1 || costOf(terrainOf[tile]) <= 0) return top;
-    component[tile] = id;
-    stack[top++] = tile;
-    return top;
-  }
-}
-
-/** Whether any route at all could exist from `source` to `target`, the cheap half of the question `findConnectionPaths` answers exactly. */
-export function landsCanConnect(
-  index: ConnectivityIndex,
-  source: number,
-  target: number,
-): boolean {
-  const from = index.component[source];
-  const to = index.component[target];
-  if (from === undefined || to === undefined) return false;
-  return from !== -1 && from === to;
-}
-
-/**
- * Reusable working arrays for `findConnectionPaths`, allocated ONCE per
- * `applyConnections` call instead of once per search.
- *
- * The searches are per SOURCE LAND, so a script with many lands still runs
- * dozens of them (`AD4 - Pag - v1.2.rms`: 27 lands x three
- * `create_connect_all_lands` commands). Each was allocating and then clearing
- * three `dim^2` arrays, about half a megabyte of churn and 120,000 writes
- * per search, before any pathfinding happened. `24hr_Caverns.rms` spent 3.0 s
- * in S5 (measured 2026-08-07).
- *
- * The clear is avoided by GENERATION STAMPING rather than by refilling: each
- * search bumps `generation`, and a cell counts as written only when its stamp
- * matches. An unmatched stamp means "not visited this search", which is what
- * `Infinity` / `0` used to mean. That turns the per-search setup from O(dim^2)
- * into O(source tiles).
- *
- * `generation` starts at 0 and the stamps at 0, so the FIRST search must not
- * read generation 0 as valid, hence `++scratch.generation` before use, never
- * `scratch.generation++`.
- */
-export interface PathScratch {
-  gScore: Float64Array;
-  gStamp: Int32Array;
-  cameFrom: Int32Array;
-  closedStamp: Int32Array;
-  heap: MinHeap;
-  generation: number;
-}
-
-export function createPathScratch(dim: number): PathScratch {
-  const n = dim * dim;
-  return {
-    gScore: new Float64Array(n),
-    gStamp: new Int32Array(n),
-    cameFrom: new Int32Array(n),
-    closedStamp: new Int32Array(n),
-    heap: new MinHeap(),
-    generation: 0,
-  };
-}
-
-/**
- * Single-source, multi-goal Dijkstra from `sourceLand`'s ORIGIN tile to the
- * ORIGIN tile of each land in `targetLands` (`originTiles` is indexed by
- * land, see `landOriginTiles`). Returns one path per target that was
- * reached, keyed by land index, as tile indices from origin to origin
- * inclusive. A target simply ABSENT from the returned map has no route,
- * "impassable moat of cost-0 terrain, or unreachable land" (Sec.6.5),
- * which this treats identically: both exhaust the open set without ever
- * closing that origin tile. A source whose own origin is impassable
- * reaches nothing (guide:1937), the same answer the connectivity index
- * gives before this is ever called.
- *
- * One search answers every pair sharing a source, which is the whole point
- * (Sec.15 item 22). The search still expands THROUGH a target's origin
- * after recording it, since a further target may lie beyond it, the
- * per-pair version did the same, having never looked at any land but its
- * own target. It stops early once every target is accounted for, so a
- * source whose targets are all nearby does not pay for the far side of the
- * map; only an unreachable target forces the full component.
- *
- * The goal test is on the TILE, not on `grid.landId`: two lands may share
- * an origin tile (two `land_position 50 50`), and a land's origin can lie
- * under another land's tiles after growth, so "which land is this tile"
- * is not the question. A `Map<tile, land[]>` answers it in O(1) per pop.
- */
-export function findConnectionPaths(
-  grid: TileGrid,
-  terrainOf: Uint16Array,
-  costOf: (terrainId: number) => number,
-  originTiles: readonly number[],
-  sourceLand: number,
-  targetLands: readonly number[],
-  scratch: PathScratch = createPathScratch(grid.dim),
-): Map<number, number[]> {
-  const paths = new Map<number, number[]>();
-  const { dim } = grid;
-  const n = dim * dim;
-  const start = originTiles[sourceLand] ?? -1;
-  if (start < 0 || start >= n || costOf(terrainOf[start]) <= 0) return paths;
-
-  const goalsByTile = new Map<number, number[]>();
-  let wanted = 0;
-  for (const land of targetLands) {
-    if (land === sourceLand) continue;
-    const tile = originTiles[land] ?? -1;
-    if (tile < 0 || tile >= n) continue;
-    const list = goalsByTile.get(tile);
-    if (list) {
-      if (list.includes(land)) continue;
-      list.push(land);
-    } else goalsByTile.set(tile, [land]);
-    wanted++;
-  }
-  if (wanted === 0) return paths;
-
-  const { gScore, gStamp, cameFrom, closedStamp, heap } = scratch;
-  const gen = ++scratch.generation;
-  heap.clear();
-  seed(start);
-
-  while (heap.size > 0) {
-    const current = heap.pop()!;
-    if (closedStamp[current] === gen) continue;
-    closedStamp[current] = gen;
-
-    const goals = goalsByTile.get(current);
-    if (goals !== undefined) {
-      const path: number[] = [];
-      let t: number = current;
-      // `cameFrom` needs no stamp of its own: every tile on this chain was
-      // written during THIS search (a tile only enters the heap when its
-      // gScore is written, and the source tile terminates the chain at -1).
-      while (t !== -1) {
-        path.push(t);
-        t = cameFrom[t];
-      }
-      path.reverse();
-      for (const land of goals) paths.set(land, path);
-      wanted -= goals.length;
-      goalsByTile.delete(current);
-      if (wanted === 0) break;
-    }
-
-    const x = current % dim;
-    const y = (current - x) / dim;
-    // The four neighbours are visited inline rather than collected into an
-    // array first. That array was allocated once per EXPANSION, and an
-    // expansion is per tile per search, so it was tens of millions of
-    // throwaway arrays for a fixed set of four numbers.
-    if (x > 0) relax(current, current - 1);
-    if (x < dim - 1) relax(current, current + 1);
-    if (y > 0) relax(current, current - dim);
-    if (y < dim - 1) relax(current, current + dim);
-  }
-  return paths;
-
-  function seed(i: number): void {
-    gScore[i] = 0;
-    gStamp[i] = gen;
-    cameFrom[i] = -1; // terminates the path walk; the array is reused, so a stale value here would run off the end of this search's own chain
-    heap.push(i, 0);
-  }
-
-  function relax(from: number, neighbor: number): void {
-    if (closedStamp[neighbor] === gen) return;
-    const cost = costOf(terrainOf[neighbor]);
-    if (cost <= 0) return; // "<=0 -> impassable" (Sec.6.5)
-    const tentativeG = gScore[from] + cost;
-    // A stale gScore from an earlier search reads as Infinity, which is what
-    // the per-search `.fill(Infinity)` used to write, see PathScratch.
-    if (gStamp[neighbor] === gen && tentativeG >= gScore[neighbor]) return;
-    gScore[neighbor] = tentativeG;
-    gStamp[neighbor] = gen;
-    cameFrom[neighbor] = from;
-    heap.push(neighbor, tentativeG);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Per-command cost/replacement tables (Sec.6.5), each `create_connect_*`
-// command declares its OWN, matching language.json's per-command attribute
-// list (not a section-wide default).
-// ---------------------------------------------------------------------------
-
-/** `terrain_cost Terrain Cost` (repeatable): builds a lookup, unlisted terrains default to 1 (Sec.6.5). Last declaration wins for a repeated terrain, matching Sec.3 rule 10's general policy. */
-export function readTerrainCosts(
-  cmd: InstantiatedCommand,
-  constants: readonly TerrainConstantForMasks[],
-  symbols?: Symbols,
-  aliases?: Aliases,
-): Map<number, number> {
-  const costs = new Map<number, number>();
-  for (const attr of cmd.attributes.get("terrain_cost") ?? []) {
-    const cost = attr.args[1]?.value;
-    if (typeof cost !== "number") continue;
-    const terrainId = resolveTerrainId(
-      constants,
-      attr.args[0]?.value,
-      symbols,
-      aliases,
-    );
-    if (terrainId !== undefined) costs.set(terrainId, cost);
-  }
-  return costs;
-}
-
-export interface TerrainSize {
-  radius: number;
-  variance: number;
-}
-
-/** `terrain_size Terrain Radius Variance` (repeatable, read positionally). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
-export function readTerrainSizes(
-  cmd: InstantiatedCommand,
-  constants: readonly TerrainConstantForMasks[],
-  symbols?: Symbols,
-  aliases?: Aliases,
-): Map<number, TerrainSize> {
-  const sizes = new Map<number, TerrainSize>();
-  for (const attr of cmd.attributes.get("terrain_size") ?? []) {
-    const radius = attr.args[1]?.value;
-    const variance = attr.args[2]?.value;
-    if (typeof radius !== "number") continue;
-    const terrainId = resolveTerrainId(
-      constants,
-      attr.args[0]?.value,
-      symbols,
-      aliases,
-    );
-    if (terrainId !== undefined)
-      sizes.set(terrainId, {
-        radius,
-        variance: typeof variance === "number" ? variance : 0,
-      });
-  }
-  return sizes;
-}
-
-export interface ReplacementRule {
-  /** `undefined` = wildcard (`default_terrain_replacement`), matches every terrain. */
-  from: number | undefined;
-  to: number;
-  order: number; // source position, for "expansion order" resolution
-}
-
-/**
- * `replace_terrain A->B` (repeatable) and `default_terrain_replacement T`
- * (a wildcard "replace everything") merge into ONE ordered rule list by
- * source position (Sec.6.5: "overriding earlier list entries but not later
- * ones -- emulate by expansion order"). Resolving a terrain then means:
- * scan in order, keep the LAST rule that matches (specific-terrain match OR
- * wildcard) -- a wildcard written after a specific rule overrides it for
- * every terrain; a specific rule written after the wildcard still wins for
- * its own terrain, since it is later and it also matches.
- */
-export function readReplacementRules(
-  cmd: InstantiatedCommand,
-  constants: readonly TerrainConstantForMasks[],
-  symbols?: Symbols,
-  aliases?: Aliases,
-): ReplacementRule[] {
-  const rules: ReplacementRule[] = [];
-  for (const attr of cmd.attributes.get("replace_terrain") ?? []) {
-    const fromId = resolveTerrainId(
-      constants,
-      attr.args[0]?.value,
-      symbols,
-      aliases,
-    );
-    const toId = resolveTerrainId(
-      constants,
-      attr.args[1]?.value,
-      symbols,
-      aliases,
-    );
-    if (fromId !== undefined && toId !== undefined)
-      rules.push({ from: fromId, to: toId, order: attr.span.start });
-  }
-  const defaultAttr = cmd.attributes.get("default_terrain_replacement")?.[0];
-  if (defaultAttr) {
-    const toId = resolveTerrainId(
-      constants,
-      defaultAttr.args[0]?.value,
-      symbols,
-      aliases,
-    );
-    if (toId !== undefined)
-      rules.push({ from: undefined, to: toId, order: defaultAttr.span.start });
-  }
-  rules.sort((a, b) => a.order - b.order);
-  return rules;
-}
-
-export function resolveReplacement(
-  rules: readonly ReplacementRule[],
-  terrainId: number,
-): number | undefined {
-  let result: number | undefined;
-  for (const rule of rules) {
-    if (rule.from === undefined || rule.from === terrainId) result = rule.to;
-  }
-  return result;
-}
-
-// ---------------------------------------------------------------------------
-// Terrain application along a found path (Sec.6.5)
-// ---------------------------------------------------------------------------
-
-/**
- * Tiles this command has already painted, and how many of the grid's are
- * left. Optional, and purely a saving: a tile's painted value is
- * `resolveReplacement(rules, terrainOf[i])`, and within ONE command both
- * `rules` and `terrainOf` are fixed, so a second disc covering a tile
- * writes the value already there, and covering it a third time is the same
- * no-op again.
- *
- * **This is only true because `terrainOf` is frozen for the command.** If
- * anything ever restores the live-grid read that `accumulate_connections`
- * used to imply, this dedup silently starts dropping real repaints; the
- * two belong together.
- *
- * `24hr_Caverns.rms` is why it exists: `terrain_size DLC_RAINFOREST 420 0`
- * on a 240-wide map is a disc larger than the map, and its
- * `create_connect_all_lands` walks thousands of path tiles over rainforest,
- * each one re-scanning all 57,600 tiles to write what the first already
- * wrote, measured at 3010 ms of painting against 378 ms of searching.
- */
-export interface PaintCoverage {
-  painted: Uint8Array;
-  remaining: number;
-}
-
-export function createPaintCoverage(dim: number): PaintCoverage {
-  return { painted: new Uint8Array(dim * dim), remaining: dim * dim };
-}
-
-/**
- * Per path tile: roll an effective radius (base +/- uniform variance,
- * looked up by the tile's OWN current terrain -- default radius 1,
- * variance 0 when that terrain has no `terrain_size` entry), skip entirely
- * on a negative roll ("negative effective radius -> replace nothing" --
- * guide:1965), else replace every terrain within that many tiles (a
- * Euclidean disc, squared-distance compared -- Sec.8 bans `Math.sqrt`) per
- * `rules`. Reads "from" terrain and radius terrain from `terrainOf` (the
- * caller's per-command snapshot) but WRITES to `grid.terrain` directly and
- * immediately, so a later path tile's disc can overwrite an earlier one's
- * where they overlap -- the same order the path itself was walked in.
- */
-export function applyTerrainAlongPath(
-  grid: TileGrid,
-  path: readonly number[],
-  terrainOf: Uint16Array,
-  sizes: ReadonlyMap<number, TerrainSize>,
-  rules: readonly ReplacementRule[],
-  rng: Rng,
-  coverage?: PaintCoverage,
-): void {
-  const { dim } = grid;
-  for (const tile of path) {
-    // Every tile in the command is already at its final value, so the
-    // remaining discs, and the radius rolls that size them, which nothing
-    // outside this pair's own substream can observe, are all no-ops.
-    if (coverage !== undefined && coverage.remaining === 0) return;
-    const terrainHere = terrainOf[tile];
-    const size = sizes.get(terrainHere) ?? { radius: 1, variance: 0 };
-    const roll =
-      size.variance > 0 ? nextInt(rng, -size.variance, size.variance) : 0;
-    const radius = size.radius + roll;
-    if (radius < 0) continue;
-
-    const cx = tile % dim;
-    const cy = (tile - cx) / dim;
-    const r2 = radius * radius;
-    const minX = Math.max(0, cx - radius);
-    const maxX = Math.min(dim - 1, cx + radius);
-    const minY = Math.max(0, cy - radius);
-    const maxY = Math.min(dim - 1, cy + radius);
-    for (let y = minY; y <= maxY; y++) {
-      for (let x = minX; x <= maxX; x++) {
-        const dx = x - cx;
-        const dy = y - cy;
-        if (dx * dx + dy * dy > r2) continue;
-        const i = tileIndex(grid, x, y);
-        if (coverage !== undefined) {
-          if (coverage.painted[i] === 1) continue;
-          coverage.painted[i] = 1;
-          coverage.remaining--;
-        }
-        const replacement = resolveReplacement(rules, terrainOf[i]);
-        if (replacement !== undefined) grid.terrain[i] = replacement;
-      }
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Orchestration
-// ---------------------------------------------------------------------------
-
-export interface ConnectionsResult {
-  reports: CommandReport[];
-  notes: SimulationNote[];
-}
+/** Table entries per command. Terrain ids end below 200 in the dat. */
+const TABLE_SIZE = 256;
+const NO_REPLACEMENT = -1;
+/** The cost factor of a diagonal step. */
+const DIAGONAL = 1.36;
 
 const CONNECT_COMMAND_NAMES = new Set([
   "create_connect_all_players_land",
@@ -794,232 +69,634 @@ const CONNECT_COMMAND_NAMES = new Set([
   "create_connect_to_nonplayer_land",
 ]);
 
+// ---------------------------------------------------------------------------
+// One command's table (2.2)
+// ---------------------------------------------------------------------------
+
+interface ConnectionTable {
+  cost: Float64Array;
+  size: Int32Array;
+  variance: Int32Array;
+  replacement: Int32Array;
+}
+
+function defaultTable(): ConnectionTable {
+  return {
+    cost: new Float64Array(TABLE_SIZE).fill(1),
+    size: new Int32Array(TABLE_SIZE).fill(1),
+    variance: new Int32Array(TABLE_SIZE),
+    replacement: new Int32Array(TABLE_SIZE).fill(NO_REPLACEMENT),
+  };
+}
+
+/** What the empty commands of `to_nonplayer_land`'s bug hold, cost 0 everywhere. */
+function closedTable(): ConnectionTable {
+  const table = defaultTable();
+  table.cost.fill(0);
+  return table;
+}
+
+/**
+ * The command's attributes applied in script order, so a
+ * `default_terrain_replacement` after a `replace_terrain` overwrites it and
+ * one before it does not. The folded attribute map loses the order between
+ * different names, so every occurrence is gathered and sorted by position.
+ */
+function readTable(
+  cmd: InstantiatedCommand,
+  instantiated: InstantiatedScript,
+  constants: readonly TerrainConstantForMasks[],
+): ConnectionTable {
+  const table = defaultTable();
+  const terrain = (value: unknown): number | undefined => {
+    const id = resolveTerrainId(
+      constants,
+      value as string | number | undefined,
+      instantiated.symbols,
+      instantiated.aliases,
+    );
+    return id !== undefined && id >= 0 && id < TABLE_SIZE ? id : undefined;
+  };
+  const occurrences = [
+    "default_terrain_replacement",
+    "replace_terrain",
+    "terrain_cost",
+    "terrain_size",
+  ]
+    .flatMap((name) => cmd.attributes.get(name) ?? [])
+    .sort((a, b) => a.span.start - b.span.start);
+  for (const attr of occurrences) {
+    const [a, b, c] = attr.args;
+    const number = (arg: typeof a): number | undefined =>
+      arg?.exact ?? (typeof arg?.value === "number" ? arg.value : undefined);
+    switch (attr.name) {
+      case "default_terrain_replacement": {
+        const to = terrain(a?.value);
+        if (to !== undefined) table.replacement.fill(to);
+        break;
+      }
+      case "replace_terrain": {
+        const from = terrain(a?.value);
+        const to = terrain(b?.value);
+        if (from !== undefined && to !== undefined)
+          table.replacement[from] = to;
+        break;
+      }
+      case "terrain_cost": {
+        // A decimal cost is kept (cn4 crosses a FOREST wall at 2.5).
+        const id = terrain(a?.value);
+        const cost = number(b);
+        if (id !== undefined && cost !== undefined) table.cost[id] = cost;
+        break;
+      }
+      case "terrain_size": {
+        const id = terrain(a?.value);
+        const size = number(b);
+        if (id !== undefined && size !== undefined) {
+          table.size[id] = Math.trunc(size);
+          table.variance[id] = Math.trunc(number(c) ?? 0);
+        }
+        break;
+      }
+    }
+  }
+  return table;
+}
+
+// ---------------------------------------------------------------------------
+// The command list (2.3)
+// ---------------------------------------------------------------------------
+
+/** One command as the stage runs it, after the team and non-player copies. */
+interface Connection {
+  /** The script's command, for its report. Absent on the empty commands of the non-player bug. */
+  cmd?: InstantiatedCommand;
+  table: ConnectionTable;
+  /** Land indices, in the order their pairs are made. */
+  endpoints: number[];
+}
+
+function playerLands(
+  origins: readonly LandOrigin[],
+  player?: number,
+): number[] {
+  const out: number[] = [];
+  origins.forEach((o, i) => {
+    if (o.player !== undefined && (player === undefined || o.player === player))
+      out.push(i);
+  });
+  return out;
+}
+
+/** The lobby's teams in slot order, each a list of players. A player without a team is a team of one. */
+function teamsInSlotOrder(teams: InstantiatedScript["teams"]): number[][] {
+  const out: number[][] = [];
+  const byTeam = new Map<number, number[]>();
+  teams.canonical.forEach((team, index) => {
+    const player = index + 1;
+    if (team === 0) {
+      out.push([player]);
+      return;
+    }
+    const members = byTeam.get(team);
+    if (members) members.push(player);
+    else {
+      const list = [player];
+      byTeam.set(team, list);
+      out.push(list);
+    }
+  });
+  return out;
+}
+
+/**
+ * The list the stage runs, the script's commands with the team copies
+ * added at the end and `to_nonplayer_land`'s copies written over the
+ * commands after it (2.3, cn7a to cn7e and k2).
+ */
+function buildConnections(
+  commands: readonly InstantiatedCommand[],
+  instantiated: InstantiatedScript,
+  constants: readonly TerrainConstantForMasks[],
+  origins: readonly LandOrigin[],
+): Connection[] {
+  const list: Connection[] = [];
+  const pending: { index: number; kind: string; original: Connection }[] = [];
+  for (const cmd of commands) {
+    const table = readTable(cmd, instantiated, constants);
+    let endpoints: number[] = [];
+    switch (cmd.name) {
+      case "create_connect_all_players_land":
+        endpoints = playerLands(origins);
+        break;
+      // `same_land_zones` is `all_lands`, every land (k10a and k10b give
+      // identical maps).
+      case "create_connect_all_lands":
+      case "create_connect_same_land_zones":
+        endpoints = origins.map((_, i) => i);
+        break;
+      case "create_connect_land_zones": {
+        const zoneA = cmd.args[0]?.value;
+        const zoneB = cmd.args[1]?.value;
+        const inZone = (zone: unknown) =>
+          origins.flatMap((o, i) => (o.zone === zone ? [i] : []));
+        endpoints = [...inZone(zoneA), ...inZone(zoneB)];
+        break;
+      }
+    }
+    const connection: Connection = { cmd, table, endpoints };
+    if (
+      cmd.name === "create_connect_teams_lands" ||
+      cmd.name === "create_connect_to_nonplayer_land"
+    )
+      pending.push({
+        index: list.length,
+        kind: cmd.name,
+        original: connection,
+      });
+    list.push(connection);
+  }
+
+  // The copies, in list order, once every script command is in the list.
+  for (const { index, kind, original } of pending) {
+    // A command an earlier non-player copy wrote over never runs, and so
+    // never makes copies of its own.
+    if (list[index] !== original) continue;
+    if (kind === "create_connect_teams_lands") {
+      const teams = teamsInSlotOrder(instantiated.teams);
+      const lands = (team: number[]) =>
+        team.flatMap((player) => playerLands(origins, player));
+      original.endpoints = teams.length > 0 ? lands(teams[0]) : [];
+      for (const team of teams.slice(1))
+        list.push({ ...original, endpoints: lands(team) });
+      continue;
+    }
+    // `to_nonplayer_land`. Each player land adds p + 1 empty commands at the
+    // end, then writes a copy over the command p + 1 places after this one.
+    const copies: Connection[] = [];
+    let p = 0;
+    origins.forEach((origin, land) => {
+      if (origin.player === undefined) {
+        original.endpoints.push(land);
+        for (const copy of copies) copy.endpoints.push(land);
+        return;
+      }
+      for (let k = 0; k <= p; k++)
+        list.push({ table: closedTable(), endpoints: [] });
+      const copy: Connection = {
+        cmd: original.cmd,
+        table: original.table,
+        endpoints: [
+          ...original.endpoints.filter((i) => origins[i].player === undefined),
+          land,
+        ],
+      };
+      list[index + p + 1] = copy;
+      copies.push(copy);
+      p++;
+    });
+  }
+  return list;
+}
+
+// ---------------------------------------------------------------------------
+// The path search (3.1)
+// ---------------------------------------------------------------------------
+
+/** Down, up, left, up-left, down-left, right, up-right, down-right. */
+const STEPS: readonly (readonly [number, number])[] = [
+  [0, 1],
+  [0, -1],
+  [-1, 0],
+  [-1, -1],
+  [-1, 1],
+  [1, 0],
+  [1, -1],
+  [1, 1],
+];
+
+/**
+ * A binary heap of tiles by priority where a tie goes to the tile queued
+ * LAST, the game's own rule, which a plain heap does not keep. The sequence
+ * number breaks the tie.
+ */
+class PathQueue {
+  private tiles: number[] = [];
+  private keys: number[] = [];
+  private seqs: number[] = [];
+  private counter = 0;
+
+  get size(): number {
+    return this.tiles.length;
+  }
+
+  private before(a: number, b: number): boolean {
+    return (
+      this.keys[a] < this.keys[b] ||
+      (this.keys[a] === this.keys[b] && this.seqs[a] > this.seqs[b])
+    );
+  }
+
+  private swap(a: number, b: number): void {
+    [this.tiles[a], this.tiles[b]] = [this.tiles[b], this.tiles[a]];
+    [this.keys[a], this.keys[b]] = [this.keys[b], this.keys[a]];
+    [this.seqs[a], this.seqs[b]] = [this.seqs[b], this.seqs[a]];
+  }
+
+  push(tile: number, key: number): void {
+    let i = this.tiles.length;
+    this.tiles.push(tile);
+    this.keys.push(key);
+    this.seqs.push(this.counter++);
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (!this.before(i, parent)) break;
+      this.swap(i, parent);
+      i = parent;
+    }
+  }
+
+  pop(): number {
+    const top = this.tiles[0];
+    const last = this.tiles.length - 1;
+    this.swap(0, last);
+    this.tiles.pop();
+    this.keys.pop();
+    this.seqs.pop();
+    let i = 0;
+    for (;;) {
+      const l = 2 * i + 1;
+      const r = l + 1;
+      let best = i;
+      if (l < this.tiles.length && this.before(l, best)) best = l;
+      if (r < this.tiles.length && this.before(r, best)) best = r;
+      if (best === i) break;
+      this.swap(i, best);
+      i = best;
+    }
+    return top;
+  }
+}
+
+/**
+ * One pair's path, from `start` to `target`, as tiles from the target back
+ * to the start. Undefined when there is none.
+ *
+ * The cost of a tile at or below 0 closes it. The target's own cost is
+ * checked first and the start's never, so a cost-0 origin blocks the paths
+ * arriving at it and not the ones leaving it (cn5a and cn5b). The heuristic
+ * h comes from the CURRENT tile's distance to the target, adjusted per step,
+ * and the arithmetic is in single precision as the game's is.
+ */
+function findPath(
+  view: Uint16Array,
+  dim: number,
+  table: ConnectionTable,
+  start: number,
+  target: number,
+  parent: Int32Array,
+  seen: Uint8Array,
+): number[] | undefined {
+  const costOf = (i: number): number => {
+    const t = view[i];
+    return t < TABLE_SIZE ? table.cost[t] : 1;
+  };
+  if (costOf(target) <= 0) return undefined;
+  seen.fill(0);
+  const tx = target % dim;
+  const ty = (target - tx) / dim;
+  const cumulative = new Map<number, number>();
+  const queue = new PathQueue();
+  let current = start;
+  let currentCost = 0;
+  seen[start] = 1;
+  parent[start] = -1;
+
+  for (;;) {
+    const cx = current % dim;
+    const cy = (current - cx) / dim;
+    const ddx = tx - cx;
+    const ddy = ty - cy;
+    const d = f32Sqrt(ddx * ddx + ddy * ddy);
+    if (d === 0) break;
+    let found = false;
+    for (const [sx, sy] of STEPS) {
+      const nx = cx + sx;
+      const ny = cy + sy;
+      const next = ny * dim + nx;
+      if (next === target && nx >= 0 && ny >= 0 && nx < dim && ny < dim) {
+        parent[target] = current;
+        found = true;
+        break;
+      }
+      if (nx < 0 || ny < 0 || nx >= dim || ny >= dim || seen[next] !== 0)
+        continue;
+      const cost = costOf(next);
+      if (cost <= 0) {
+        seen[next] = 1;
+        continue;
+      }
+      const diagonal = sx !== 0 && sy !== 0;
+      // No corner cutting, and the refused diagonal is not marked.
+      if (
+        diagonal &&
+        (costOf(cy * dim + nx) <= 0 || costOf(ny * dim + cx) <= 0)
+      )
+        continue;
+      const step = f32Add(currentCost, f32Mul(cost, diagonal ? DIAGONAL : 1));
+      // Minus where the step moves toward the target on that axis.
+      const towardX = sx !== 0 && Math.sign(sx) === Math.sign(ddx);
+      const towardY = sy !== 0 && Math.sign(sy) === Math.sign(ddy);
+      let h: number;
+      if (!diagonal)
+        h =
+          sx !== 0
+            ? towardX
+              ? f32Sub(d, 1)
+              : f32Add(d, 1)
+            : towardY
+              ? f32Sub(d, 1)
+              : f32Add(d, 1);
+      else {
+        h = towardX ? f32Sub(d, 1) : f32Add(d, 1);
+        // The left diagonals use 0.41 and the right ones 0.4.
+        const yPart = sx < 0 ? 0.41 : 0.4;
+        h = towardY ? f32Sub(h, yPart) : f32Add(h, yPart);
+      }
+      seen[next] = 1;
+      parent[next] = current;
+      cumulative.set(next, step);
+      queue.push(next, f32Add(step, h));
+    }
+    if (found) break;
+    if (queue.size === 0) return undefined;
+    current = queue.pop();
+    currentCost = cumulative.get(current) ?? 0;
+  }
+
+  const path: number[] = [];
+  for (let i = target; i !== -1; i = parent[i]) {
+    path.push(i);
+    if (i === start) break;
+  }
+  return path;
+}
+
+// ---------------------------------------------------------------------------
+// Painting (3.2) and the undo between commands (3.3)
+// ---------------------------------------------------------------------------
+
+/** What a command's paint did, for the undo between commands. */
+interface PaintLog {
+  /** Each tile's terrain just before this command's latest paint of it. */
+  beforeLast: Map<number, number>;
+}
+
+/**
+ * Paints one path. The centres are the path's tiles from the one next to
+ * the target back to the start, so the start is painted and the target is
+ * not (cn1). Each centre reads the size and variance of the terrain under it
+ * NOW, and spends four draws, left, top, right and bottom, even at variance
+ * 0 (cn3a). Then every tile of the path's rectangles takes its terrain's
+ * replacement, so sizes come from the terrain before this path, and a later
+ * path of the same command sees this one's paint (cn6a).
+ */
+function paintPath(
+  view: Uint16Array,
+  dim: number,
+  table: ConnectionTable,
+  path: readonly number[],
+  stream: DeStream,
+  inSet: Uint8Array,
+  log: PaintLog,
+  finalPaint: Map<number, number>,
+): void {
+  const set: number[] = [];
+  for (let k = 1; k < path.length; k++) {
+    const centre = path[k];
+    const x = centre % dim;
+    const y = (centre - x) / dim;
+    const t = view[centre];
+    const s = t < TABLE_SIZE ? table.size[t] : 1;
+    const v = t < TABLE_SIZE ? table.variance[t] : 0;
+    const left = stream.bounded(2 * v);
+    const top = stream.bounded(2 * v);
+    const right = stream.bounded(2 * v);
+    const bottom = stream.bounded(2 * v);
+    const x0 = Math.max(x - (s - v + left), 0);
+    const x1 = Math.min(x + (s - v + right), dim - 1);
+    const y0 = Math.max(y - (s - v + top), 0);
+    const y1 = Math.min(y + (s - v + bottom), dim - 1);
+    for (let ny = y0; ny <= y1; ny++)
+      for (let nx = x0; nx <= x1; nx++) {
+        const i = ny * dim + nx;
+        if (inSet[i] === 0) {
+          inSet[i] = 1;
+          set.push(i);
+        }
+      }
+  }
+  for (const i of set) {
+    inSet[i] = 0;
+    const t = view[i];
+    const to = t < TABLE_SIZE ? table.replacement[t] : NO_REPLACEMENT;
+    if (to === NO_REPLACEMENT) continue;
+    log.beforeLast.set(i, t);
+    finalPaint.set(i, to);
+    view[i] = to;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The stage
+// ---------------------------------------------------------------------------
+
+export interface ConnectionsResult {
+  reports: CommandReport[];
+  notes: SimulationNote[];
+  /** The game's stream after this stage. */
+  stream: DeStreamState;
+}
+
 function landLabel(origins: readonly LandOrigin[], index: number): string {
   const origin = origins[index];
   return origin.player !== undefined ? `P${origin.player}` : `N${index}`;
 }
 
-function resolvePairs(
-  cmd: InstantiatedCommand,
-  origins: readonly LandOrigin[],
-  teams: InstantiatedScript["teams"],
-): Array<[number, number]> {
-  switch (cmd.name) {
-    case "create_connect_all_players_land":
-      return allPairs(playerLandIndices(origins));
-    case "create_connect_teams_lands":
-      return teamPairs(origins, teams);
-    case "create_connect_all_lands":
-      return allPairs(origins.map((_, i) => i));
-    case "create_connect_same_land_zones":
-      return sameZonePairs(origins);
-    case "create_connect_land_zones": {
-      const zoneA =
-        typeof cmd.args[0]?.value === "number" ? cmd.args[0].value : 0;
-      const zoneB =
-        typeof cmd.args[1]?.value === "number" ? cmd.args[1].value : 0;
-      return landZonePairs(origins, zoneA, zoneB);
-    }
-    case "create_connect_to_nonplayer_land":
-      return crossPairs(
-        playerLandIndices(origins),
-        neutralLandIndices(origins),
-      );
-    default:
-      return [];
-  }
-}
-
 /**
- * Sec.6.5: `<CONNECTION_GENERATION>` -> paths, painted as terrain onto
- * `grid.terrain`. Returns one CommandReport per `create_connect_*` command
- * (Sec.7) plus SimulationNotes for the two documented behaviours this file
- * emulates rather than silently improving on: `create_connect_teams_lands`
- * against a no-teams lobby (Sec.3.1's own `"teams"` key), and
- * `create_connect_to_nonplayer_land`'s command-blocking bug.
+ * Sec.6.5: `<CONNECTION_GENERATION>`. Mutates `grid.terrain` and
+ * `grid.layer`, and `composites` for every tile it repaints. Returns one
+ * report per script command and the stream. With no section nothing
+ * happens and no draw is spent. The WATER cleanup and beach that end the
+ * stage are `index.ts`'s, as at the end of the terrain stage.
+ *
+ * `composites` is the terrain stage's record of composite terrains as
+ * painted (`resolveComposites`). The stage runs on a view of the map with
+ * those put back, and a tile whose value it changes takes the new terrain
+ * and stops being a composite. A tile any command painted loses its layer,
+ * even where the undo gave its terrain back (Pag).
  */
 export function applyConnections(
   instantiated: InstantiatedScript,
   grid: TileGrid,
   constants: readonly TerrainConstantForMasks[],
   origins: readonly LandOrigin[],
-  masterSeed: number,
+  streamState: DeStreamState,
+  composites?: CompositeRecord,
 ): ConnectionsResult {
-  const commands = instantiated.sections.get("CONNECTION_GENERATION") ?? [];
-  const reports: CommandReport[] = [];
-  const notes: SimulationNote[] = [];
-  let ordinal = 0;
-  const nextSubstream = (): Rng => createSubstream(masterSeed, "S5", ordinal++);
+  const section = instantiated.sections.get("CONNECTION_GENERATION");
+  if (section === undefined)
+    return { reports: [], notes: [], stream: streamState };
+  const stream = resumeDeStream(streamState);
+  stream.raw(); // the burned draw, spent with an empty section too (cn9)
 
-  const startOfS5Terrain = grid.terrain.slice(); // frozen snapshot for the non-accumulating default
-  let accumulating = false;
-  let blocked = false;
-  let sawTeamsCommand = false;
-  // One set of working arrays for every search this stage runs, see PathScratch.
-  const pathScratch = createPathScratch(grid.dim);
-  // Every connection this stage draws starts and ends on an origin tile, and
-  // origins are fixed before S5 begins, so this is computed once for the
-  // stage rather than per command.
-  const originTiles = landOriginTiles(grid, origins);
+  const { dim } = grid;
+  const n = dim * dim;
+  const accumulate = section.some((c) => c.name === "accumulate_connections");
+  const commands = section.filter((c) => CONNECT_COMMAND_NAMES.has(c.name));
+  const list = buildConnections(commands, instantiated, constants, origins);
 
-  for (const cmd of commands) {
-    if (cmd.name === "accumulate_connections") {
-      accumulating = true;
-      continue;
-    }
-    if (!CONNECT_COMMAND_NAMES.has(cmd.name)) continue;
+  const start = grid.terrain.slice();
+  if (composites)
+    for (let i = 0; i < n; i++)
+      if (composites.kind[i] === COMPOSITE_AS_TERRAIN)
+        start[i] = composites.terrain[i];
+  const view = start.slice();
+  const undo = list.length > 1 && !accumulate;
+  const finalPaint = new Map<number, number>();
+  const painted = new Set<number>();
+  const parent = new Int32Array(n);
+  const seen = new Uint8Array(n);
+  const inSet = new Uint8Array(n);
+  const outcome = new Map<
+    InstantiatedCommand,
+    { attempted: number; placed: number; failures: PlacementFailure[] }
+  >();
+  for (const cmd of commands)
+    outcome.set(cmd, { attempted: 0, placed: 0, failures: [] });
 
-    if (cmd.name === "create_connect_teams_lands") sawTeamsCommand = true;
-
-    if (blocked) {
-      notes.push({
-        key: `connectionBlockedByBug:${cmd.span.start}`,
-        prominence: "drawer",
-        stage: "S5",
-        span: cmd.span,
-        text: "create_connect_to_nonplayer_land has no effect on connections declared after it — a documented engine bug the preview reproduces rather than silently fixing, so this command produced nothing.",
-      });
-      reports.push({
-        commandSpan: cmd.span,
-        stage: "S5",
-        attempted: 0,
-        placed: 0,
-        failures: [],
-      });
-      continue;
-    }
-
-    // Frozen for the whole command either way: at the start of S5 by
-    // default, at the start of THIS command once `accumulate_connections`
-    // has been seen. Accumulation is between commands only (see this file's
-    // header), so a snapshot is what the flag means, the copy costs one
-    // dim^2 read per accumulating command, and two corpus maps have one.
-    const terrainOf = accumulating ? grid.terrain.slice() : startOfS5Terrain;
-    const costs = readTerrainCosts(
-      cmd,
-      constants,
-      instantiated.symbols,
-      instantiated.aliases,
-    );
-    const sizes = readTerrainSizes(
-      cmd,
-      constants,
-      instantiated.symbols,
-      instantiated.aliases,
-    );
-    const rules = readReplacementRules(
-      cmd,
-      constants,
-      instantiated.symbols,
-      instantiated.aliases,
-    );
-    // Resolved into a flat table once per command rather than a Map lookup
-    // per neighbour expansion. Terrain ids are small and dense (0-130 today),
-    // so the table stays tiny; `?? 1` is Sec.6.5's "unlisted terrains cost 1".
-    const costTable = new Float64Array(MAX_TERRAIN_ID + 1).fill(1);
-    for (const [terrainId, cost] of costs) {
-      if (terrainId >= 0 && terrainId <= MAX_TERRAIN_ID)
-        costTable[terrainId] = cost;
-    }
-    const costOf = (terrainId: number): number =>
-      terrainId <= MAX_TERRAIN_ID
-        ? costTable[terrainId]
-        : (costs.get(terrainId) ?? 1);
-
-    const pairs = resolvePairs(cmd, origins, instantiated.teams);
-    const failures: PlacementFailure[] = [];
-    const coverage = createPaintCoverage(grid.dim); // per command, like `terrainOf` and for the same reason, see PaintCoverage
-    let placed = 0;
-
-    // One search per distinct SOURCE land rather than one per pair. The
-    // searches all run first, against the one frozen `terrainOf` above, and
-    // the painting then walks `pairs` in its original order, so the RNG
-    // substream a pair draws, and the order overlapping discs overwrite each
-    // other in, are exactly what the pair-at-a-time version produced.
-    const targetsBySource = new Map<number, number[]>();
-    for (const [a, b] of pairs) {
-      const targets = targetsBySource.get(a);
-      if (targets) targets.push(b);
-      else targetsBySource.set(a, [b]);
-    }
-    // Pairs with no route at all are answered from the component flood
-    // rather than by a search that exhausts its component to find out, see
-    // ConnectivityIndex. The flood is rebuilt per command, not hoisted: under
-    // `accumulate_connections` a later command's `terrainOf` includes what
-    // earlier commands painted, and the cost table is per command anyway.
-    // They still report `connectionBlocked` below, from the same "absent
-    // from the map" branch a failed search produces.
-    const connectivity = buildConnectivityIndex(
-      grid,
-      terrainOf,
-      costOf,
-      originTiles,
-    );
-    const pathsBySource = new Map<number, Map<number, number[]>>();
-    for (const [source, targets] of targetsBySource) {
-      const reachable = targets.filter((target) =>
-        landsCanConnect(connectivity, source, target),
-      );
-      if (reachable.length === 0) continue;
-      pathsBySource.set(
-        source,
-        findConnectionPaths(
-          grid,
-          terrainOf,
-          costOf,
-          originTiles,
-          source,
-          reachable,
-          pathScratch,
-        ),
-      );
-    }
-
-    for (const [a, b] of pairs) {
-      const path = pathsBySource.get(a)?.get(b);
-      if (path === undefined) {
-        pushFailure(failures, {
-          bucket: "connectionBlocked",
-          commandSpan: cmd.span,
-          stage: "S5",
-          entity: `connection ${landLabel(origins, a)}-${landLabel(origins, b)}`,
-          detail:
-            "No passable route exists between these two lands' origins, so this connection was not produced.",
-        });
-        continue;
+  for (const connection of list) {
+    const log: PaintLog = { beforeLast: new Map() };
+    const report = connection.cmd ? outcome.get(connection.cmd) : undefined;
+    const { endpoints, table } = connection;
+    for (let a = 0; a < endpoints.length; a++)
+      for (let b = a + 1; b < endpoints.length; b++) {
+        const from = origins[endpoints[a]];
+        const to = origins[endpoints[b]];
+        if (report) report.attempted++;
+        const path = findPath(
+          view,
+          dim,
+          table,
+          from.y * dim + from.x,
+          to.y * dim + to.x,
+          parent,
+          seen,
+        );
+        if (path === undefined) {
+          if (report && connection.cmd)
+            pushFailure(report.failures, {
+              bucket: "connectionBlocked",
+              commandSpan: connection.cmd.span,
+              stage: "S5",
+              entity: `connection ${landLabel(origins, endpoints[a])}-${landLabel(origins, endpoints[b])}`,
+              detail:
+                "No passable route exists between these two lands' origins, so this connection was not produced.",
+            });
+          continue;
+        }
+        paintPath(view, dim, table, path, stream, inSet, log, finalPaint);
+        if (report) report.placed++;
       }
-      const pairRng = nextSubstream();
-      applyTerrainAlongPath(
-        grid,
-        path,
-        terrainOf,
-        sizes,
-        rules,
-        pairRng,
-        coverage,
-      );
-      placed++;
-    }
-
-    reports.push({
-      commandSpan: cmd.span,
-      stage: "S5",
-      attempted: pairs.length,
-      placed,
-      failures,
-    });
-
-    if (cmd.name === "create_connect_to_nonplayer_land") blocked = true;
+    for (const i of log.beforeLast.keys()) painted.add(i);
+    if (undo) for (const [i, before] of log.beforeLast) view[i] = before;
+  }
+  if (undo) {
+    view.set(start);
+    for (const [i, last] of finalPaint) view[i] = last;
   }
 
-  if (sawTeamsCommand && instantiated.teams.teamCount === 0) {
+  for (let i = 0; i < n; i++)
+    if (view[i] !== start[i]) {
+      grid.terrain[i] = view[i];
+      if (composites) composites.kind[i] = 0;
+    }
+  for (const i of painted) grid.layer[i] = NO_LAYER;
+
+  const reports: CommandReport[] = commands.map((cmd) => {
+    const o = outcome.get(cmd)!;
+    return {
+      commandSpan: cmd.span,
+      stage: "S5",
+      attempted: o.attempted,
+      placed: o.placed,
+      failures: o.failures,
+    };
+  });
+  const notes: SimulationNote[] = [];
+  if (
+    commands.some((c) => c.name === "create_connect_teams_lands") &&
+    instantiated.teams.teamCount === 0
+  )
     notes.push({
       key: "teams",
       prominence: "drawer",
       stage: "S5",
-      text: "This script connects team lands, but the current lobby has no teams — the preview is accurate for this lobby, but check whether it's the lobby you meant.",
+      text: "This script connects team lands, but the current lobby has no teams, so every player is a team of one and nothing is connected. Check whether this is the lobby you meant.",
+    });
+  const nonplayer = commands.findIndex(
+    (c) => c.name === "create_connect_to_nonplayer_land",
+  );
+  const players = origins.filter((o) => o.player !== undefined).length;
+  for (const cmd of commands.slice(nonplayer + 1, nonplayer + 1 + players)) {
+    if (nonplayer < 0) break;
+    notes.push({
+      key: `connectionBlockedByBug:${cmd.span.start}`,
+      prominence: "drawer",
+      stage: "S5",
+      span: cmd.span,
+      text: "The create_connect_to_nonplayer_land before this command writes one road per player over the commands that follow it, one command per player land, so the game never runs this one. The preview does the same.",
     });
   }
-
-  return { reports, notes };
+  return { reports, notes, stream: stream.state() };
 }

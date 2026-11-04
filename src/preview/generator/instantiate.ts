@@ -18,13 +18,13 @@
 // see it. The commands are still collected per section, and the stages still
 // run in canonical section order (Sec.3 rule 11).
 //
-// THE DRAWS ARE THE GAME'S, IN THE GAME'S ORDER (Sec.3 rules 3 and 5, rev 9).
+// THE DRAWS ARE THE GAME'S, IN THE GAME'S ORDER (Sec.3 rules 3 and 5, rev 11).
 // The game reads the whole script before player setup, and every rnd() it
 // reads takes a draw from the one stream the land stage then continues. That
-// includes an rnd() inside a start_random branch that is not taken, because
-// the game reads a whole start_random block, drawing as it goes, before it
-// rolls for the branch. So a block's roll comes after every rnd() inside it
-// and before every rnd() after it. `predrawItems` below is that read-ahead.
+// includes an rnd() in a branch that is not taken, of an `if` or of a
+// start_random block. A block rolls when it is reached, before anything
+// inside it, and a block inside a dead branch is never rolled. `predrawItems`
+// below reads dead text that way.
 
 import type {
   ArgNode,
@@ -34,6 +34,7 @@ import type {
   IfBranch,
   IfNode,
   Item,
+  ParseOptions,
   ParseResult,
   RandomBranch,
   RandomNode,
@@ -47,7 +48,15 @@ import {
   canonicaliseTeams,
   teamLabels,
 } from "../../generationSettings/teamModel";
+import { parseRms } from "../../parser/parser";
 import { createDeStream } from "./deRandom";
+import { filterScript } from "./tokenFilter";
+import {
+  includePathsIn,
+  mapSpanToSource,
+  type IncludeFiles,
+  type Insertion,
+} from "./includes";
 import { evaluateExpressionTokens, roundForIntegerSlot } from "./mathEval";
 import { resolveMapDim } from "./mapDimensions";
 import type {
@@ -77,18 +86,49 @@ const FALLBACK_DIM = 200;
 // language.json rather than hardcoded here).
 const LAND_COMMAND_NAMES = new Set(["create_land", "create_player_lands"]);
 
+const NAMED_RND = /^rnd\((-?[^,()\s]+),(-?[^,()\s]+)\)$/;
+const INTEGER = /^-?\d+$/;
+
+/**
+ * `rnd(a,b)` with a name as a bound, which the lexer leaves as a plain word.
+ * The game reads the name as 0 and still spends the draw, so
+ * `rnd(-NAME,NAME)` is always 0 (Sec.3 rule 5, rev 11, CJ n1 and Bulls_Eyes,
+ * where reading the constant's value fails). Returns the bounds, or
+ * undefined for any other word.
+ */
+function namedRnd(text: string): [number, number] | undefined {
+  const m = NAMED_RND.exec(text);
+  if (!m || (INTEGER.test(m[1]) && INTEGER.test(m[2]))) return undefined;
+  const bound = (b: string): number => (INTEGER.test(b) ? Number(b) : 0);
+  return [bound(m[1]), bound(m[2])];
+}
+
 /**
  * Sec.3: AST -> InstantiatedScript. `masterSeed` is the game seed. It seeds
  * the game's own stream (deRandom.ts), every parse-time draw comes off it in
  * reading order, and the stream's position afterwards goes to S1 as
- * `landStream` (Sec.8, rev 9).
+ * `landStream` (Sec.8, rev 9). `includeFiles` holds the game's include files
+ * from the user's install, undefined when no install was found (includes.ts).
+ *
+ * `parseOptions` is what the caller's own first parse was given, which this
+ * function repeats on the parses it makes itself, the filtered text and the
+ * include files. Without it a script that goes through the token filter is
+ * parsed a second time with no `commentOpenAliases`. A comment holding a word
+ * valued 69, such as SHORE_FISH, ran to the end of the file in the first parse
+ * and closes at its own marker in the second, so the preview draws text the
+ * game never reads (docs/token-alias-design.md Sec.5, B2). A sixth optional parameter is safe
+ * here because nothing passes this function to `map` or `forEach` by name,
+ * which would fill it with the array index.
  */
 export function instantiateScript(
-  parse: ParseResult,
+  scriptParse: ParseResult,
   refDb: LanguageIndex,
   settings: PreviewSettings,
   masterSeed: number,
+  includeFiles?: IncludeFiles,
+  parseOptions?: ParseOptions,
 ): InstantiatedScript {
+  let parse = scriptParse;
   const notes: SimulationNote[] = [];
   const seenNoteKeys = new Set<string>();
   const addNote = (n: SimulationNote): void => {
@@ -112,37 +152,51 @@ export function instantiateScript(
   }
 
   const env = new Set<string>();
+  /** A label from predefinedLabels, never one constructed and trusted. */
+  const defineKnown = (name: string): void => {
+    if (predefinedLabels.some((l) => l.name === name)) env.add(name);
+  };
+  const editor = settings.lobby === "scenarioEditor";
   for (const label of predefinedLabels) {
     if (label.category === "mapSize" && label.mapSize === settings.mapSize)
       env.add(label.name);
   }
   env.add(`${settings.playerCount}_PLAYER_GAME`);
-  env.add("RANDOM_MAP"); // standard random-map game mode (rule 1)
   env.add("DE_AVAILABLE");
   env.add("DE_GAME_AGE2");
-  // Deliberately NOT set: UP_*, DE_GAME_ROME, every other gameMode
-  // (REGICIDE, EMPIRE_WARS, ...), lobbySetting except TEAM_POSITIONS below,
-  // startingResources,
-  // startingAge, none of these are derivable from PreviewSettings, so
-  // "standard-lobby defaults for the rest" means they stay undefined/false.
+  if (editor) {
+    // The scenario editor's own defaults, measured (Sec.3 rule 1, rev 11,
+    // round CG's c7). It defines no game mode, so not RANDOM_MAP, and it
+    // defines the standard start and resources and AI_PLAYERS.
+    for (const name of ["DARK_AGE_START", "DEFAULT_RESOURCES", "AI_PLAYERS"])
+      defineKnown(name);
+  } else {
+    env.add("RANDOM_MAP"); // standard random-map game mode (rule 1)
+    // Deliberately NOT set: UP_*, DE_GAME_ROME, every other gameMode
+    // (REGICIDE, EMPIRE_WARS, ...), lobbySetting except TEAM_POSITIONS
+    // below, startingResources and startingAge. None of these are derivable
+    // from PreviewSettings, so they stay undefined.
+  }
 
   const canonicalTeams = canonicaliseTeams(
     settings.teams,
     settings.playerCount,
   );
-  for (const label of teamLabels(canonicalTeams)) env.add(label);
+  for (const label of teamLabels(canonicalTeams)) {
+    // The editor leaves the size of team 0, the players without a team,
+    // undefined (c7: no TEAM0_SIZE2 with two players and no teams).
+    if (editor && label.startsWith("TEAM0_SIZE")) continue;
+    env.add(label);
+  }
 
-  // The lobby's Team Positions box defines TEAM_POSITIONS, resolved through
-  // predefinedLabels rather than constructed and trusted. FIXED_POSITIONS,
-  // which the guide ties to the older "team together" box, is left undefined,
-  // since nothing measured says the DE box sets it too (preview-design
-  // Sec.15 item 55).
+  // The lobby's Team Positions box defines TEAM_POSITIONS. The editor's
+  // ticked box defines FIXED_POSITIONS as well (c7). Whether a game lobby's
+  // box does is not measured (preview-design Sec.15 item 55), so the game
+  // lobby leaves it undefined.
   const teamPositions = settings.teamPositions !== false;
   if (teamPositions) {
-    const label = predefinedLabels.find(
-      (l) => l.category === "lobbySetting" && l.name === "TEAM_POSITIONS",
-    );
-    if (label) env.add(label.name);
+    defineKnown("TEAM_POSITIONS");
+    if (editor) defineKnown("FIXED_POSITIONS");
   }
 
   const lobbyDim =
@@ -154,6 +208,47 @@ export function instantiateScript(
   // -------------------------------------------------------------------
   const symbols = new Map<string, number | undefined>(); // presence = "defined" (rule 4)
   const stream = createDeStream(masterSeed);
+  // A conditional that spans a section header leaves the parser a raw
+  // region (RMS0110), which the walk below cannot read. The game's token
+  // filter can, so such a script is filtered first and the walk reads the
+  // result, where every branch is decided and every rnd() is a number
+  // (tokenFilter.ts). The filter spends the draws, so the walk takes the
+  // attribute draws from it rather than from the stream.
+  //
+  // A script that includes game files goes through the same filter when
+  // the files were found, since the filter is what reads them in, live
+  // branches only (includes.ts). The walk then reads the expanded text, and
+  // every span it records is mapped back to the author's text at the end.
+  let attributeDraws: Map<number, number> | undefined;
+  let insertions: Insertion[] = [];
+  const hasIncludes =
+    includeFiles !== undefined && includePathsIn(parse).length > 0;
+  if (parse.diagnostics.some((d) => d.code === "RMS0110") || hasIncludes) {
+    const filtered = filterScript(
+      parse,
+      (name) => env.has(name),
+      refDb.controlKeywords,
+      stream,
+      includeFiles === undefined
+        ? undefined
+        : {
+            read: (key) => includeFiles.get(key),
+            tokens: (text) => parseRms(text, refDb.data, parseOptions).tokens,
+          },
+    );
+    parse = parseRms(filtered.text, refDb.data, parseOptions);
+    attributeDraws = filtered.attributeDraws;
+    insertions = filtered.insertions;
+    if (filtered.missingIncludes.length > 0) {
+      const names = [...new Set(filtered.missingIncludes)].join(", ");
+      addNote({
+        key: "includes",
+        prominence: "banner",
+        stage: "S0",
+        text: `This map includes game files the preview could not read (${names}), so it may not match the game.`,
+      });
+    }
+  }
   // An rnd() is drawn once, where the game reads it, and keyed by its token
   // so the walk that later resolves it reads that same draw. A start_random
   // roll is drawn once, after everything inside its block.
@@ -180,8 +275,29 @@ export function instantiateScript(
     env.has(name) || symbols.has(name);
   const tokenText = (idx: number): string => parse.tokens[idx].text;
 
+  /** `line N: first line of the span, cut at 50 characters`. */
+  function snippetFor(span: Span): string {
+    // lineOffsets is sorted, so a binary search finds the line.
+    const offsets = parse.lineOffsets;
+    let lo = 0;
+    let hi = offsets.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (offsets[mid] <= span.start) lo = mid;
+      else hi = mid - 1;
+    }
+    const firstLine = parse.source
+      .slice(span.start, Math.min(span.end, span.start + 200))
+      .split(/\r?\n/, 1)[0]
+      .trim();
+    const cut =
+      firstLine.length > 50 ? `${firstLine.slice(0, 50)}...` : firstLine;
+    return `line ${lo + 1}: ${cut}`;
+  }
+
   function unsimulatedNote(span: Span): SimulationNote {
     return {
+      snippet: snippetFor(span),
       key: `unsimulated:${span.start}-${span.end}`,
       prominence: "drawer",
       stage: "S0",
@@ -212,8 +328,11 @@ export function instantiateScript(
   function resolveUnrounded(node: ArgNode): InstantiatedValue {
     const raw = node.value;
     if (typeof raw === "number") return raw;
-    if (typeof raw === "string")
+    if (typeof raw === "string") {
+      const named = namedRnd(raw);
+      if (named) return drawRnd(node.firstToken, named[0], named[1]);
       return isNumericSlot(node) && symbols.has(raw) ? symbols.get(raw) : raw;
+    }
     if ("rnd" in raw) return drawRnd(node.firstToken, raw.rnd[0], raw.rnd[1]);
     // {expr}: rule 6, parser-design Sec.2.2 exactly.
     const texts = raw.expr.tokens.map(tokenText);
@@ -260,13 +379,15 @@ export function instantiateScript(
     // engine mechanic rather than vocabulary. Only AT_TEAM in random mode is
     // measured to draw. AT_PLAYER and AT_COLOR name one player already, and
     // whether a 0 mode still draws for them is untested (Sec.15 item 50).
-    if (name === "set_zone_randomly") inst.draw = stream.raw();
-    else if (
-      name === "assign_to" &&
-      args[0]?.value === "AT_TEAM" &&
-      args[2]?.value === 0
-    )
-      inst.draw = stream.raw();
+    const drawsHere =
+      name === "set_zone_randomly" ||
+      (name === "assign_to" &&
+        args[0]?.value === "AT_TEAM" &&
+        args[2]?.value === 0);
+    if (drawsHere)
+      inst.draw = attributeDraws
+        ? attributeDraws.get(parse.tokens[node.name].start)
+        : stream.raw();
     return inst;
   }
 
@@ -291,6 +412,14 @@ export function instantiateScript(
   function selectIfBranch(node: IfNode): IfBranch | undefined {
     for (const branch of node.branches) {
       if (tokenText(branch.keyword) === "else") return branch; // always matches
+      // A bare `elseif`, followed by something that cannot be a label, acts
+      // as `else` (rev 11, CJ n1 and Rage Forest's `elseif` then `#const`).
+      // The parser leaves such a branch without a condition.
+      if (
+        tokenText(branch.keyword) === "elseif" &&
+        branch.condition === undefined
+      )
+        return branch;
       if (
         branch.condition !== undefined &&
         isDefined(tokenText(branch.condition))
@@ -323,11 +452,10 @@ export function instantiateScript(
   }
 
   // -------------------------------------------------------------------
-  // The read-ahead (rules 3 and 5, rev 9). Draws every rnd() in a stretch
-  // of script and rolls every start_random block in it, in reading order,
-  // without defining anything or collecting any command. The walk below
-  // uses it for every branch it does not take, and a start_random block
-  // uses it on all of its own branches before it rolls.
+  // Dead text (rules 3 and 5, rev 11). Draws every rnd() in a stretch of
+  // script in reading order, without defining anything, collecting any
+  // command or rolling any start_random block. The walk below uses it for
+  // every branch it does not take.
   // -------------------------------------------------------------------
   function drawRnd(token: number, low: number, high: number): number {
     const drawn = rndByToken.get(token);
@@ -341,14 +469,22 @@ export function instantiateScript(
     const raw = node.value;
     if (typeof raw === "object" && "rnd" in raw)
       drawRnd(node.firstToken, raw.rnd[0], raw.rnd[1]);
+    else if (typeof raw === "string") {
+      const named = namedRnd(raw);
+      if (named) drawRnd(node.firstToken, named[0], named[1]);
+    }
   }
 
   function predrawTokens(first: number, last: number): void {
     for (let i = first; i <= last; i++) {
       const tok = parse.tokens[i];
-      if (tok?.kind !== "rnd") continue;
-      const m = /^rnd\((-?\d+),(-?\d+)\)$/.exec(tok.text);
-      if (m) drawRnd(i, Number(m[1]), Number(m[2]));
+      if (tok?.kind === "rnd") {
+        const m = /^rnd\((-?\d+),(-?\d+)\)$/.exec(tok.text);
+        if (m) drawRnd(i, Number(m[1]), Number(m[2]));
+        continue;
+      }
+      const named = tok ? namedRnd(tok.text) : undefined;
+      if (named) drawRnd(i, named[0], named[1]);
     }
   }
 
@@ -367,7 +503,13 @@ export function instantiateScript(
           for (const branch of item.branches) predrawItems(branch.items);
           break;
         case "random":
-          rollFor(item);
+          // A start_random block that is never reached is not rolled (c5),
+          // but its rnd() calls are read like any dead text.
+          predrawItems(item.preamble);
+          for (const branch of item.branches) {
+            if (branch.chance) predrawArg(branch.chance);
+            predrawItems(branch.items);
+          }
           break;
         case "orphanBlock":
         case "raw":
@@ -377,15 +519,15 @@ export function instantiateScript(
     }
   }
 
-  /** A block's roll, drawn after every draw inside the block. Nested blocks inside it roll first, in reading order. */
+  /**
+   * A block's roll, drawn when the block is reached and before anything
+   * inside it (rev 11, round CG's c3). The branches are read afterwards, in
+   * order, so their rnd() calls draw after the roll. Rev 9 had it the other
+   * way round, every rnd() of the block first and the roll last.
+   */
   function rollFor(node: RandomNode): number {
     const rolled = rollByNode.get(node);
     if (rolled !== undefined) return rolled;
-    predrawItems(node.preamble);
-    for (const branch of node.branches) {
-      if (branch.chance) predrawArg(branch.chance);
-      predrawItems(branch.items);
-    }
     const roll = stream.bounded(100);
     rollByNode.set(node, roll);
     return roll;
@@ -426,17 +568,18 @@ export function instantiateScript(
         if (typeof resolved === "string" && resolved !== symbolName)
           aliases.set(symbolName, resolved);
       }
-    } else if (
-      directiveName === "#include_drs" ||
-      directiveName === "#includeXS"
-    ) {
+    } else if (directiveName === "#include_drs") {
+      // Reached only when no install was found, since with one the filter
+      // reads every live include in and blanks the directive. A file that
+      // cannot be read reads as empty, as in the game.
       addNote({
         key: "includes",
         prominence: "banner",
         stage: "S0",
-        text: "This map depends on include files the preview cannot see — the preview is missing whatever they generate.",
+        text: "This map includes files from the game's install, which the preview could not find, so it may not match the game.",
       });
     }
+    // #includeXS loads an XS script for triggers, which never shape the map.
     // #undefine: rule 4, "does nothing", deliberately no state change.
   }
 
@@ -586,13 +729,18 @@ export function instantiateScript(
           break;
         }
         case "random": {
-          // The roll comes first, and it reads ahead through the whole block.
-          // Preamble tokens sit before the engine's own branch filtering
+          // The roll comes first. Preamble tokens sit before the engine's own branch filtering
           // starts (RMS0106 already flags this as misplaced authoring) and
           // execute unconditionally; the chosen branch, if any, follows.
+          // Then the branches in order, the chosen one live and the others
+          // dead, whose rnd() calls still draw where they sit (c3, c4).
           const branch = selectRandomBranch(item);
           walkItems(item.preamble, sectionName, sink, out);
-          if (branch) walkItems(branch.items, sectionName, sink, out);
+          for (const candidate of item.branches) {
+            if (candidate === branch)
+              walkItems(candidate.items, sectionName, sink, out);
+            else predrawItems(candidate.items);
+          }
           break;
         }
         case "orphanBlock":
@@ -613,10 +761,12 @@ export function instantiateScript(
   // -------------------------------------------------------------------
   const bySection = new Map<string, InstantiatedCommand[]>();
 
-  // Preamble: content written above the first <SECTION> tag. Not one of the
-  // seven pipeline sections (rule 11), so nothing is collected for it, but
-  // it still runs, for its symbol/stream-state side effects.
-  walkItems(parse.script.preamble, "", undefined, undefined);
+  // Preamble: content written above the first <SECTION> tag belongs to
+  // <PLAYER_SETUP> (rule 11, rev 11). Caverns and Heart write
+  // override_map_size there, and DE's maps are 144 and 151 tiles.
+  const preambleOut: InstantiatedCommand[] = [];
+  walkItems(parse.script.preamble, "PLAYER_SETUP", undefined, preambleOut);
+  if (preambleOut.length > 0) bySection.set("PLAYER_SETUP", preambleOut);
 
   for (const section of parse.script.sections) {
     let out = bySection.get(section.name);
@@ -656,6 +806,11 @@ export function instantiateScript(
     if (typeof value === "number") numericSymbols.set(name, value);
   }
 
+  if (insertions.length > 0)
+    mapSpansToSource(sections, notes, (span) =>
+      mapSpanToSource(span, insertions),
+    );
+
   return {
     dim: overrideDim,
     sections,
@@ -669,4 +824,42 @@ export function instantiateScript(
     landStream: stream.state(),
     notes,
   };
+}
+
+/**
+ * Moves every span the walk recorded from the expanded text, include files
+ * read in, back to the author's text, in place. Commands are shared with
+ * `objectGroups` and `actorAreas`, so mapping the sections maps those too.
+ * Spans from inside one include all land on its directive, so notes that
+ * now say the same thing at the same place are kept once.
+ */
+function mapSpansToSource(
+  sections: ReadonlyMap<string, InstantiatedCommand[]>,
+  notes: SimulationNote[],
+  map: (span: Span) => Span,
+): void {
+  const mapArgs = (args: InstantiatedArg[]): void => {
+    for (const arg of args)
+      arg.source = { ...arg.source, span: map(arg.source.span) };
+  };
+  for (const commands of sections.values())
+    for (const cmd of commands) {
+      cmd.span = map(cmd.span);
+      mapArgs(cmd.args);
+      for (const attrs of cmd.attributes.values())
+        for (const attr of attrs) {
+          attr.span = map(attr.span);
+          mapArgs(attr.args);
+        }
+    }
+  const seen = new Set<string>();
+  let kept = 0;
+  for (const note of notes) {
+    if (note.span !== undefined) note.span = map(note.span);
+    const id = `${note.text}@${note.span?.start}-${note.span?.end}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    notes[kept++] = note;
+  }
+  notes.length = kept;
 }

@@ -1,0 +1,14 @@
+#const MAKE_DIRT3_TERRAIN 1640
+#const T_DIRT3 3
+<PLAYER_SETUP>
+random_placement
+effect_percent SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_RADIUS_1 50
+effect_percent SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_RADIUS_2 50
+effect_amount SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_FOUNDATION_TERRAIN 3
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT land_position 50 50 base_size 12 number_of_tiles 0 }
+<OBJECTS_GENERATION>
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on DESERT number_of_objects 200000 set_gaia_object_only }
+create_object MAKE_DIRT3_TERRAIN { terrain_to_place_on DESERT number_of_objects 200000 set_gaia_object_only }
+create_object GOLD { terrain_to_place_on T_DIRT3 number_of_groups 10 set_gaia_object_only }

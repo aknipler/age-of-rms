@@ -1,5 +1,6 @@
 import { holdingItem, isConstSlot } from "../editor/constOffers";
 import { getStaticNameIndex, scriptIndexFor } from "../editor/staticNameIndex";
+import type { IncludedName } from "../parser/includeIndex";
 import type { ArgumentDef } from "../parser/language";
 import { lineNumberOfOffset } from "../parser/lineIndex";
 import {
@@ -12,7 +13,7 @@ import {
   type SlotKind,
 } from "../parser/nameLookup";
 import type { Item, ParseResult } from "../parser/types";
-import { COMMENT_OPEN_ID } from "../parser/validate";
+import { COMMENT_CLOSE_ID, COMMENT_OPEN_ID } from "../parser/validate";
 
 // What the Breakdown does with a name right after the person commits it
 // (docs/name-lookup-design.md Sec.6.1, Sec.7 and Sec.9). Pure and free of
@@ -70,6 +71,8 @@ export function reviewCommit(
   // reads #define and the offer writes #const.
   if (slot.kind === "condition") {
     const r = resolveName(stat, script, name, at, slot);
+    if (r.kind === "included")
+      return { kind: "flash", message: describeIncludedName(name, r.name) };
     return r.kind === "script"
       ? {
           kind: "flash",
@@ -99,6 +102,8 @@ export function reviewCommit(
           r.conditional,
         ),
       };
+    case "included":
+      return { kind: "flash", message: describeIncludedName(name, r.name) };
     case "definedBelow":
       return {
         kind: "definedBelow",
@@ -120,6 +125,11 @@ export function reviewCommit(
   }
 }
 
+function describeIncludedName(name: string, included: IncludedName): string {
+  const kind = included.directiveKind === "const" ? "#const" : "#define";
+  return `${name} is a ${kind} from ${included.file}${included.conditional ? ", inside a branch" : ""}`;
+}
+
 function describeScriptName(
   name: string,
   line: number,
@@ -137,11 +147,18 @@ export function defaultMeaning(d: DefaultConstValue): string | undefined {
   return `${d.value} is ${label}`;
 }
 
-/** Sec.7.4. A word valued 69 opens a nested comment wherever it later sits inside one (RMS0111). */
-export function commentOpenWarning(value: number): string | undefined {
-  return value === COMMENT_OPEN_ID
-    ? "69 opens a comment wherever this name appears inside one (RMS0111)"
-    : undefined;
+/**
+ * Sec.7.4. A word valued 69 opens a nested comment wherever it later sits
+ * inside one (RMS0111), and a word valued 70 closes one (RMS0112).
+ */
+export function commentMarkerWarning(value: number): string | undefined {
+  if (value === COMMENT_OPEN_ID) {
+    return "69 opens a comment wherever this name appears inside one (RMS0111)";
+  }
+  if (value === COMMENT_CLOSE_ID) {
+    return "70 ends a comment wherever this name appears inside one (RMS0112)";
+  }
+  return undefined;
 }
 
 /** Why the Move button is hidden, in the words Sec.9.1 gives. Undefined when it can move. */

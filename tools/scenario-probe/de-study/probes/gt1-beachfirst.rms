@@ -1,0 +1,8 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type WATER land_position 50 50 number_of_tiles 2400 base_size 3 top_border 38 bottom_border 38 border_fuzziness 5 }
+create_land { terrain_type BEACH land_position 20 15 number_of_tiles 250 base_size 2 }
+<TERRAIN_GENERATION>
+create_terrain DIRT { base_terrain BEACH number_of_tiles 500 number_of_clumps 4 }

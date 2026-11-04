@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type FOREST land_position 50 50 number_of_tiles 700 base_size 2 left_border 45 right_border 45 zone 9 }
+create_land { terrain_type DIRT land_position 15 45 number_of_tiles 0 base_size 1 zone 1 }
+create_land { terrain_type DIRT land_position 85 55 number_of_tiles 0 base_size 1 zone 2 }
+create_land { terrain_type DIRT land_position 20 65 number_of_tiles 0 base_size 1 zone 3 }
+create_land { terrain_type DIRT land_position 80 40 number_of_tiles 0 base_size 1 zone 4 }
+<CONNECTION_GENERATION>
+create_connect_land_zones 1 2 { default_terrain_replacement ROAD terrain_cost FOREST 0 terrain_size GRASS 0 0 terrain_size DIRT 0 0 terrain_size DESERT 0 0 terrain_size SNOW 0 0 }
+create_connect_land_zones 3 4 { default_terrain_replacement ICE terrain_cost FOREST 2.5 terrain_size GRASS 0 0 terrain_size DIRT 0 0 terrain_size DESERT 0 0 terrain_size SNOW 0 0 terrain_size FOREST 0 0 }

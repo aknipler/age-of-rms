@@ -146,11 +146,12 @@ export class Layout {
    * Depth is recounted here rather than read off the lexer, which is an
    * approximation with a known and harmless error direction.
    * `LexOptions.commentOpenAliases` means a word can open a nested comment, and
-   * this count does not know the alias set, so it can only ever run SHORT of
-   * the true depth. Running short splits a unit early, which re-indents comment
-   * text as though it were its own comment. Whitespace only, never content. The
-   * `nestedComments: false` case can only make the count run long, which
-   * degrades to treating the whole run as one unit.
+   * `commentCloseAliases` means a word can close one. This count knows neither
+   * set, so it runs SHORT of the true depth for an opening word and LONG for a
+   * closing one. Running short splits a unit early, which re-indents comment
+   * text as though it were its own comment. Running long treats the whole run as
+   * one unit. Whitespace only either way, never content. The
+   * `nestedComments: false` case can also make the count run long.
    *
    * A trivia token that is not an opener at depth 0 (the byte-order mark, a
    * stray closing marker) is its own single-token unit.

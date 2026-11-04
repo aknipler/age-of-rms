@@ -214,6 +214,14 @@ describe("addAttribute / toggleFlag (Sec.4.6)", () => {
     expect(b.diagnostics.filter((d) => d.code === "RMS0201")).toEqual([]);
   });
 
+  it("appendArg fills the value of a bare #const directive", () => {
+    const src = "#const SOME_NAME\n<PLAYER_SETUP>\nrandom_placement\n";
+    const a = parse(src);
+    const node = a.script.preamble[0] as never;
+    const { out } = run(src, { kind: "appendArg", node, value: 70 });
+    expect(out).toBe("#const SOME_NAME 70\n<PLAYER_SETUP>\nrandom_placement\n");
+  });
+
   it("appendArg at a later index pads the skipped slots with their placeholders", () => {
     // replace_terrain is bare; the user filled the SECOND field first.
     const src =

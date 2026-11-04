@@ -29,6 +29,13 @@
         "$ref": "#/$defs/predefinedLabel"
       }
     },
+    "labelGroups": {
+      "type": "array",
+      "description": "Groups of predefinedLabels the lobby can define only so many of at once, which name liveness (docs/name-liveness-design.md Sec.4.2) turns into constraints. The map-size and player-count groups are derived from the labels' own fields and are not listed. Only a measured cardinality belongs here, since a stronger constraint than the engine's reports a bug that is not there.",
+      "items": {
+        "$ref": "#/$defs/labelGroup"
+      }
+    },
     "commands": {
       "type": "array",
       "items": {
@@ -52,9 +59,62 @@
       "items": {
         "$ref": "#/$defs/controlKeyword"
       }
+    },
+    "structuralTokens": {
+      "type": "array",
+      "description": "Tokens that hold an engine id but have no entry in commands, attributes, directives or controlKeywords: the section headers, the braces and the two comment markers. Written as the script spells them, so `<LAND_GENERATION>` with its angle brackets and `/*` as is. Ids come from the RMS Equivalencies sheet (docs/token-alias-design.md Sec.4).",
+      "items": {
+        "$ref": "#/$defs/structuralToken"
+      }
     }
   },
   "$defs": {
+    "tokenId": {
+      "type": "integer",
+      "description": "The engine's own internal token id for this word. Per docs/parser-design.md Sec.2.1 the engine resolves every word to one integer and constants share that space with keywords, so a script's `#const L 32` makes `L` indistinguishable from the keyword holding id 32. A number comes either from a DE run or from the RMS Equivalencies sheet, and `tokenIdSource` says which. Only run-measured numbers drive the parser's alias resolution (docs/token-alias-design.md Sec.3.3). Absent means unknown, never \"has no id\". Sibling of `constId` in game-constants.json, which records the same integer space for constants.",
+      "minimum": 0
+    },
+    "tokenIdSource": {
+      "type": "string",
+      "description": "Where `tokenId` came from. `RMSTEST_<run>` for a number a DE run measured, which also needs a `notes` entry describing the run, or `equivalencies-YYYY-MM-DD` for the community RMS Equivalencies sheet as fetched on that date. Required with `tokenId` and only with it.",
+      "pattern": "^(RMSTEST_[0-9A-Za-z_]+|equivalencies-\\d{4}-\\d{2}-\\d{2})$"
+    },
+    "structuralToken": {
+      "type": "object",
+      "required": ["text", "tokenId", "tokenIdSource"],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tokenId": {
+          "$ref": "#/$defs/tokenId"
+        },
+        "tokenIdSource": {
+          "$ref": "#/$defs/tokenIdSource"
+        }
+      }
+    },
+    "labelGroup": {
+      "type": "object",
+      "required": ["id", "cardinality", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+        },
+        "cardinality": {
+          "type": "string",
+          "enum": ["exactlyOne", "atMostOne"]
+        },
+        "evidence": {
+          "type": "string",
+          "description": "What was observed that licenses this cardinality."
+        }
+      }
+    },
     "predefinedLabel": {
       "type": "object",
       "required": ["name", "category", "description", "verified"],
@@ -91,6 +151,10 @@
         "mapSize": {
           "type": "string",
           "description": "mapSize labels only, and only where the app offers that size: the matching MAP_SIZES value in src/generationSettings/generationSettingsConstants.ts. Absent on sizes reachable only via the MORE_MAP_SIZES launch option or override_map_size, which no setting can select but a script may still branch on."
+        },
+        "group": {
+          "type": "string",
+          "description": "The id of the labelGroups entry this label belongs to."
         },
         "verified": {
           "type": "boolean"
@@ -175,9 +239,10 @@
           "default": false
         },
         "tokenId": {
-          "type": "integer",
-          "description": "The engine's own internal token id for this command name, and ONLY when a run has measured it. Per docs/parser-design.md Sec.2.1 the engine resolves every word to one integer and constants share that space with commands, so a script writing `#const L 32` makes `L` indistinguishable from the command holding id 32. Drives the parser's alias resolution; absent means unknown and a `#const` to that value resolves to nothing, which is the default for all but the measured few. Same species of field as `sectionLocked` and same discipline: it is an ENGINE fact, never transcribed from a map author's comment, and it is set only alongside a `notes` entry naming the run. Sibling of `constId` in game-constants.json, which records the same integer space for constants.",
-          "minimum": 0
+          "$ref": "#/$defs/tokenId"
+        },
+        "tokenIdSource": {
+          "$ref": "#/$defs/tokenIdSource"
         },
         "kind": {
           "type": "string",
@@ -222,6 +287,12 @@
         "name": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "tokenId": {
+          "$ref": "#/$defs/tokenId"
+        },
+        "tokenIdSource": {
+          "$ref": "#/$defs/tokenIdSource"
         },
         "arguments": {
           "type": "array",
@@ -295,6 +366,12 @@
           "type": "string",
           "pattern": "^#\\w+$"
         },
+        "tokenId": {
+          "$ref": "#/$defs/tokenId"
+        },
+        "tokenIdSource": {
+          "$ref": "#/$defs/tokenIdSource"
+        },
         "arguments": {
           "type": "array",
           "items": {
@@ -323,6 +400,12 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "tokenId": {
+          "$ref": "#/$defs/tokenId"
+        },
+        "tokenIdSource": {
+          "$ref": "#/$defs/tokenIdSource"
         },
         "description": {
           "type": "string"

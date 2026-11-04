@@ -1,0 +1,102 @@
+/* From rms-check by Divy1211 (github.com/Divy1211/rms-check), GPL-3.0,
+   test_rms folder, copied 2026-11 for Age of RMS's liveness tests. */
+
+start_random
+    percent_chance 50 #const A 10
+    percent_chance 50 #const A 20
+end_random
+
+start_random
+    percent_chance 50 #const B 10
+    percent_chance 50 #const C 10
+end_random
+
+start_random
+    percent_chance 25 #const D 10
+    percent_chance 25 #const D 10
+end_random
+
+if A
+    #define E
+endif
+
+if E
+    #define F
+endif
+
+if H
+    #const I 10
+endif
+if I
+    #const H 10
+endif
+
+if 1_PLAYER_GAME
+    #const J 10
+endif
+
+if B
+    #const K 10
+elseif C
+    #const K 10
+endif
+
+if B
+    #const L 10
+endif
+
+if C
+    #const L 10
+endif
+
+if 1_PLAYER_GAME
+    #const M 10
+elseif 2_PLAYER_GAME
+    #const M 10
+elseif 3_PLAYER_GAME
+    #const M 10
+elseif 4_PLAYER_GAME
+    #const M 10
+elseif 5_PLAYER_GAME
+    #const M 10
+elseif 6_PLAYER_GAME
+    #const M 10
+elseif 7_PLAYER_GAME
+    #const M 10
+elseif 8_PLAYER_GAME
+    #const M 10
+endif
+
+if 1_PLAYER_GAME
+    #const N 10
+endif
+
+if 2_PLAYER_GAME
+    #const N 10
+endif
+
+if 3_PLAYER_GAME
+    #const N 10
+endif
+
+if 4_PLAYER_GAME
+    #const N 10
+endif
+
+if 5_PLAYER_GAME
+    #const N 10
+endif
+
+if 6_PLAYER_GAME
+    #const N 10
+endif
+
+if 7_PLAYER_GAME
+    #const N 10
+endif
+
+if 8_PLAYER_GAME
+    #const N 10
+endif
+
+#include_drs "liveness_test.inc"

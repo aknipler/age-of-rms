@@ -1,0 +1,9 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type WATER land_position 50 50 number_of_tiles 2400 base_size 3 left_border 38 right_border 38 border_fuzziness 5 zone 9 }
+create_land { terrain_type DIRT land_position 15 40 number_of_tiles 0 base_size 1 zone 1 }
+create_land { terrain_type DIRT land_position 85 60 number_of_tiles 0 base_size 1 zone 2 }
+<CONNECTION_GENERATION>
+create_connect_land_zones 1 2 { replace_terrain WATER SHALLOW replace_terrain BEACH SHALLOW terrain_cost WATER 3 terrain_size WATER 2 1 terrain_size BEACH 1 0 }

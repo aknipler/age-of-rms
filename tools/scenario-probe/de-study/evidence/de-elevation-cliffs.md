@@ -13,11 +13,15 @@ What Age of Empires II DE does in `<ELEVATION_GENERATION>` and `<CLIFF_GENERATIO
 
 Section 10 lists the surprises.
 
+**Revision 2026-10-27 (round ET, Part B).** 26 more maps, all predicted beforehand, all matching the primary reading. They test heights to 10, negative and empty elevation commands, raised coast tiles under the late fill, coasts of SHALLOW, ICE and SNOW, `cliff_type` 2 to 4, restore draws on four more base terrains, painting GRASS, `base_layer` order and a missing `base_terrain` line. Section 11 has the list. The `*Untested*` notes below are updated, and Section 8 is rewritten. The terrain stage itself has its own write-up, `de-terrain-stage.md`.
+
+**Revision 2026-10-28 (round GP, Part E and Part X).** 11 more maps, every reading predicted beforehand, each matching one: `base_layer` on `create_land` is **ignored** (3.0, the one reading of AoE2RMSIDE's that lost here, see Section 9), a lower land's stamp over a raised land's stamp (3.0), 9999 clumps (3.1), both scale keys in one block (3.1), and a real-shaped script with 4 players and default cliffs at 200 and 220. Section 8 is rewritten.
+
 ## Scope and confidence
 
 - **Build:** DE 101.103.54800.0.
 - **Instrument:** as for the land stage. Maps were generated in the scenario editor (Seed Map, the seed typed in, 2 players, no teams, Team Positions ticked), saved, and read back with AoE2ScenarioParser. Each saved map gives every tile's elevation, terrain and layer and every cliff object's type, position and facing.
-- **Result:** **51 of 51 maps match tile for tile**, from 22 probe scripts:
+- **Result:** **51 of 51 maps match tile for tile**, from 22 probe scripts (plus round ET Part B's 26 and round GP's 11, below):
   - round EC (`tests/probe_ec.py`): 33 maps from 13 scripts. 29 are on Tiny (120), 2 at 168 and 2 at 200. 26 were predicted before the maps were made. The owner saved the other 7 (extra seeds and sizes) unprompted, and we predicted those afterwards. They are just as good as tests, since the model was not changed for them;
   - round EC2 (`tests/probe_ec2.py`): 18 maps from 9 scripts, all on Tiny, all predicted before the run (`tests/ec2-predictions.md`).
 - **Controls:** in round EC2 every rejected reading fails its maps (Section 10). The size of the failures shows that the maps could tell the readings apart.
@@ -37,7 +41,7 @@ Notation as in the land write-up. `draw(n)` is one bounded draw `⌊n · raw / 2
    - the cleanup against WATER runs;
    - the beach rule runs.
 
-*Tested:* every probe. A bare cliff header makes cliffs with the defaults (cl5, 5 maps). The place of the WATER cleanup was tested on wc1. *Untested:* whether an empty `<ELEVATION_GENERATION>` header also burns its draw.
+*Tested:* every probe. A bare cliff header makes cliffs with the defaults (cl5, 5 maps). The place of the WATER cleanup was tested on wc1. An empty `<ELEVATION_GENERATION>` header also burns its draw (e3, 2 maps, 2026-10-27).
 
 ## 2. Lists
 
@@ -84,7 +88,7 @@ So a raised land is wider in height than in terrain. It has a rim of base-terrai
 
 On lh2 the rim is 215 to 221 tiles around a 300-tile and a 250-tile land. About 85% of it is leftover cells.
 
-*Tested:* lh1 and lh2: SNOW at 3, DIRT at 6, and WATER at 4, which stays at 0 (4 maps). *Untested:* a non-water land painted over a raised one; heights above 8.
+*Tested:* lh1 and lh2: SNOW at 3, DIRT at 6, and WATER at 4, which stays at 0 (4 maps). Raised tiles that the late WATER cleanup (5.7) turns to water keep their height (e4: SNOW at 4 and DIRT at 2 against a WATER band; dropping them to 0 fails both maps). *Tested 2026-10-28:* a non-water land painted over a raised one (`ge2-overlap`: DIRT at height 1 over SNOW at 5, seeds 1000 and 1001). Later writes win for terrain and height alike, tile by tile, so the overlap drops to 1.
 
 **Layer (`base_layer T` in `<LAND_GENERATION>`).** Every tile that no land paints carries layer T, and every tile a land paints (stamp, claim or leftover fill that took the terrain) has no layer. The saved scenario records the layer per tile, and DE's saved layers match this tile for tile. Section 3.3's test "its land layer matches the base layer" then splits the map:
 - `create_elevation` with `base_layer T` finds only the unpainted tiles;
@@ -92,13 +96,15 @@ On lh2 the rim is 215 to 221 tiles around a 300-tile and a 250-tile land. About 
 
 This holds even when a land has the base terrain itself. On ly1, a `create_elevation` on DESERT without `base_layer` grew only on the DESERT land, never on the DESERT base around it.
 
-*Tested:* ly1 (2 maps). *Untested:* `base_layer` on `create_land`; whether a tile the cleanup restores gets the layer back. The model leaves it without one, and ly1 matches, but we did not check whether ly1 has such a tile.
+*Tested:* ly1 (2 maps). **Order and absence (2026-10-27).** A `base_layer` written **before** `base_terrain` is dropped (ly2), as the guide warns. With **no `base_terrain` line at all** the base is GRASS, and every unpainted tile carries a GRASS layer, as if `base_layer GRASS` had been written (ly3). So a `create_elevation` without `base_layer` finds only the painted lands, exactly as on ly1. Both were tested on 2 maps each, and the other reading fails both.
+
+**`base_layer` on `create_land` is ignored** (2026-10-28, `ge1-landlayer`, seeds 1000 and 1001). The land's tiles get no layer (they have none, like every painted tile), and a `create_elevation` with that same `base_layer` finds no tile and makes no hill. AoE2RMSIDE gives the land's tiles the layer; that reading predicted about 400 raised tiles and fails both maps, and the saved layers are empty. The guide does not list `base_layer` among `create_land`'s attributes. Round CF (`ll1`-`ll3`, seeds 1002 and 1003) found it ignored on three more layouts: two DIRT lands told apart only by the attribute (no hills, no layer-only terrain pass on either; the land-layer reading fails by 123 tiles, 225 elevations and 426 layers), the attribute before `terrain_type`, and a map with a base layer. So a script cannot tell two lands of the same terrain apart this way. *Untested:* whether a tile the cleanup restores gets the layer back. The model leaves it without one, and ly1 matches, but we did not check whether ly1 has such a tile.
 
 **Decoration draws in the land cleanup.** Each time the land stage's cleanup against the base terrain (de-land-stage 9) turns a tile back into the base terrain, that terrain's decorations spend draws at once, per the table in 5.4. A GRASS base spends 3 per restored tile; DESERT and other terrains without decorations spend none. The draws fall in the cleanup's own scan order. They shift the start of the elevation and cliff stages, so a single vanished sliver changes every hill and cliff on the map.
 
 Painting a land does **not** spend decoration draws, only the restore does. co1 paints a 6,000-tile DIRT land, and DIRT's decoration costs 1 draw per tile (5.4). The map matches with no draws for the painting. Up to 6,000 extra draws would have moved every cliff, but no control with painting draws was run.
 
-*Tested:* gr1. Four 4-tile DESERT lands vanish on a GRASS base: 19 restored tiles, 57 draws. Without the draws, both maps differ in about 1,000 elevation tiles and in every cliff object. The no-draw painting is tested on DIRT lands (co1, lh1, ly1). *Untested:* painting a GRASS land, though nothing suggests it differs; restores on other decorated base terrains.
+*Tested:* gr1. Four 4-tile DESERT lands vanish on a GRASS base: 19 restored tiles, 57 draws. Without the draws, both maps differ in about 1,000 elevation tiles and in every cliff object. The no-draw painting is tested on DIRT lands (co1, lh1, ly1) and on a 3,000-tile GRASS land (pg1, 2 maps; 3 draws per tile fails both). Restores on other base terrains (gr2-gr5, 1 map each, every control fails): DIRT 1 draw per tile, GRASS2 15 (five randomized entries), GRASS3 6 (entries at weight 0 cost nothing), FOREST 0 (one centered entry at weight 1000).
 
 ### 3.1 Commands become layers
 
@@ -117,10 +123,12 @@ Painting a land does **not** spend decoration draws, only the restore does. co1 
 | `set_scale_by_size` | number_of_tiles × W·H / 10000 (integer), at most W·H |
 | `set_scale_by_groups` | number_of_clumps × W·H / 10000 (integer; not capped at 999 again) |
 
-The scaling applies to the final values once the block has been read, so its place in the block should not matter. If both scale keys are given, the later one wins. Our probes put the scale key last and never gave both, so both points are *untested*.
+The scaling applies to the final values once the block has been read, so its place in the block does not matter. **If both scale keys are given, the later one wins** (2026-10-28, `ge4-bothscale`: `set_scale_by_groups` then `set_scale_by_size`, seeds 1000 and 1001; the first-wins and both-apply readings fail both maps).
+
+**`number_of_clumps` above 999 is capped at 999** (2026-10-28, `ge3-many`: 9999 clumps at 252; uncapped would raise 28,155 tiles instead of DE's 3,846).
 
 - **Things that do nothing.** Commands at section level, outside a block, do nothing. RMSTEST_22b puts `enable_balanced_elevation` there, and the spec found it has no effect.
-- **Negative H** removes the last |H| layers created so far (*untested*).
+- **Negative H** removes the last |H| layers created so far (*tested* e2: `create_elevation 5` then `−2`; ignoring the negative command fails both maps).
 
 *Tested:* el1 to el7 (heights 1 to 4; 1, 2, 3, 4, 8 and 10 clumps; spacing 3; two and three commands; balanced). Scaling was tested on sc1 (2 maps): on Tiny, 300 tiles become 432, and 3 clumps become 4 (3 × 1.44, truncated). `base_terrain` and `base_layer` are covered with the land attributes in 3.0 (ly1).
 
@@ -172,7 +180,7 @@ At the end of the layer, the clump lists are emptied in the quirky way (Section 
 
 ### 3.5 Smoothing (no draws)
 
-Smoothing runs on the whole map after every layer, and once when a present section has no layers (*untested* for that case). **With no `<ELEVATION_GENERATION>` section it never runs.** Land heights then stay as painted, with cliff-like steps (0 to 6 between neighbouring tiles on lh2). Nothing later in the generator smooths them. *Tested:* lh2 (2 maps). The smoothed reading fails both maps by about 950 tiles.
+Smoothing runs on the whole map after every layer, and once when a present section has no layers (*tested* e3: a raw SNOW plateau at 4 is smoothed; ignoring the header, or smoothing without the burned draw, fails both maps). **With no `<ELEVATION_GENERATION>` section it never runs.** Land heights then stay as painted, with cliff-like steps (0 to 6 between neighbouring tiles on lh2). Nothing later in the generator smooths them. *Tested:* lh2 (2 maps). The smoothed reading fails both maps by about 950 tiles.
 
 Smoothing is also what shapes a raised land when an elevation section is present. The land's tiles are not the layer's base terrain, so no layer grows on them. But after every layer the slope pass raises the tiles around the plateau into a ramp, one level per tile, which reaches down to the base. Below 8 nothing is lowered, so the plateau keeps its full height (lh1, 2 maps). Every pass scans rows y, then x, and changes tiles in place, so later tiles see earlier changes. "Higher" means higher than the current tile h. Neighbours off the map count as not higher.
 
@@ -184,7 +192,7 @@ Smoothing is also what shapes a raised land when an elevation section is present
 
 Repeat steps 1-3 until neither the topology pass nor the slope pass changed anything. In the end, neighbouring tiles differ by at most one level.
 
-*Tested:* every elevation map. The behaviour at 8 and above is *untested*: no probe went above 4, and RMSTEST_32 and 50 reach 7.
+*Tested:* every elevation map, and heights 8 to 10 (e1, `create_elevation 10`, 2 maps, 2026-10-27).
 
 ## 4. What the elevation stage does not do
 
@@ -213,12 +221,12 @@ Repeat steps 1-3 until neither the topology pass nor the slope pass changed anyt
 |---|---|---|---|
 | 0 | CT_GRANITE (default) | 264 | tested |
 | 1 | CT_DESERT | 1849 | tested (ct1) |
-| 2 | CT_SNOW | 1858 | untested |
-| 3 | CT_MARBLE | 2178 | untested |
-| 4 | CT_LIMESTONE | 2069 | untested |
+| 2 | CT_SNOW | 1858 | ct3 |
+| 3 | CT_MARBLE | 2178 | ct4 |
+| 4 | CT_LIMESTONE | 2069 | ct5 |
 | 5 | CT_TERRACE | 2651 | tested (ct2) |
 
-*Tested:* the defaults (cl5, 5 maps at 3 sizes), and the attributes in cl1, cl2 and cl6. Types 1 and 5 were tested on ct1 and ct2, 4 maps with every object identical; types 2 to 4 are *untested*.
+*Tested:* the defaults (cl5, 5 maps at 3 sizes), and the attributes in cl1, cl2 and cl6. Types 1 and 5 were tested on ct1 and ct2, 4 maps with every object identical; types 2 to 4 on ct3 to ct5 (1 map each, 2026-10-27).
 
 ### 5.2 Cells and candidates
 
@@ -235,7 +243,7 @@ Repeat steps 1-3 until neither the topology pass nor the slope pass changed anyt
 
 - **What counts as water here** is the terrain as the land stage left it, **before** the WATER cleanup, which runs only at the end of the terrain stage (5.7). A land tile with water on both sides is still land when the cells are scanned.
 
-*Tested:* cl1 to cl6. In cl6, a neutral land at the map centre stays clear; if only player lands were cleared, seed 1001 would have a cliff 1.5 tiles from it. Water was tested on wc1 (2 maps): a WATER band across the map, with `min_terrain_distance 0`, so cliffs may stand in the cells next to blocked ones. A positive `min_terrain_distance` against real water is *untested*.
+*Tested:* cl1 to cl6. In cl6, a neutral land at the map centre stays clear; if only player lands were cleared, seed 1001 would have a cliff 1.5 tiles from it. Water was tested on wc1 (2 maps): a WATER band across the map, with `min_terrain_distance 0`, so cliffs may stand in the cells next to blocked ones. The default `min_terrain_distance` (2) against the same band is tested on wc2, and `min_terrain_distance 0` beside SHALLOW, ICE and SNOW lands touching water on e5 (2 maps each, 2026-10-27).
 
 ### 5.3 One cliff: the walk
 
@@ -365,11 +373,11 @@ Three steps, in this order.
 3. **Beaches.** On a copy taken after step 2, every tile that is not shore water, and is land (class & 0x1F = 0) or ice-type (0x40), with shore water among its 8 neighbours, becomes beach (2), or 37 if its class has 0x40 or 0x80 set. This is the 8-neighbour beach rule age-of-rms adopted on 2026-10-15 (RMSTEST_75), now with its place in the order.
 
 *Tested:*
-- Step 1 on co1 (2 maps). With the base terrain instead, 247 and 125 tiles come out DESERT where DE has DIRT. With the owning land's terrain instead (a land's terrain where its zone is, else the base), 6 and 1 tiles differ: leftover and cleanup tiles show it is the tile's own earlier terrain. The scripting guide says terrain 16 "turns into the map's base_terrain". That holds for lines on the base terrain, the usual case, and fails for lines across another land. The guide's other claim, that 16 "can be replaced during <TERRAIN_GENERATION>", is untested, and AoE2RMSIDE contradicts it: it restores every recorded tile, whatever the terrain stage painted there. Round ET's `t9-cliffs` tests it.
+- Step 1 on co1 (2 maps). With the base terrain instead, 247 and 125 tiles come out DESERT where DE has DIRT. With the owning land's terrain instead (a land's terrain where its zone is, else the base), 6 and 1 tiles differ: leftover and cleanup tiles show it is the tile's own earlier terrain. The scripting guide says terrain 16 "turns into the map's base_terrain". That holds for lines on the base terrain, the usual case, and fails for lines across another land. The guide's other claim, that 16 "can be replaced during <TERRAIN_GENERATION>", is true only while that stage runs: every recorded tile is restored at its end, whatever the stage painted there (round ET `t9-cliffs`, 2 maps; `de-terrain-stage.md` 7).
 - Step 2's place on wc1 seed 1000. With the cleanup at the end of the land stage, the cliff stage's repair sees a different coast, and 20 tiles differ, the terrain-70 tile among them. Seed 1001 cannot tell the two places apart.
 - Step 3 on wc1 and on the 14 earlier water maps.
 
-*Untested:* anything `<TERRAIN_GENERATION>` does with terrain 16 or with the not-yet-cleaned water in between (spacing, `base_terrain` matches). Also untested: the height of a tile the WATER cleanup turns to water after the elevation stage raised it. No probe had hills next to water.
+What `<TERRAIN_GENERATION>` does with terrain 16 and with the not-yet-cleaned water is now measured (`de-terrain-stage.md` 1 and 7). A tile the WATER cleanup turns to water keeps its height (e4).
 
 ## 6. Draw count summary (for checking an implementation)
 
@@ -429,25 +437,23 @@ The spec's measured drop in bias with player lands was not re-checked.
 
 ## 8. Not tested
 
-After round EC2 these are left, roughly in order of how likely a real map is to hit them:
+After round GP (2026-10-28) these are left, roughly in order of how likely a real map is to hit them:
 
-- **Water and hills:** a raised tile that the late WATER cleanup turns to water (what height it keeps); hills or cliffs beside SHALLOW, ICE or frozen terrain (round ET `e5-coast`); a positive `min_terrain_distance` against real water.
-- **The second water repair** (marker 16) never fired. If it fires, its tiles are not on record, so a finished map **would keep terrain 16** there. That is a prediction worth a probe.
-- **Land attributes:** `base_layer` on `create_land`; a non-water land over a raised one; the layer of a tile restored by the cleanup or under a cliff line.
-- **Decoration draws:** restores on decorated base terrains other than GRASS; entries at weight 1000 (2 draws randomized, 0 centered; FOREST and several others have one). Painting a GRASS land.
-- **Elevation settings:** negative `create_elevation`; heights of 8 and above (the lowering branch of the smoothing; RMSTEST_32 and 50 reach 7); an empty `<ELEVATION_GENERATION>` header; spacing of 256 or more (only its low 8 bits are used in 3.3); more than 999 clumps; scaling at sizes other than Tiny (sc1 at 200 was optional and not saved).
-- **Cliff settings:** `cliff_type` 2, 3 and 4; min > max.
-- **Sizes:** only 120, 168 and 200 tested.
-- **The terrain stage:** anything `create_terrain` does with terrain 16 or with uncleaned water before the end of the stage.
+- **The second water repair** (marker 16) never fired, and no layout we tried makes it fire. If it fires, its tiles are not on record, so a finished map **would keep terrain 16** there. That is a prediction worth a probe.
+- **Land attributes:** the layer of a tile restored by the cleanup or under a cliff line.
+- **Decoration draws:** randomized entries at weight 1000 (2 draws). No DE terrain has one.
+- **Elevation settings:** spacing of 256 or more (only its low 8 bits are used in 3.3).
+- **Cliff settings:** min > max.
+- **Sizes:** tested at 120, 168, 200, 220 and 252 (the last without cliffs).
 
 ## 9. Sources and credit
 
-- **Our tests:** the study's test folder. Its probe scripts, run sheets, predictions and results log are kept beside this file, in `../probes` and here. Its Python tools are not (see ../README.md).
+- **Our tests:** `RMS/de-disassembly/tests/`.
   - `elevation_model.py`, `cliff_model.py` and `stage_model.py` are our own Python model of everything above.
   - `probe_ec.py` and `probe_ec2.py` hold the probe scripts; `compare_ec.py` (both rounds) and `compare_ec_sizes.py` do the comparisons.
   - `results.md` (2026-10-17 and 2026-10-19) holds every result and control.
 - **Game data:** terrain placement classes and decorations are read from `empires2_x2_p1.dat` (the fields named above), which age-of-rms's `tools/extract-constants` already parses. The cliff piece table is engine logic, measured by our maps (5.5).
-- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0, `crates/rms-engine/src/exact_elevation.rs`, `exact_cliff.rs`, `exact_cliff_piece.rs`, read at commit 210d977) gave the algorithms and the data tables. We read it, restated it, and tested it against DE. Every tested rule agreed, including the two engine quirks it reproduces on purpose (stale list links; the unlink square's bottom edge). In round EC2 its reading won every time: the restore draws, raw plateaus, the WATER cleanup at the end of the terrain stage, and cliff lines restored to their earlier terrain. For the last one the scripting guide says "base terrain", which is wrong for lines across a non-base land (5.7).
+- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0, `crates/rms-engine/src/exact_elevation.rs`, `exact_cliff.rs`, `exact_cliff_piece.rs`, read at commit 210d977) gave the algorithms and the data tables. We read it, restated it, and tested it against DE. Every tested rule agreed, including the two engine quirks it reproduces on purpose (stale list links; the unlink square's bottom edge). In round EC2 its reading won every time: the restore draws, raw plateaus, the WATER cleanup at the end of the terrain stage, and cliff lines restored to their earlier terrain. **One reading lost in round GP:** it gives a `create_land`'s tiles the land's `base_layer`; DE ignores that attribute (3.0). For the last one the scripting guide says "base terrain", which is wrong for lines across a non-base land (5.7).
 - **The age-of-rms calibration runs** (RMSTEST_10 to 50) gave the statistical checks, and the observation that finished maps carry no terrain 16.
 
 ## 10. Round EC2: what each map decided (2026-10-19)
@@ -474,3 +480,24 @@ Plus one control nobody had planned: co1's lines cross DIRT, whose centered deco
 - **`base_layer` in `<LAND_GENERATION>` quietly splits the map for elevation.** A `create_elevation` without the same `base_layer` can no longer grow on the base area, only on painted lands.
 - **The coast is cleaned last.** Hills and cliffs are placed against the uncleaned coast, and the water fill runs only at the very end. A cliff near water can leave a lone terrain-70 tile in the finished map, a terrain no script asked for.
 - **`cliff_type` is purely cosmetic.** The same seed gives the same cliffs in another style.
+
+## 11. Round ET, Part B: what each map decided (2026-10-27)
+
+26 maps, all predicted before the run (`tests/run-sheet-et.md`, `tests/et-predictions.md`), all matching the primary reading, every control failing (`tests/results.md` 2026-10-26). The terrain maps of the same round are in `de-terrain-stage.md`.
+
+| Script | Question | Answer | Rejected reading |
+|---|---|---|---|
+| e1-high | heights 8 to 10 | one reading, matches (3.5) | — |
+| e2-negative | `create_elevation −2` | removes the last two layers (3.1) | ignored |
+| e3-empty | an empty `<ELEVATION_GENERATION>` header | burns its draw and smooths once (1, 3.5) | ignored; smoothing without the draw |
+| e4-hillwater | height of raised tiles the late WATER cleanup floods | kept (3.0) | dropped to 0 |
+| e5-coast | cliffs beside SHALLOW, ICE and SNOW touching water | one reading, matches (5.4, 5.7) | — |
+| wc2-distance | default `min_terrain_distance` against water | one reading, matches (5.2) | — |
+| ct3 / ct4 / ct5 | `cliff_type` 2, 3, 4 | base objects 1858, 2178, 2069 (5.1) | — |
+| gr2 / gr3 / gr4 / gr5 | restore draws on DIRT, GRASS2, GRASS3, FOREST | 1, 15, 6, 0 per tile (3.0) | 0, 3, 15 and 1 per tile |
+| pg1-grassland | painting a GRASS land | no draws (3.0) | 3 per tile |
+| ly2-order | `base_layer` before `base_terrain` | dropped (3.0) | kept |
+| ly3-nobase | no `base_terrain` line | GRASS base with a GRASS layer on unpainted tiles (3.0) | no layer |
+| sc1-scale at 200 | scaling at another size | ×4, as at Tiny ×1 (3.1) | — |
+
+**Surprise worth knowing when writing scripts:** leaving out `base_terrain` in `<LAND_GENERATION>` is not the same as writing `base_terrain GRASS`. The unpainted map then carries a GRASS layer, and a `create_elevation` without `base_layer` grows only on painted lands.

@@ -88,6 +88,19 @@ class Parser {
    * nothing sees the old behaviour. See isDefinedSymbol.
    */
   readonly builtinConstants: ReadonlySet<string>;
+  /**
+   * Names the script's `#include_drs` files define, read by the caller
+   * (src/parser/includeIndex.ts). A separate set from builtinConstants since
+   * the two come from different places and change at different rates: the
+   * engine's names are fixed per build, these follow the open script.
+   */
+  readonly externalSymbols: ReadonlySet<string>;
+  /**
+   * Whether the caller says a name might come from an include nobody read.
+   * Undefined means the caller never said, and the old rule applies: any
+   * include in the file softens. See includesUnread().
+   */
+  private readonly includesUnreadOption: boolean | undefined;
 
   /** Indices (into `tokens`) of non-trivia tokens, the parse stream. */
   readonly nt: number[];
@@ -117,6 +130,8 @@ class Parser {
     this.lang = buildLanguageIndex(langData);
     this.maxNesting = opts.maxNestingDepth ?? DEFAULT_MAX_NESTING;
     this.builtinConstants = opts.builtinConstants ?? new Set();
+    this.externalSymbols = opts.externalSymbols ?? new Set();
+    this.includesUnreadOption = opts.includesUnread;
 
     const lex = tokenize(source, {
       nestedComments: opts.nestedComments,
@@ -124,6 +139,7 @@ class Parser {
       // fixup below, because it has to affect comment NESTING, see the note
       // on that fixup, which named this exact gap.
       commentOpenAliases: opts.commentOpenAliases,
+      commentCloseAliases: opts.commentCloseAliases,
     });
     this.tokens = lex.tokens;
     this.lineOffsets = lex.lineOffsets;
@@ -198,6 +214,33 @@ class Parser {
     for (const f of this.frames)
       if (f.type === "if" || f.type === "random") n++;
     return n;
+  }
+
+  /**
+   * Include resolution Rule 1 (docs/include-resolution-design.md Sec.4.5).
+   * True when an open `if` or `elseif` branch tests `name` itself, so the line
+   * being parsed only runs in a game where the name is defined. Authors write
+   * `if X_CAA_A avoid_actor_area X_CAA_A endif` to use a name an include may or
+   * may not define, and warning on the guarded use would be wrong. 14 corpus
+   * sites do this.
+   *
+   * Only the current branch counts. An `else` has no condition, and an earlier
+   * branch's condition is false by the time a later branch runs. `start_random`
+   * frames never count.
+   */
+  private guardedByOwnName(name: string): boolean {
+    for (const frame of this.frames) {
+      if (frame.type !== "if") continue;
+      const branch = frame.node.branches[frame.node.branches.length - 1];
+      if (
+        branch !== undefined &&
+        branch.condition !== undefined &&
+        this.tokens[branch.condition].text === name
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   span(firstToken: number, lastToken: number): { start: number; end: number } {
@@ -1211,13 +1254,16 @@ class Parser {
           // (Deliberately permissive about #define-vs-#const, see
           // isDefinedSymbol. Judging *which* constant belongs in *which* slot
           // is semantic, and belongs to validate(), spec Sec.8.)
+        } else if (this.guardedByOwnName(tok.text)) {
+          // Rule 1: `if NAME ... NAME ... endif`. The use only runs when NAME
+          // is defined, so there is nothing to report.
         } else {
           // Not a number, not inf, not ours. Either genuinely undefined, or
           // defined in an include we can't read, the builder distinguishes.
           const diagnostic = d.unresolvedConstantInNumericSlot(
             tok,
             argDef,
-            this.includes.length > 0,
+            this.includesUnread(),
           );
           this.diagnostics.push(diagnostic);
           // Held for explainDefinedBelow, which needs the whole symbol table.
@@ -1225,7 +1271,7 @@ class Parser {
             diagnostic,
             tokenIdx,
             argDef,
-            includesPresent: this.includes.length > 0,
+            includesUnread: this.includesUnread(),
           });
         }
       }
@@ -1287,7 +1333,7 @@ class Parser {
     diagnostic: Diagnostic;
     tokenIdx: number;
     argDef: { name: string; type: string };
-    includesPresent: boolean;
+    includesUnread: boolean;
   }[] = [];
 
   /**
@@ -1302,13 +1348,60 @@ class Parser {
       const later = this.symbols.find(
         (symbol) => symbol.name === useText && symbol.nameToken > use.tokenIdx,
       );
-      if (!later) continue;
+      if (!later) {
+        // Defined nowhere. A name one character off one that IS defined is a
+        // slip, so offer the fix. Positive evidence only: no near neighbour
+        // means the name may be one the data does not know, and stays as is.
+        const suggestion = this.nearestDefinedName(useText);
+        if (suggestion !== undefined) {
+          use.diagnostic.message += ` Did you mean "${suggestion}"?`;
+          use.diagnostic.suggestion = suggestion;
+        }
+        continue;
+      }
       const line = this.lineOf(this.tokens[later.nameToken].start);
-      const fix = use.includesPresent
+      const fix = use.includesUnread
         ? `Unless an include file defines it first, "${use.argDef.name}" may not get a valid ${use.argDef.type}.`
         : `"${use.argDef.name}" won't get a valid ${use.argDef.type}. Move the definition above this line.`;
       use.diagnostic.message = `"${useText}" is defined on line ${line}, below this use. The game only counts a name from where it is defined. ${fix}`;
     }
+  }
+
+  private readonly nearestNameCache = new Map<string, string | undefined>();
+
+  /**
+   * The defined name one character away from `name`, compared without case
+   * (RMS treats `Foo` and `FOO` as different names, which is the slip worth
+   * catching). Candidates are this file's `#const`/`#define` names, the names
+   * its include files define and the engine's built-ins. Same one-character
+   * bar and family-sibling exemption as validate()'s condition labels, since
+   * at distance two a neighbour always exists and means nothing.
+   */
+  private nearestDefinedName(name: string): string | undefined {
+    if (this.nearestNameCache.has(name)) return this.nearestNameCache.get(name);
+    const lower = name.toLowerCase();
+    let best: string | undefined;
+    const consider = (candidate: string): void => {
+      if (best !== undefined || candidate.length < 4) return;
+      if (Math.abs(candidate.length - lower.length) > 1) return;
+      if (editDistanceCapped(lower, candidate.toLowerCase(), 1) > 1) return;
+      if (isFamilySibling(name, candidate)) return;
+      best = candidate;
+    };
+    for (const symbol of this.symbols) consider(symbol.name);
+    for (const candidate of this.externalSymbols) consider(candidate);
+    for (const candidate of this.builtinConstants) consider(candidate);
+    this.nearestNameCache.set(name, best);
+    return best;
+  }
+
+  /**
+   * Might a name come from an include file nobody read? Read at the time of
+   * use, not cached, because `this.includes` is still filling while the
+   * parse runs and the old rule counts what has been seen so far.
+   */
+  private includesUnread(): boolean {
+    return this.includesUnreadOption ?? this.includes.length > 0;
   }
 
   private isDefinedSymbol(name: string): boolean {
@@ -1317,6 +1410,11 @@ class Parser {
     // `#const FOREST 10`, and `effect_amount ... ATTR_FOUNDATION_TERRAIN
     // FOREST` drew "isn't defined in this file" until this line (2026-09-28).
     if (this.builtinConstants.has(name)) return true;
+    // Defined by an include file the caller read. Counted from anywhere in
+    // the file, not "so far", since the parse cannot know where the
+    // directive sat relative to the use. validate() applies the position
+    // rule (RMS0303) once the whole index is in hand.
+    if (this.externalSymbols.has(name)) return true;
     for (const symbol of this.symbols) {
       if (symbol.name === name) return true;
     }
@@ -1914,6 +2012,39 @@ function parseRndValue(text: string): { rnd: [number, number] } | undefined {
   const m = /^rnd\((-?\d+),(-?\d+)\)$/.exec(text);
   if (!m) return undefined;
   return { rnd: [Number(m[1]), Number(m[2])] };
+}
+
+/**
+ * Include resolution Rule 2 (docs/include-resolution-design.md Sec.4.5).
+ * True when two names are members of one numbered or lettered family, so one
+ * is not a typo of the other. Two clauses.
+ *
+ * 1. Digits. Stripping every run of digits from both gives equal strings
+ *    (`9_PLAYER_GAME` and `8_PLAYER_GAME`, `BR_CENTRAL_25` and `BR_CENTRAL_24`).
+ * 2. Lettered slots. Split on `_`, both have the same number of parts, exactly
+ *    one part differs, and both differing parts are one letter
+ *    (`PREDATOR_A_POLAR_BEAR` and `PREDATOR_B_POLAR_BEAR`). A two-letter part
+ *    is a word, so `PLAYER_AA` and `PLAYER_AB` are not siblings.
+ *
+ * Covers 195 numbered sites in DE's maps, Rage Forest's 2 lettered ones and
+ * AK_Namatjira's 2. A real slip such as `REGICIDES` for `REGICIDE` has no digit
+ * or single-letter part to differ in, so it still reports.
+ */
+export function isFamilySibling(a: string, b: string): boolean {
+  if (a === b) return false;
+  if (a.replace(/\d+/g, "") === b.replace(/\d+/g, "")) return true;
+  const aParts = a.split("_");
+  const bParts = b.split("_");
+  if (aParts.length !== bParts.length) return false;
+  let differing = 0;
+  for (let i = 0; i < aParts.length; i++) {
+    if (aParts[i] === bParts[i]) continue;
+    if (!/^[A-Za-z]$/.test(aParts[i]) || !/^[A-Za-z]$/.test(bParts[i])) {
+      return false;
+    }
+    differing++;
+  }
+  return differing === 1;
 }
 
 /**

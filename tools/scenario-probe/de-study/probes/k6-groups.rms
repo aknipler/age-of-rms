@@ -1,0 +1,27 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DIRT land_position 50 50 number_of_tiles 0 base_size 2 }
+<OBJECTS_GENERATION>
+create_object_group MINES {
+add_object GOLD 20
+add_object STONE 80
+}
+create_object_group HUNT {
+add_object DEER 70
+add_object SHEEP 30
+}
+create_object_group THREE {
+add_object FORAGE 33
+add_object BOAR 33
+add_object TURKEY 34
+}
+create_object_group ZERO {
+add_object GOLD 100
+add_object STONE 0
+}
+create_object MINES { number_of_objects 40 }
+create_object HUNT { number_of_objects 40 }
+create_object THREE { number_of_objects 40 }
+create_object ZERO { number_of_objects 30 }

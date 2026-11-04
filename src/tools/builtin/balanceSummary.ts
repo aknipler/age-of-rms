@@ -150,6 +150,10 @@ interface ResourceCell {
   /** Summed only across runs where it showed up, a "how far, when present" average, which is meaningless to divide by a run that had nothing. */
   nearestDistanceSum: number;
   patchCountSum: number;
+  /** Sums of squares of the three per-run figures, for variance. Same denominators as the sums above. */
+  totalAmountSqSum: number;
+  nearestDistanceSqSum: number;
+  patchCountSqSum: number;
 }
 
 function emptyCell(): ResourceCell {
@@ -158,6 +162,9 @@ function emptyCell(): ResourceCell {
     totalAmountSum: 0,
     nearestDistanceSum: 0,
     patchCountSum: 0,
+    totalAmountSqSum: 0,
+    nearestDistanceSqSum: 0,
+    patchCountSqSum: 0,
   };
 }
 
@@ -246,6 +253,9 @@ export function foldGeneration(
       cell.totalAmountSum += running.total;
       cell.nearestDistanceSum += running.nearest;
       cell.patchCountSum += running.count;
+      cell.totalAmountSqSum += running.total * running.total;
+      cell.nearestDistanceSqSum += running.nearest * running.nearest;
+      cell.patchCountSqSum += running.count * running.count;
     }
   }
 }
@@ -263,6 +273,17 @@ const RESOURCE_LABEL: Record<ResourceKey, string> = {
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+/**
+ * Population variance from a sum and a sum of squares over `n` runs
+ * (E[x^2] - E[x]^2). Floating point can leave a tiny negative for a figure
+ * that never changed, so it is clamped at 0.
+ */
+function variance(sum: number, sqSum: number, n: number): number {
+  if (n <= 0) return 0;
+  const mean = sum / n;
+  return Math.max(0, sqSum / n - mean * mean);
 }
 
 function buildPlayerCountSection(
@@ -288,22 +309,40 @@ function buildPlayerCountSection(
     ];
   }
 
+  // Resource first, then player, so one resource's players sit side by side.
   const rows: string[][] = [];
-  for (const player of players) {
-    for (const key of activeKeys) {
+  for (const key of activeKeys) {
+    for (const player of players) {
       const cell = byPlayer.get(player)?.get(key) ?? emptyCell();
-      const avgAmount = Math.round(cell.totalAmountSum / runsPerPlayerCount);
+      const n = runsPerPlayerCount;
+      const avgAmount = Math.round(cell.totalAmountSum / n);
+      const amountVar = Math.round(
+        variance(cell.totalAmountSum, cell.totalAmountSqSum, n),
+      );
+      const withAny = cell.runsWithAny;
       const avgNearest =
-        cell.runsWithAny > 0
-          ? String(round1(cell.nearestDistanceSum / cell.runsWithAny))
+        withAny > 0 ? String(round1(cell.nearestDistanceSum / withAny)) : "—";
+      const nearestVar =
+        withAny > 0
+          ? String(
+              round1(
+                variance(
+                  cell.nearestDistanceSum,
+                  cell.nearestDistanceSqSum,
+                  withAny,
+                ),
+              ),
+            )
           : "—";
-      const avgPatches = round1(cell.patchCountSum / runsPerPlayerCount);
       rows.push([
-        `Player ${player}`,
         RESOURCE_LABEL[key],
+        `Player ${player}`,
         String(avgAmount),
+        String(amountVar),
         avgNearest,
-        String(avgPatches),
+        nearestVar,
+        String(round1(cell.patchCountSum / n)),
+        String(round1(variance(cell.patchCountSum, cell.patchCountSqSum, n))),
       ]);
     }
   }
@@ -334,11 +373,14 @@ function buildPlayerCountSection(
     {
       kind: "table",
       columns: [
-        "Player",
         "Resource",
+        "Player",
         "Avg amount",
+        "Amount variance",
         "Avg nearest (tiles)",
-        "Patches/run",
+        "Nearest variance",
+        "Objects/run",
+        "Objects variance",
       ],
       rows,
     },
@@ -357,7 +399,7 @@ export function buildBalanceOutput(
     { kind: "heading", text: "Balance summary" },
     {
       kind: "text",
-      text: "A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance, an approximation, since the script itself does not say whose it is.",
+      text: "Objects/run counts each placed resource object (one mine, one bush, one tree), not clusters. Variance is taken across the generations, so a low figure means the player gets nearly the same result every time. A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance, an approximation, since the script itself does not say whose it is.",
     },
   ];
   for (const pc of selectedCounts) {

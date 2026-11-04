@@ -1,0 +1,17 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain WATER
+create_player_lands { terrain_type DIRT number_of_tiles 900 base_size 9 other_zone_avoidance_distance 6 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object HOUSE { set_place_for_every_player number_of_objects 2 min_distance_to_players 6 max_distance_to_players 9 }
+create_object GUARD_TOWER { set_place_for_every_player min_distance_to_players 8 max_distance_to_players 12 }
+create_object OUTPOST { set_place_for_every_player min_distance_to_players 6 max_distance_to_players 10 }
+create_object WATCH_TOWER { set_place_for_every_player min_distance_to_players 6 max_distance_to_players 10 }
+create_object FLAG_A { set_place_for_every_player min_distance_to_players 4 max_distance_to_players 6 }
+create_object RUINS { number_of_objects 3 set_gaia_object_only }
+create_object FISH { number_of_objects 12 }
+create_object SHORE_FISH { number_of_objects 10 terrain_to_place_on WATER }
+create_object GREAT_FISH_MARLIN { number_of_objects 4 }
+create_object FISH_TUNA { number_of_objects 6 }

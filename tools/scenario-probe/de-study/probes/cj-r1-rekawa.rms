@@ -1,0 +1,943 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#const ONGRID_PLACEHOLDER 1613
+#const INVIS 1291
+#const ONGRID_PLACEHOLDER2 600
+
+#const TREE_50_WOOD 1350
+#const OYSTERS 2170
+#const FISH_PLACEHOLDER 647
+#const REED 1350
+#const GRASS_PATCH 301
+#const BAMBOO_TREE 348
+#const BONFIRE 304
+#const SEAGULLS 303
+#const FENCE_RUBBLE 1065
+#const ROCK2 1323
+#const BARRELS 1330
+#const PLANT_JUNGLE 1351
+#const PLANT_UNDERBRUSH_TROPICAL 1352
+#const PLANT_UNDERBRUSH 1353
+#const PLANT_RAINFOREST 1354
+#const PLANT_UNDERBRUSH_RAINFOREST 1355
+#const GRASS_GREEN 1358
+#const GRASS_DRY 1359
+#const PLANT_BUSH_GREEN 1360
+#const PLANT_SHRUB_GREEN 1362
+#const PLANT_SHRUB_DRY 1363
+#const PLANT_WEEDS 1364
+#const PLANT_DEAD 1365
+#const PLANT_FLOWERS 1366
+#const OFF_GRID 647
+#const MAKE_MANGROVEFOREST_TERRAIN 1641
+#const MAKE_DIRT3_TERRAIN 1640
+#const MAKE_FOREST_TERRAIN 1639
+
+#const SHIPWRC 2352
+#const STAT_IND 1777
+
+
+
+#const TEMP_TERRAIN 68
+#const TEMP_TERRAIN2 19
+#const TEMP_TERRAIN3 16
+#const UPPER_LAND_TERRAIN 3
+#const LOWER_LAND_TERRAIN 60
+#const UPPER_LAND_MASK 51
+#const UPPER_LAND_MASK2 56
+#const UPPER_LAND_MASK3 58
+#const LOWER_LAND_MASK 56
+#const LOWER_LAND_MASK2 51
+#const LOWER_LAND_MASK3 62
+
+
+
+
+
+
+effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER2 ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_HITPOINTS 0
+
+
+effect_percent SET_ATTRIBUTE MAKE_MANGROVEFOREST_TERRAIN ATTR_RADIUS_1 50
+effect_percent SET_ATTRIBUTE MAKE_MANGROVEFOREST_TERRAIN ATTR_RADIUS_2 50
+effect_amount SET_ATTRIBUTE MAKE_MANGROVEFOREST_TERRAIN ATTR_FOUNDATION_TERRAIN 55
+
+effect_percent SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_RADIUS_1 50
+effect_percent SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_RADIUS_2 50
+effect_amount SET_ATTRIBUTE MAKE_DIRT3_TERRAIN ATTR_FOUNDATION_TERRAIN 3
+
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_1 50
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_2 50
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_FOUNDATION_TERRAIN 10
+
+
+effect_amount GAIA_SET_ATTRIBUTE FENCE_RUBBLE ATTR_STORAGE_VALUE 30000
+
+
+
+
+<PLAYER_SETUP>
+direct_placement
+
+
+#const TRIBUTE_INEFFICIENCY 46
+effect_percent MOD_RESOURCE TRIBUTE_INEFFICIENCY ATTR_SET 40
+#const LEMBOS 2123
+#const WARLEMBOS 2124
+effect_amount SET_ATTRIBUTE LEMBOS ATTR_RELOAD_TIME 99000
+effect_amount SET_ATTRIBUTE WARLEMBOS ATTR_RELOAD_TIME 3
+effect_amount SET_ATTRIBUTE LEMBOS ATTR_ATTACK 1025
+effect_amount SET_ATTRIBUTE LEMBOS ATTR_SHOWN_ATTACK 1
+
+#const JUNK 15
+effect_amount SET_ATTRIBUTE JUNK ATTR_POPULATION 0
+
+
+
+
+<LAND_GENERATION>
+
+base_terrain GRASS
+
+
+
+
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 4 30 border_fuzziness 44 left_border -15 top_border -15 bottom_border -15 right_border 93 }
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 4 90 border_fuzziness 44 left_border -15 top_border -15 bottom_border -15 right_border 89 }
+
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 96 30 border_fuzziness 44 right_border -15 top_border -15 bottom_border -15 left_border 93 }
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 96 90 border_fuzziness 44 right_border -15 top_border -15 bottom_border -15 left_border 89 }
+
+create_land { terrain_type WATER base_size 1 land_percent 100 land_position 50 8 border_fuzziness 44 right_border -15 top_border -15 bottom_border 81 left_border -15 }
+
+
+create_land { terrain_type FOREST base_size 1 land_percent 100 min_placement_distance 6 border_fuzziness 11 right_border 49 top_border 64 bottom_border 6 left_border 49 zone 1 base_elevation 1 }
+create_land { terrain_type FOREST base_size 1 land_percent 100 min_placement_distance 6 border_fuzziness 11 right_border 49 top_border 64 bottom_border 6 left_border 49 zone 1 base_elevation 1 }
+create_land { terrain_type FOREST base_size 1 land_percent 100 min_placement_distance 6 border_fuzziness 11 right_border 49 top_border 64 bottom_border 6 left_border 49 zone 1 base_elevation 1 }
+
+create_land { terrain_type TEMP_TERRAIN2 base_size 1 land_percent 100 land_position 50 91 border_fuzziness 99 right_border 48 top_border 87 bottom_border -15 left_border 48 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN2 base_size 1 land_percent 100 land_position 50 94 border_fuzziness 99 right_border 45 top_border 92 bottom_border -15 left_border 45 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN2 base_size 1 land_percent 100 land_position 50 97 border_fuzziness 99 right_border 42 top_border 95 bottom_border -15 left_border 42 zone 1 base_elevation 1 }
+
+
+create_land { terrain_type DLC_WATER5 base_size 3 number_of_tiles 600 land_position 50 60 clumping_factor 25 border_fuzziness 100 right_border 47 top_border 57 bottom_border 37 left_border 47 zone 1 land_id 11 }
+
+
+
+
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 4 64 clumping_factor 25 border_fuzziness 66 right_border 88 top_border 64 bottom_border 33 left_border 4 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 6 69 clumping_factor 25 border_fuzziness 33 right_border 88 top_border 64 bottom_border 28 left_border 5 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 6 70 clumping_factor 25 border_fuzziness 33 right_border 88 top_border 64 bottom_border 28 left_border 5 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 8 73 clumping_factor 25 border_fuzziness 17 right_border 88 top_border 64 bottom_border 23 left_border 7 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 9 79 clumping_factor 25 border_fuzziness 17 right_border 88 top_border 64 bottom_border 18 left_border 9 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 10 86 clumping_factor 25 border_fuzziness 17 right_border 87 top_border 64 bottom_border 13 left_border 11 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 12 rnd(92,94) clumping_factor 25 border_fuzziness 17 right_border 87 top_border 64 bottom_border 5 left_border 12 zone 1 base_elevation 1 }
+
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 4 56 clumping_factor 25 border_fuzziness 66 right_border 90 top_border 53 bottom_border 44 left_border 4 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 6 51 clumping_factor 25 border_fuzziness 33 right_border 90 top_border 48 bottom_border 44 left_border 5 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 7 50 clumping_factor 25 border_fuzziness 33 right_border 90 top_border 48 bottom_border 44 left_border 6 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 9 46 clumping_factor 25 border_fuzziness 17 right_border 90 top_border 43 bottom_border 44 left_border 8 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 10 rnd(39,42) clumping_factor 25 border_fuzziness 17 right_border 90 top_border 38 bottom_border 43 left_border rnd(7,10) zone 1 base_elevation 1 }
+
+
+
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 96 64 clumping_factor 25 border_fuzziness 66 left_border 88 top_border 64 bottom_border 33 right_border 4 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 94 69 clumping_factor 25 border_fuzziness 33 left_border 88 top_border 64 bottom_border 28 right_border 5 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 94 70 clumping_factor 25 border_fuzziness 33 left_border 88 top_border 64 bottom_border 28 right_border 5 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 92 73 clumping_factor 25 border_fuzziness 17 left_border 88 top_border 64 bottom_border 23 right_border 7 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 91 79 clumping_factor 25 border_fuzziness 17 left_border 88 top_border 64 bottom_border 18 right_border 9 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 90 86 clumping_factor 25 border_fuzziness 17 left_border 87 top_border 64 bottom_border 13 right_border 11 zone 1 base_elevation 1 }
+create_land { terrain_type TEMP_TERRAIN base_size 2 number_of_tiles 222 land_position 88 rnd(92,94) clumping_factor 25 border_fuzziness 17 left_border 87 top_border 64 bottom_border 5 right_border 12 zone 1 base_elevation 1 }
+
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 96 56 clumping_factor 25 border_fuzziness 66 left_border 90 top_border 53 bottom_border 44 right_border 4 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 94 51 clumping_factor 25 border_fuzziness 33 left_border 90 top_border 48 bottom_border 44 right_border 5 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 93 50 clumping_factor 25 border_fuzziness 33 left_border 90 top_border 48 bottom_border 44 right_border 6 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 91 46 clumping_factor 25 border_fuzziness 17 left_border 90 top_border 43 bottom_border 44 right_border 8 zone 1 base_elevation 1 }
+create_land { terrain_type GRASS2 base_size 2 number_of_tiles 55 land_position 90 rnd(39,42) clumping_factor 25 border_fuzziness 17 left_border 90 top_border 38 bottom_border 43 right_border rnd(7,10) zone 1 base_elevation 1 }
+
+
+
+
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 88 24 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 16 99 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+
+
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 12 24 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+create_land { terrain_type DIRT2 base_size 1 number_of_tiles 1 land_position 84 99 border_fuzziness 100 land_id 7 base_elevation 1 zone 3 }
+
+
+
+
+create_land { terrain_type GRASS2 base_size 1 land_percent 100 land_position 87 25 border_fuzziness 6 land_id 8 right_border 7 top_border 24 base_elevation 1 zone 3 }
+
+create_land { terrain_type GRASS base_size 1 land_percent 100 land_position 36 99 border_fuzziness 6 land_id 8 left_border 11 top_border 63 base_elevation 1 zone 3 }
+
+
+
+create_land { terrain_type GRASS2 base_size 1 land_percent 100 land_position 13 25 border_fuzziness 6 land_id 8 left_border 7 top_border 24 base_elevation 1 zone 3 }
+
+create_land { terrain_type GRASS base_size 1 land_percent 100 land_position 64 99 border_fuzziness 6 land_id 8 right_border 11 top_border 63 base_elevation 1 zone 3 }
+
+
+if 2_PLAYER_GAME
+#define AT_LEAST_2
+elseif 3_PLAYER_GAME
+#define AT_LEAST_2 #define AT_LEAST_3
+if TEAM1_SIZE2 #define 2V1 endif
+elseif 4_PLAYER_GAME
+#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4
+if TEAM1_SIZE2 if TEAM2_SIZE2 #define 2V2
+
+start_random
+percent_chance 50 #define FLIP_TEAMS
+end_random
+
+
+create_land { terrain_type GRASS2 if FLIP_TEAMS assign_to AT_COLOR 2 0 0 else assign_to AT_COLOR 1 0 0 endif base_size 3 number_of_tiles 0 land_position 29 40 bottom_border 55 top_border 10 left_border 10 right_border 55 clumping_factor 22 zone 2 base_elevation 1 }
+create_land { terrain_type GRASS if FLIP_TEAMS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 4 0 0 endif base_size 3 number_of_tiles 0 land_position 29 80 top_border 55 left_border 10 right_border 55 clumping_factor 22 zone 2 base_elevation 1 }
+create_land { terrain_type GRASS2 if FLIP_TEAMS assign_to AT_COLOR 1 0 0 else assign_to AT_COLOR 2 0 0 endif base_size 3 number_of_tiles 0 land_position 71 40 bottom_border 40 top_border 10 left_border 55 right_border 10 clumping_factor 22 zone 2 base_elevation 1 }
+create_land { terrain_type GRASS if FLIP_TEAMS assign_to AT_COLOR 4 0 0 else assign_to AT_COLOR 3 0 0 endif base_size 3 number_of_tiles 0 land_position 71 80 top_border 55 left_border 55 right_border 10 clumping_factor 22 zone 2 base_elevation 1 }
+
+
+
+endif endif
+elseif 5_PLAYER_GAME
+#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5
+if TEAM1_SIZE3 if TEAM2_SIZE2 #define 3V2 endif elseif TEAM2_SIZE3 if TEAM1_SIZE2 #define 3V2 endif endif
+elseif 6_PLAYER_GAME
+#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6
+if TEAM1_SIZE3 if TEAM2_SIZE3 #define 3V3 endif endif
+
+
+elseif 7_PLAYER_GAME
+#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6 #define AT_LEAST_7
+if TEAM1_SIZE4 if TEAM2_SIZE3 #define 4V3 endif elseif TEAM2_SIZE4 if TEAM1_SIZE3 #define 4V3 endif endif
+elseif 8_PLAYER_GAME
+#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6 #define AT_LEAST_7 #define AT_LEAST_8
+if TEAM1_SIZE4 if TEAM2_SIZE4
+#define 4V4
+
+endif endif
+endif
+
+
+
+
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 50 20 border_fuzziness 24 right_border 47 top_border 19 bottom_border 45 left_border 47 zone 1 land_id 3 }
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 50 30 border_fuzziness 24 right_border 47 top_border 19 bottom_border 45 left_border 47 zone 1 land_id 3 }
+
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 33 60 border_fuzziness 24 right_border 52 top_border 57 bottom_border 37 zone 1 }
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 5 60 border_fuzziness 24 right_border 52 top_border 57 bottom_border 37 zone 1 }
+
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 67 60 border_fuzziness 24 top_border 57 bottom_border 37 left_border 52 zone 1 }
+create_land { terrain_type DLC_MANGROVESHALLOW base_size 1 land_percent 100 land_position 95 60 border_fuzziness 24 top_border 57 bottom_border 37 left_border 52 zone 1 }
+
+
+
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 3 { base_terrain GRASS number_of_tiles 800 number_of_clumps 115 spacing 0 enable_balanced_elevation }
+create_elevation 3 { base_terrain GRASS2 number_of_tiles 550 number_of_clumps 135 spacing 0 enable_balanced_elevation }
+create_elevation 5 { base_terrain TEMP_TERRAIN2 number_of_tiles 2000 number_of_clumps 125 spacing 0 enable_balanced_elevation }
+create_elevation 3 { base_terrain FOREST number_of_tiles 100 number_of_clumps 15 spacing 0 enable_balanced_elevation }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<TERRAIN_GENERATION>
+
+
+
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+
+
+create_terrain BEACH { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain BEACH land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+
+create_terrain BEACH { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain BEACH land_percent 100 number_of_clumps 3000 }
+
+
+
+
+
+create_terrain DLC_ROCK { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 8000 }
+create_terrain GRASS { base_terrain DLC_ROCK number_of_tiles 5 number_of_clumps 3 spacing_to_other_terrain_types 1 }
+create_terrain GRASS { base_terrain DLC_ROCK number_of_tiles 4 number_of_clumps 3 }
+create_terrain FOREST { base_terrain DLC_ROCK number_of_tiles 4 number_of_clumps 3 spacing_to_other_terrain_types 1 }
+create_terrain FOREST { base_terrain DLC_ROCK number_of_tiles 12 number_of_clumps 7 }
+
+create_terrain LEAVES { base_terrain FOREST number_of_tiles 20 number_of_clumps 13 }
+
+create_terrain LEAVES { base_terrain DLC_ROCK number_of_tiles 90 number_of_clumps 40 terrain_mask 1 }
+create_terrain DLC_GRAVELBEACH { base_terrain DLC_ROCK number_of_tiles 90 number_of_clumps 40 terrain_mask 1 }
+create_terrain DLC_CRACKED { base_terrain DLC_ROCK number_of_tiles 25 number_of_clumps 19 terrain_mask 1 }
+
+
+
+
+
+create_terrain TEMP_TERRAIN2 { base_terrain GRASS land_percent 100 number_of_clumps 30000 }
+create_terrain TEMP_TERRAIN2 { base_terrain GRASS land_percent 100 number_of_clumps 30000 }
+create_terrain TEMP_TERRAIN2 { base_terrain GRASS land_percent 100 number_of_clumps 30000 }
+
+
+create_terrain TEMP_TERRAIN2 { base_terrain WATER land_percent 100 number_of_clumps 30000 }
+create_terrain TEMP_TERRAIN2 { base_terrain WATER land_percent 100 number_of_clumps 30000 }
+
+
+create_terrain WATER { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain WATER { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain WATER { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+
+
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 30000 }
+
+
+create_terrain GRASS { base_terrain DLC_WATER5 land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain DLC_WATER5 land_percent 100 number_of_clumps 30000 }
+
+
+create_terrain DLC_WATER5 { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_WATER5 { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_WATER5 { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+
+
+
+create_terrain GRASS { base_terrain DLC_MANGROVESHALLOW land_percent 100 number_of_clumps 30000 }
+create_terrain GRASS { base_terrain DLC_MANGROVESHALLOW land_percent 100 number_of_clumps 30000 }
+
+
+create_terrain DLC_MANGROVESHALLOW { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_MANGROVESHALLOW { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+create_terrain DLC_MANGROVESHALLOW { base_terrain GRASS land_percent 100 number_of_clumps 30000 height_limits 0 0 spacing_to_other_terrain_types 1 set_flat_terrain_only }
+
+
+create_terrain WATER { base_terrain DLC_WATER5 number_of_tiles 400 number_of_clumps 180 terrain_mask 1 spacing_to_other_terrain_types 1 }
+create_terrain WATER { base_terrain DLC_WATER5 number_of_tiles 400 number_of_clumps 180 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain MED_WATER { base_terrain WATER base_layer DLC_WATER5 number_of_tiles 400 number_of_clumps 180 terrain_mask 1 spacing_to_other_terrain_types 1 }
+create_terrain MED_WATER { base_terrain WATER base_layer MED_WATER number_of_tiles 400 number_of_clumps 180 terrain_mask 2 spacing_to_other_terrain_types 1 }
+create_terrain DEEP_WATER { base_terrain MED_WATER base_layer WATER number_of_tiles 400 number_of_clumps 180 terrain_mask 1 spacing_to_other_terrain_types 1 }
+create_terrain DEEP_WATER { base_terrain MED_WATER number_of_tiles 400 number_of_clumps 180 spacing_to_other_terrain_types 2 }
+create_terrain WATER { base_terrain WATER base_layer DLC_WATER5 number_of_tiles 400 number_of_clumps 180 }
+
+
+create_terrain TEMP_TERRAIN3 { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 5 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 4 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 3 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 2 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain ICE { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 spacing_to_other_terrain_types 1 }
+
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain ICE land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 }
+create_terrain GRASS { base_terrain TEMP_TERRAIN3 land_percent 100 number_of_clumps 3000 }
+
+
+
+
+
+create_terrain TEMP_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 1 }
+create_terrain BAMBOO { base_terrain TEMP_TERRAIN number_of_tiles 50 number_of_clumps 15 set_avoid_player_start_areas 13 spacing_to_other_terrain_types 4 }
+create_terrain BAMBOO { base_terrain GRASS2 number_of_tiles 50 number_of_clumps 15 set_avoid_player_start_areas 13 spacing_to_other_terrain_types 4 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 10000 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 10000 }
+create_terrain GRASS2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 10000 }
+
+create_terrain BAMBOO { base_terrain GRASS number_of_tiles 300 number_of_clumps 50 set_avoid_player_start_areas 13 spacing_to_other_terrain_types 4 }
+
+
+create_terrain GRASS3 { base_terrain WATER number_of_tiles 400 number_of_clumps 4 set_avoid_player_start_areas 58 spacing_to_other_terrain_types 8 }
+create_terrain GRASS3 { base_terrain WATER number_of_tiles 330 number_of_clumps 7 set_avoid_player_start_areas 56 spacing_to_other_terrain_types 7 }
+create_terrain GRASS3 { base_terrain WATER number_of_tiles 230 number_of_clumps 9 set_avoid_player_start_areas 54 spacing_to_other_terrain_types 6 }
+
+create_terrain SHALLOW { base_terrain GRASS3 number_of_tiles 150 number_of_clumps 11 }
+create_terrain SHALLOW { base_terrain GRASS3 number_of_tiles 70 number_of_clumps 22 }
+create_terrain SHALLOW { base_terrain GRASS3 number_of_tiles 70 number_of_clumps 37 }
+
+
+create_terrain SHALLOW { base_terrain GRASS3 land_percent 100 number_of_clumps 3000 terrain_mask 1 }
+
+
+
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+create_terrain BAMBOO { base_terrain FOREST land_percent 100 number_of_clumps 3000 }
+
+
+
+
+create_terrain WATER { base_terrain DLC_MANGROVESHALLOW land_percent 100 number_of_clumps 100 terrain_mask 1 spacing_to_other_terrain_types 2 set_scale_by_groups }
+
+
+create_terrain MED_WATER { base_terrain WATER land_percent 100 number_of_clumps 100 terrain_mask 1 spacing_to_other_terrain_types 3 set_scale_by_groups }
+create_terrain MED_WATER { base_terrain WATER land_percent 100 number_of_clumps 100 spacing_to_other_terrain_types 6 set_scale_by_groups }
+create_terrain DEEP_WATER { base_terrain MED_WATER land_percent 100 number_of_clumps 100 terrain_mask 1 spacing_to_other_terrain_types 2 set_scale_by_groups }
+
+
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+create_terrain LOWER_LAND_TERRAIN { base_terrain GRASS land_percent 100 number_of_clumps 3000 }
+
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+create_terrain UPPER_LAND_TERRAIN { base_terrain GRASS2 land_percent 100 number_of_clumps 3000 }
+
+
+
+create_terrain LOWER_LAND_MASK { base_terrain LOWER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK { base_terrain LOWER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+
+create_terrain LOWER_LAND_MASK2 { base_terrain LOWER_LAND_TERRAIN number_of_tiles 320 number_of_clumps 34 terrain_mask 1 }
+
+
+create_terrain LOWER_LAND_MASK3 { base_terrain LOWER_LAND_TERRAIN land_percent 3 number_of_clumps 25 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK3 { base_terrain LOWER_LAND_TERRAIN land_percent 5 number_of_clumps 62 terrain_mask 1 }
+
+create_terrain LOWER_LAND_MASK2 { base_layer LOWER_LAND_MASK number_of_tiles 60 number_of_clumps 25 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK2 { base_layer LOWER_LAND_MASK3 number_of_tiles 40 number_of_clumps 25 terrain_mask 1 }
+create_terrain LOWER_LAND_MASK { base_layer LOWER_LAND_MASK3 land_percent 1 number_of_clumps 122 terrain_mask 1 }
+
+create_terrain UPPER_LAND_MASK { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+create_terrain UPPER_LAND_MASK { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+
+create_terrain UPPER_LAND_MASK2 { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+create_terrain UPPER_LAND_MASK2 { base_terrain UPPER_LAND_TERRAIN land_percent 4 number_of_clumps 33 terrain_mask 1 }
+
+create_terrain UPPER_LAND_MASK3 { base_terrain UPPER_LAND_TERRAIN number_of_tiles 120 number_of_clumps 27 terrain_mask 1 set_flat_terrain_only height_limits 1 1 spacing_to_other_terrain_types 1 }
+
+create_terrain UPPER_LAND_MASK3 { base_layer LOWER_LAND_MASK number_of_tiles 40 number_of_clumps 18 terrain_mask 1 set_flat_terrain_only height_limits 1 1 spacing_to_other_terrain_types 1 }
+create_terrain UPPER_LAND_MASK3 { base_layer UPPER_LAND_MASK2 number_of_tiles 30 number_of_clumps 18 terrain_mask 1 set_flat_terrain_only height_limits 1 1 spacing_to_other_terrain_types 1 }
+
+
+
+
+
+
+
+
+if MEDIUM_MAP
+
+
+endif
+
+
+#const STATUE_LEFT 1343
+#const STATUE_RIGHT 1345
+
+
+
+
+
+
+if BARRACKS_START
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+if MEDIUM_MAP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+endif
+
+
+
+
+
+
+
+
+
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+if DEBUG_MODE endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if MEDIUM_MAP
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if CUSTOM_OSTRICH_BALANCE
+else
+endif
+
+
+if CUSTOM_OSTRICH_BALANCE
+else
+endif
+
+
+if CUSTOM_OSTRICH_BALANCE
+else
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#const DOLPHIN 61
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

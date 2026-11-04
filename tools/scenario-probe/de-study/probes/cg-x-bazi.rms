@@ -1,0 +1,4402 @@
+/*
+
+	PLEASE PLEASE CAN I WIN PLEASE
+
+*/
+
+#const MAPSCALE_MODIFIER 1
+#include_drs includes/scaling.inc
+
+/* ----------------------------------- Debug Settings */
+
+/* #define DEBUG_MODE */
+/* #define TERRAIN_DEBUGGING */
+/* #define EMPIRE_WARS_TESTING */
+#define COLLAPSE
+
+/* ----------------------------------- Generation Settings */
+
+#define PALAEARCTIC_EUROPE_TEMPERATE
+/* #define CENTRALISE_SPAWN */
+/* #define RESTRICTED_SPAWN */
+
+/* ----------------------------------- Nomad Settings */
+
+/* #define NOMAD_MAP */
+/* #define NOMAD_SCATTERED */
+/* #define NOMAD_UNIT */
+#define NOMAD_TREATY
+/* #define NOMAD_HERDABLE */
+
+/* ----------------------------------- Themes & Overwrites */
+
+#define OVERWRITES
+if OVERWRITES
+endif
+
+#define MAP_CONSTANTS
+if MAP_CONSTANTS
+	#const STRAGGLER_SPAWN 1051 /* Dragon Tree */
+	#const STRAGGLER_NEUTRAL 1051 /* Dragon Tree */
+
+	#const BEACH_TERRAIN 2
+	#const SEABED_TERRAIN 2
+	
+	#const SPAWN_FOREST 48
+	#const SPAWN_TERRAIN 41
+
+	#const BASE_FOREST 48
+	#const BASE_FOREST_VARIATION 48
+
+	#const BASE_TERRAIN 41
+	#const BASE_BLEND_A 6
+	#const BASE_BLEND_B 42
+	#const BASE_BLEND_C 3
+	#const BASE_BLEND_D 0
+
+	#const EYE_TERRAIN 47
+	#const EYE_BLEND 70
+
+	#const BAZI_TERRAIN 0
+	#const BAZI_BLEND_A 5
+	#const BAZI_BLEND_B 100
+	#const BAZI_BLEND_C 122
+	#const BAZI_BLEND_D 76
+
+	#const BORDER_TERRAIN 5
+	#const OUTSIDE_TERRAIN 19
+	#const OUTSIDE_VARIATION 21
+endif
+
+#include_drs includes/themes.inc
+#include_drs includes/constants.inc
+#include_drs includes/decay.inc
+
+<PLAYER_SETUP>
+	#include_drs includes/preliminaries.inc
+	#include_drs includes/gaia_civilisation.inc
+
+	#define WATER_POND
+	#include_drs includes/water_preset.inc
+	water_definition WATER_PRESET
+
+	effect_amount GAIA_SET_ATTRIBUTE GOLD ATTR_TERRAIN_ID 0
+	effect_amount GAIA_SET_ATTRIBUTE STONE ATTR_TERRAIN_ID 0
+
+	direct_placement
+	ai_info_map_type ARABIA 0 0
+
+	if CONFINED_SETUP
+		#const CONFINED_INCREASE 1.2
+	else
+		#const CONFINED_INCREASE 1
+	endif
+	
+<LAND_GENERATION>
+	base_terrain BASE_TERRAIN
+
+	#define BAZI_PLEASE_VOTE_FOR_ME
+	if BAZI_PLEASE_VOTE_FOR_ME
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 91
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 92
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 93
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 94
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 95
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 96
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 97
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 98
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 99
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 14 100
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 15 87
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 15 88
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 15 89
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 15 90
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 15 91
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 16 85
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 16 86
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 16 87
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 17 82
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 17 83
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 17 84
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 17 85
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 18 80
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 18 81
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 18 82
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 19 78
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 19 79
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 19 80
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 20 76
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 20 77
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 20 78
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 21 72
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 21 73
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 21 74
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 21 75
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 21 76
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 22 67
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 22 68
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 22 69
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 22 70
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 22 71
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 22 72
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 37
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 38
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 39
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 40
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 41
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 42
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 43
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 44
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 45
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 46
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 47
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 48
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 49
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 50
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 51
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 52
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 53
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 54
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 55
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 56
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 57
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 58
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 59
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 60
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 61
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 62
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 63
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 64
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 65
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 66
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 23 67
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 24 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 24 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 24 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 24 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 24 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 24 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 25 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 25 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 25 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 25 22
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 25 23
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 25 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 26 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 26 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 26 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 26 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 26 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 27 12
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 27 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 27 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 27 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 28 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 28 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 28 12
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 29 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 29 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 29 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 29 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 30 4
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 30 5
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 30 6
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 30 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 31 1
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 31 2
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 31 3
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 31 4
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 32 0
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 32 1
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 36 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 36 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 36 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 37 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 37 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 37 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 37 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 38 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 38 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 38 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 38 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 39 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 39 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 39 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 40 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 40 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 40 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 40 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 41 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 41 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 41 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 41 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 41 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 41 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 6
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 42 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 6
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 43 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 6
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 44 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 45 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 46 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 46 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 46 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 46 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 46 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 46 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 47 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 48 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 49 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 50 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 51 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 52 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 53 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 54 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 55 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 55 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 55 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 55 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 55 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 55 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 56 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 57 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 57 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 57 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 57 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 57 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 57 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 58 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 58 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 58 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 58 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 58 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 58 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 59 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 59 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 59 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 59 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 60 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 60 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 60 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 60 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 91
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 92
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 93
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 94
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 95
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 96
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 97
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 98
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 99
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 60 100
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 61 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 61 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 61 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 61 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 61 86
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 61 87
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 61 88
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 61 89
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 61 90
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 61 91
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 62 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 62 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 62 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 62 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 62 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 77
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 78
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 79
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 80
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 81
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 82
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 83
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 84
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 85
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 62 86
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 63 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 63 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 63 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 63 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 63 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 63 73
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 63 74
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 63 75
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 63 76
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 63 77
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 64 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 64 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 64 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 64 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 64 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 64 69
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 64 70
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 64 71
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 64 72
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 64 73
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 65 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 65 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 65 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 65 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 65 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 65 64
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 65 65
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 65 66
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 65 67
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 65 68
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 65 69
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 66 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 66 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 66 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 66 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 66 37
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 66 61
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 66 62
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 66 63
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 66 64
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 37
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 67 38
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 67 58
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 67 59
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 67 60
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 67 61
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 12
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 37
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 68 38
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 68 56
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 68 57
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 68 58
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 69 12
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 69 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 69 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 69 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 69 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 69 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 69 55
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 69 56
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 70 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 70 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 70 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 70 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 70 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 70 22
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 70 53
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 70 54
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 70 55
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 71 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 71 52
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 71 53
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 72 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 72 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 72 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 72 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 72 50
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 72 51
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 72 52
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 73 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 73 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 73 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 73 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 73 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 73 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 73 49
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 73 50
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 74 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 74 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 74 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 74 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 74 48
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 74 49
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 75 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 75 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 75 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 75 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 75 46
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 75 47
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 75 48
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 76 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 76 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 76 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 76 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 76 45
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 76 46
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 77 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 77 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 77 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 77 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 77 44
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 77 45
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 78 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 78 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 78 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 78 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 78 43
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 78 44
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 79 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 79 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type EYE_TERRAIN
+			land_position 79 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 79 40
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 79 41
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 79 42
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 79 43
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 80 38
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 80 39
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 80 40
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 81 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 81 37
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 81 38
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 82 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 82 36
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 83 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 83 33
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 83 34
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 83 35
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 84 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 84 31
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 84 32
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 85 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 85 29
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 85 30
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 86 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 86 27
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 86 28
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 87 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 87 25
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 87 26
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 88 22
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 88 23
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 88 24
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 89 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 89 20
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 89 21
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 89 22
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 90 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 90 17
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 90 18
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 90 19
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 91 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 91 14
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 91 15
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 91 16
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 92 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 92 11
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 92 12
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 92 13
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 93 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 93 8
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 93 9
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 93 10
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 94 3
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 94 4
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 94 5
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 94 6
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 94 7
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 95 0
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 95 1
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 95 2
+			base_size 1
+			number_of_tiles 0
+		}
+		create_land
+		{
+			terrain_type BORDER_TERRAIN
+			land_position 95 3
+			base_size 1
+			number_of_tiles 0
+		}
+	endif
+
+	create_land
+	{
+		terrain_type BAZI_TERRAIN
+		land_percent 100
+		base_size 2
+		land_position 50 50
+		land_id 420
+	}
+
+	create_land
+	{
+		land_percent 0
+		base_size 0
+		land_position 30 75
+		assign_to AT_TEAM -10 0 0
+	}
+
+	create_land
+	{
+		land_percent 0
+		base_size 0
+		land_position 55 80
+		assign_to AT_TEAM -10 0 0
+	}
+
+	create_land
+	{
+		terrain_type OUTSIDE_TERRAIN
+		land_percent 100
+		base_size 2
+		land_position 5 50
+	}
+
+	create_land
+	{
+		terrain_type OUTSIDE_TERRAIN
+		land_percent 100
+		base_size 2
+		land_position 95 50
+	}
+
+<ELEVATION_GENERATION>
+	create_elevation 2
+	{
+		enable_balanced_elevation
+		base_terrain BAZI_TERRAIN
+
+		number_of_tiles (256 * MAPSCALE_AREA)
+		number_of_clumps (48 * MAPSCALE_AREA)
+	}
+
+<CLIFF_GENERATION>
+	#include_drs includes/cliffs.inc
+	cliff_type CLIFF_TYPE
+
+<TERRAIN_GENERATION>
+	#include_drs includes/colour.inc
+	color_correction COLOUR_MOOD
+
+	create_terrain EYE_BLEND
+	{
+		base_terrain EYE_TERRAIN
+		land_percent 100
+		number_of_clumps 512
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 1 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 1 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 1 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 1 }
+
+	create_terrain EYE_BLEND
+	{
+		base_terrain BAZI_TERRAIN
+		land_percent 100
+		number_of_clumps 512
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 2 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 2 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 2 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 2 }
+
+	create_terrain EYE_BLEND
+	{
+		base_terrain BAZI_TERRAIN
+		number_of_tiles 88
+		number_of_clumps 32
+		set_scale_by_size
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 3 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 3 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 3 }
+	create_terrain PLACEHOLDER_TERRAIN_A { base_terrain BAZI_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain EYE_TERRAIN 3 }
+
+	create_terrain EYE_BLEND
+	{
+		base_terrain BAZI_TERRAIN
+		number_of_tiles 88
+		number_of_clumps 32
+		set_scale_by_size
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BAZI_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_A land_percent 100 number_of_clumps 512 set_scale_by_groups }
+
+	create_terrain PLACEHOLDER_TERRAIN_B { base_terrain BORDER_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain BAZI_TERRAIN 1 }
+	create_terrain PLACEHOLDER_TERRAIN_B { base_terrain BORDER_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain BAZI_TERRAIN 1 }
+	create_terrain PLACEHOLDER_TERRAIN_B { base_terrain BORDER_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain BAZI_TERRAIN 1 }
+	create_terrain PLACEHOLDER_TERRAIN_B { base_terrain BORDER_TERRAIN land_percent 100 number_of_clumps 512 spacing_to_specific_terrain BAZI_TERRAIN 1 }
+
+	create_terrain BAZI_TERRAIN
+	{
+		base_terrain BORDER_TERRAIN
+		land_percent 100
+		number_of_clumps 512
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BORDER_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_B land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BORDER_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_B land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BORDER_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_B land_percent 100 number_of_clumps 512 set_scale_by_groups }
+	create_terrain BORDER_TERRAIN { base_terrain PLACEHOLDER_TERRAIN_B land_percent 100 number_of_clumps 512 set_scale_by_groups }
+
+
+	create_terrain BASE_FOREST
+	{
+		base_terrain BASE_TERRAIN
+		land_percent 12
+		number_of_clumps 18
+		set_scale_by_groups
+		set_avoid_player_start_areas
+		spacing_to_other_terrain_types 2
+	}
+
+	create_terrain BAZI_BLEND_A
+	{
+		base_terrain BAZI_TERRAIN
+		land_percent 8
+		number_of_clumps 16
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BAZI_BLEND_B
+	{
+		base_terrain BAZI_TERRAIN
+		land_percent 2
+		number_of_clumps 12
+		clumping_factor -10
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BAZI_BLEND_C
+	{
+		base_terrain BAZI_TERRAIN
+		land_percent 8
+		number_of_clumps 12
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain BAZI_BLEND_D
+	{
+		base_terrain BAZI_TERRAIN
+		land_percent 8
+		number_of_clumps 16
+		set_scale_by_groups
+		terrain_mask 1
+	}
+
+	create_terrain OUTSIDE_VARIATION
+	{
+		base_terrain OUTSIDE_TERRAIN
+		land_percent 8
+		number_of_clumps 128
+		set_scale_by_groups
+		spacing_to_other_terrain_types 10
+	}
+
+	create_terrain OUTSIDE_VARIATION
+	{
+		base_terrain OUTSIDE_TERRAIN
+		land_percent 2
+		number_of_clumps 128
+		set_scale_by_groups
+		spacing_to_other_terrain_types 16
+	}
+
+	create_terrain OUTSIDE_VARIATION
+	{
+		base_terrain OUTSIDE_TERRAIN
+		land_percent 1
+		number_of_clumps 128
+		set_scale_by_groups
+		spacing_to_other_terrain_types 24
+	}
+
+<CONNECTION_GENERATION>
+	create_connect_all_players_land
+	{
+		replace_terrain WATER_SHALLOW SHALLOWS
+		replace_terrain WATER_MEDIUM SHALLOWS
+		replace_terrain WATER_DEEP SHALLOWS
+
+		terrain_cost BASE_TERRAIN 1
+		terrain_cost WATER_SHALLOW 2
+		terrain_cost WATER_MEDIUM 3
+		terrain_cost WATER_DEEP 4
+
+		terrain_size WATER_SHALLOW 1 0
+		terrain_size WATER_MEDIUM 1 0
+		terrain_size WATER_DEEP 1 0
+	}
+
+<OBJECTS_GENERATION>
+	if TERRAIN_DEBUGGING
+	else
+		#define PRELIMINARIES
+		if PRELIMINARIES
+			#const RESOURCE_SPACING_DEFAULT 10
+			#const RESOURCE_SPACING_FAR 18
+			#const RESOURCE_RESTRICTION 2
+
+			#include_drs includes/object_setup.inc
+			#include_drs includes/market_objects.inc
+
+			create_object PLACEHOLDER_GENERIC
+			{
+				number_of_objects 80000
+				temp_min_distance_group_placement 1
+				terrain_to_place_on BAZI_TERRAIN
+
+				actor_area 7000
+				actor_area_radius 2
+			}
+
+			create_object ROCK_A
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 1
+				terrain_to_place_on EYE_TERRAIN
+
+				actor_area 8000
+				actor_area_radius 1
+
+				avoid_actor_area 7000 /* Eyeliner */
+			}
+
+			create_object ROCK_B
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 1
+				terrain_to_place_on EYE_TERRAIN
+
+				actor_area 8000
+				actor_area_radius 1
+
+				avoid_actor_area 7000 /* Eyeliner */
+			}
+
+			create_object ROCK_A
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 1
+				terrain_to_place_on EYE_TERRAIN
+
+				actor_area 8000
+				actor_area_radius 1
+
+				avoid_actor_area 7000 /* Eyeliner */
+			}
+
+			create_object ROCK_B
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 1
+				terrain_to_place_on EYE_TERRAIN
+
+				actor_area 8000
+				actor_area_radius 1
+
+				avoid_actor_area 7000 /* Eyeliner */
+			}
+
+			create_object ROCK_A
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 2
+				terrain_to_place_on EYE_TERRAIN
+				actor_area_to_place_in 8000 /* Rocks */
+
+				actor_area 8001
+				actor_area_radius 1
+			}
+
+			create_object ROCK_B
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 2
+				terrain_to_place_on EYE_TERRAIN
+				actor_area_to_place_in 8000 /* Rocks */
+
+				actor_area 8001
+				actor_area_radius 1
+			}
+
+			create_object ROCK_A
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 2
+				terrain_to_place_on EYE_TERRAIN
+
+				actor_area 8002
+				actor_area_radius 1
+			}
+
+			create_object ROCK_B
+			{
+				number_of_objects 1024
+				temp_min_distance_group_placement 2
+				terrain_to_place_on EYE_TERRAIN
+
+				actor_area 8002
+				actor_area_radius 1
+			}
+		endif
+
+		#include_drs includes/town_centres.inc
+		#include_drs includes/villagers.inc
+		#include_drs includes/scouts.inc
+		#include_drs includes/walls.inc
+		
+		#include_drs includes/defend_wonder.inc
+		#include_drs includes/regicide.inc
+		#include_drs includes/capture_relic.inc
+
+		if NOMAD_START
+		else
+			#include_drs includes/stragglers.inc
+
+			#const FORAGE_BUSH_PRIMARY_DISTANCE 8
+			#define FORAGE_BUSH_PRIMARY
+			#const GOLD_PRIMARY_DISTANCE 8
+			#define GOLD_PRIMARY
+			#define GOLD_SECONDARY
+			#define GOLD_TERTIARY
+			#const STONE_PRIMARY_DISTANCE 8
+			#define STONE_PRIMARY
+			#define STONE_SECONDARY
+
+			#include_drs includes/starting_resources.inc
+
+			if DEATH_MATCH
+			elseif INFINITE_RESOURCES
+			else
+				#define HERDABLE_STARTING_COUNT_FOUR
+
+				#include_drs includes/herdable_starting.inc
+				#include_drs includes/herdable.inc
+
+				#const HUNTABLE_COUNT 3
+				#const HUNTABLE_GROUPS 1
+
+				#const HUNTABLE_SMALL_COUNT 6
+				#const HUNTABLE_SMALL_GROUPS 1
+
+				#include_drs includes/huntable.inc
+				#include_drs includes/lureable.inc
+				#include_drs includes/furbearers.inc
+			endif
+		endif
+
+		if INFINITE_RESOURCES
+		else
+			create_object HUNTABLE_SMALL_B
+			{
+				number_of_objects 6
+				number_of_groups 1024
+				set_loose_grouping
+				group_placement_radius 2
+				min_distance_to_players 40
+				set_circular_placement
+				temp_min_distance_group_placement 12
+
+				min_distance_group_placement 1
+				max_distance_to_other_zones 6
+				avoid_forest_zone 2
+				avoid_cliff_zone 2
+				min_distance_to_map_edge 2
+
+				actor_area 1040
+				actor_area_radius 2
+
+				avoid_actor_area 20 /* Villagers */
+				avoid_actor_area 21 /* Villagers, Additional A */
+				avoid_actor_area 22 /* Villagers, Additional B */
+				avoid_actor_area 30 /* Scout */
+				avoid_actor_area 31 /* Scout, Secondary */
+				avoid_actor_area 32 /* Scout, Tertiary */
+				avoid_actor_area 50 /* Walls */
+				avoid_actor_area 51 /* Walls, Second Layer */
+				avoid_actor_area 52 /* Walls, Third Layer */
+				avoid_actor_area 60 /* Straggler, Spawn */
+				avoid_actor_area 61 /* Straggler, Escalation Mode */
+
+				avoid_actor_area 1000 /* Neutral Forage Bush */
+				avoid_actor_area 1001 /* Neutral Forage Bush, Additional A */
+				avoid_actor_area 1002 /* Neutral Forage Bush, Additional B */
+				avoid_actor_area 1010 /* Neutral Gold */
+				avoid_actor_area 1011 /* Neutral Gold, Additional A */
+				avoid_actor_area 1012 /* Neutral Gold, Additional B */
+				avoid_actor_area 1020 /* Neutral Stone */
+				avoid_actor_area 1021 /* Neutral Stone, Additional A */
+				avoid_actor_area 1022 /* Neutral Stone, Additional B */
+				avoid_actor_area 1030 /* Neutral Small Herdable */
+				avoid_actor_area 1031 /* Neutral Small Herdable, Additional A */
+				avoid_actor_area 1032 /* Neutral Small Herdable, Additional B */
+				avoid_actor_area 1035 /* Neutral Herdable */
+				avoid_actor_area 1036 /* Neutral Herdable, Additional A */
+				avoid_actor_area 1037 /* Neutral Herdable, Additional B */
+				avoid_actor_area 1040 /* Neutral Small Huntable */
+				avoid_actor_area 1041 /* Neutral Small Huntable, Additional A */
+				avoid_actor_area 1042 /* Neutral Small Huntable, Additional B */
+				avoid_actor_area 1045 /* Neutral Huntable */
+				avoid_actor_area 1046 /* Neutral Huntable, Additional A */
+				avoid_actor_area 1047 /* Neutral Huntable, Additional B */
+				avoid_actor_area 1050 /* Neutral Lureable */
+				avoid_actor_area 1051 /* Neutral Lureable, Additional A */
+				avoid_actor_area 1052 /* Neutral Lureable, Additional B */
+				avoid_actor_area 1060 /* Neutral Furbearers */
+				avoid_actor_area 1061 /* Neutral Furbearers, Additional A */
+				avoid_actor_area 1062 /* Neutral Furbearers, Additional B */
+
+				avoid_actor_area 5100 /* King */
+				avoid_actor_area 5110 /* Tower & Castle */
+				avoid_actor_area 5350 /* Monastery */
+				avoid_actor_area 5400 /* Wonder */
+
+				avoid_actor_area 10102 /* Minimum Primary Forage Bush - Spacer */
+				avoid_actor_area 10202 /* Minimum Primary Gold - Spacer */
+				avoid_actor_area 10302 /* Minimum Primary Stone - Spacer */
+
+				avoid_actor_area 11000 /* Neutral Forage Bush - Spacer */
+				avoid_actor_area 11001 /* Neutral Forage Bush, Additional A - Spacer */
+				avoid_actor_area 11002 /* Neutral Forage Bush, Additional B - Spacer */
+			}
+
+			create_object HUNTABLE_B
+			{
+				number_of_objects 3
+				number_of_groups 1024
+				set_loose_grouping
+				group_placement_radius 2
+				min_distance_to_players 40
+				set_circular_placement
+				temp_min_distance_group_placement 12
+
+				min_distance_group_placement 1
+				max_distance_to_other_zones 6
+				avoid_forest_zone 2
+				avoid_cliff_zone 2
+				min_distance_to_map_edge 2
+
+				actor_area 1045
+				actor_area_radius 2
+
+				avoid_actor_area 20 /* Villagers */
+				avoid_actor_area 21 /* Villagers, Additional A */
+				avoid_actor_area 22 /* Villagers, Additional B */
+				avoid_actor_area 30 /* Scout */
+				avoid_actor_area 31 /* Scout, Secondary */
+				avoid_actor_area 32 /* Scout, Tertiary */
+				avoid_actor_area 50 /* Walls */
+				avoid_actor_area 51 /* Walls, Second Layer */
+				avoid_actor_area 52 /* Walls, Third Layer */
+				avoid_actor_area 60 /* Straggler, Spawn */
+				avoid_actor_area 61 /* Straggler, Escalation Mode */
+
+				avoid_actor_area 1000 /* Neutral Forage Bush */
+				avoid_actor_area 1001 /* Neutral Forage Bush, Additional A */
+				avoid_actor_area 1002 /* Neutral Forage Bush, Additional B */
+				avoid_actor_area 1010 /* Neutral Gold */
+				avoid_actor_area 1011 /* Neutral Gold, Additional A */
+				avoid_actor_area 1012 /* Neutral Gold, Additional B */
+				avoid_actor_area 1020 /* Neutral Stone */
+				avoid_actor_area 1021 /* Neutral Stone, Additional A */
+				avoid_actor_area 1022 /* Neutral Stone, Additional B */
+				avoid_actor_area 1030 /* Neutral Small Herdable */
+				avoid_actor_area 1031 /* Neutral Small Herdable, Additional A */
+				avoid_actor_area 1032 /* Neutral Small Herdable, Additional B */
+				avoid_actor_area 1035 /* Neutral Herdable */
+				avoid_actor_area 1036 /* Neutral Herdable, Additional A */
+				avoid_actor_area 1037 /* Neutral Herdable, Additional B */
+				avoid_actor_area 1040 /* Neutral Small Huntable */
+				avoid_actor_area 1041 /* Neutral Small Huntable, Additional A */
+				avoid_actor_area 1042 /* Neutral Small Huntable, Additional B */
+				avoid_actor_area 1045 /* Neutral Huntable */
+				avoid_actor_area 1046 /* Neutral Huntable, Additional A */
+				avoid_actor_area 1047 /* Neutral Huntable, Additional B */
+				avoid_actor_area 1050 /* Neutral Lureable */
+				avoid_actor_area 1051 /* Neutral Lureable, Additional A */
+				avoid_actor_area 1052 /* Neutral Lureable, Additional B */
+				avoid_actor_area 1060 /* Neutral Furbearers */
+				avoid_actor_area 1061 /* Neutral Furbearers, Additional A */
+				avoid_actor_area 1062 /* Neutral Furbearers, Additional B */
+
+				avoid_actor_area 5100 /* King */
+				avoid_actor_area 5110 /* Tower & Castle */
+				avoid_actor_area 5350 /* Monastery */
+				avoid_actor_area 5400 /* Wonder */
+
+				avoid_actor_area 10102 /* Minimum Primary Forage Bush - Spacer */
+				avoid_actor_area 10202 /* Minimum Primary Gold - Spacer */
+				avoid_actor_area 10302 /* Minimum Primary Stone - Spacer */
+
+				avoid_actor_area 11000 /* Neutral Forage Bush - Spacer */
+				avoid_actor_area 11001 /* Neutral Forage Bush, Additional A - Spacer */
+				avoid_actor_area 11002 /* Neutral Forage Bush, Additional B - Spacer */
+			}
+
+			create_object FURBEARER_B
+			{
+				number_of_objects 3
+				number_of_groups 1024
+				set_loose_grouping
+				group_placement_radius 2
+				min_distance_to_players 40
+				set_circular_placement
+				temp_min_distance_group_placement 12
+
+				min_distance_group_placement 1
+				max_distance_to_other_zones 6
+				avoid_forest_zone 2
+				avoid_cliff_zone 2
+				min_distance_to_map_edge 2
+
+				actor_area 1060
+				actor_area_radius 2
+
+				avoid_actor_area 20 /* Villagers */
+				avoid_actor_area 21 /* Villagers, Additional A */
+				avoid_actor_area 22 /* Villagers, Additional B */
+				avoid_actor_area 30 /* Scout */
+				avoid_actor_area 31 /* Scout, Secondary */
+				avoid_actor_area 32 /* Scout, Tertiary */
+				avoid_actor_area 50 /* Walls */
+				avoid_actor_area 51 /* Walls, Second Layer */
+				avoid_actor_area 52 /* Walls, Third Layer */
+				avoid_actor_area 60 /* Straggler, Spawn */
+				avoid_actor_area 61 /* Straggler, Escalation Mode */
+
+				avoid_actor_area 1000 /* Neutral Forage Bush */
+				avoid_actor_area 1001 /* Neutral Forage Bush, Additional A */
+				avoid_actor_area 1002 /* Neutral Forage Bush, Additional B */
+				avoid_actor_area 1010 /* Neutral Gold */
+				avoid_actor_area 1011 /* Neutral Gold, Additional A */
+				avoid_actor_area 1012 /* Neutral Gold, Additional B */
+				avoid_actor_area 1020 /* Neutral Stone */
+				avoid_actor_area 1021 /* Neutral Stone, Additional A */
+				avoid_actor_area 1022 /* Neutral Stone, Additional B */
+				avoid_actor_area 1030 /* Neutral Small Herdable */
+				avoid_actor_area 1031 /* Neutral Small Herdable, Additional A */
+				avoid_actor_area 1032 /* Neutral Small Herdable, Additional B */
+				avoid_actor_area 1035 /* Neutral Herdable */
+				avoid_actor_area 1036 /* Neutral Herdable, Additional A */
+				avoid_actor_area 1037 /* Neutral Herdable, Additional B */
+				avoid_actor_area 1040 /* Neutral Small Huntable */
+				avoid_actor_area 1041 /* Neutral Small Huntable, Additional A */
+				avoid_actor_area 1042 /* Neutral Small Huntable, Additional B */
+				avoid_actor_area 1045 /* Neutral Huntable */
+				avoid_actor_area 1046 /* Neutral Huntable, Additional A */
+				avoid_actor_area 1047 /* Neutral Huntable, Additional B */
+				avoid_actor_area 1050 /* Neutral Lureable */
+				avoid_actor_area 1051 /* Neutral Lureable, Additional A */
+				avoid_actor_area 1052 /* Neutral Lureable, Additional B */
+				avoid_actor_area 1060 /* Neutral Furbearers */
+				avoid_actor_area 1061 /* Neutral Furbearers, Additional A */
+				avoid_actor_area 1062 /* Neutral Furbearers, Additional B */
+
+				avoid_actor_area 5100 /* King */
+				avoid_actor_area 5110 /* Tower & Castle */
+				avoid_actor_area 5350 /* Monastery */
+				avoid_actor_area 5400 /* Wonder */
+
+				avoid_actor_area 10102 /* Minimum Primary Forage Bush - Spacer */
+				avoid_actor_area 10202 /* Minimum Primary Gold - Spacer */
+				avoid_actor_area 10302 /* Minimum Primary Stone - Spacer */
+			}
+		endif
+
+		if DEATH_MATCH
+		else
+			#include_drs includes/predators.inc
+			#include_drs includes/riparian.inc
+		endif
+
+		#include_drs includes/neritic.inc
+		#include_drs includes/oysters.inc
+
+		#const FRESHWATER_COUNT 0
+
+		#include_drs includes/aquatic_freshwater.inc
+
+		#const SALTWATER_COUNT 0
+
+		#include_drs includes/aquatic_saltwater.inc
+
+		if DEATH_MATCH
+		else
+			#include_drs includes/stragglers_neutral.inc
+			#include_drs includes/stragglers_coastal.inc
+			#include_drs includes/reeds.inc
+		endif
+
+		#define RELIC_TYPE_UNRESTRICTED
+		#const RELIC_SPACING 16
+
+		#include_drs includes/relics.inc
+		#include_drs includes/remote_resources.inc
+
+		#define EXTRA_STUFF
+		if EXTRA_STUFF
+			if EMPIRE_WARS_MODE
+				#define EMPIRE_WARS_FORAGERS
+
+				#include_drs includes/empire_wars.inc
+				#include_drs includes/empire_food.inc
+				#include_drs includes/empire_gold.inc
+				#include_drs includes/empire_wood.inc
+				#include_drs includes/empire_buildings.inc
+			elseif ESCALATION_MODE
+				#include_drs includes/escalation_mode.inc
+			endif
+
+			#define AESTHETICS
+			if AESTHETICS
+				#include_drs includes/birds.inc
+
+				create_object ROCK_A
+				{
+					number_of_objects 12
+					set_scaling_to_map_size
+					min_distance_to_players 20
+					set_circular_placement
+					temp_min_distance_group_placement 8
+
+					actor_area 8003
+					actor_area_radius 1
+
+					avoid_actor_area 20 /* Villagers */
+					avoid_actor_area 21 /* Villagers, Additional A */
+					avoid_actor_area 22 /* Villagers, Additional B */
+					avoid_actor_area 30 /* Scout */
+					avoid_actor_area 31 /* Scout, Secondary */
+					avoid_actor_area 32 /* Scout, Tertiary */
+					avoid_actor_area 50 /* Walls */
+					avoid_actor_area 51 /* Walls, Second Layer */
+					avoid_actor_area 52 /* Walls, Third Layer */
+					avoid_actor_area 60 /* Straggler, Spawn */
+					avoid_actor_area 61 /* Straggler, Escalation Mode */
+
+					avoid_actor_area 1000 /* Neutral Forage Bush */
+					avoid_actor_area 1001 /* Neutral Forage Bush, Additional A */
+					avoid_actor_area 1002 /* Neutral Forage Bush, Additional B */
+					avoid_actor_area 1010 /* Neutral Gold */
+					avoid_actor_area 1011 /* Neutral Gold, Additional A */
+					avoid_actor_area 1012 /* Neutral Gold, Additional B */
+					avoid_actor_area 1020 /* Neutral Stone */
+					avoid_actor_area 1021 /* Neutral Stone, Additional A */
+					avoid_actor_area 1022 /* Neutral Stone, Additional B */
+					avoid_actor_area 1030 /* Neutral Small Herdable */
+					avoid_actor_area 1031 /* Neutral Small Herdable, Additional A */
+					avoid_actor_area 1032 /* Neutral Small Herdable, Additional B */
+					avoid_actor_area 1035 /* Neutral Herdable */
+					avoid_actor_area 1036 /* Neutral Herdable, Additional A */
+					avoid_actor_area 1037 /* Neutral Herdable, Additional B */
+					avoid_actor_area 1040 /* Neutral Small Huntable */
+					avoid_actor_area 1041 /* Neutral Small Huntable, Additional A */
+					avoid_actor_area 1042 /* Neutral Small Huntable, Additional B */
+					avoid_actor_area 1045 /* Neutral Huntable */
+					avoid_actor_area 1046 /* Neutral Huntable, Additional A */
+					avoid_actor_area 1047 /* Neutral Huntable, Additional B */
+					avoid_actor_area 1050 /* Neutral Lureable */
+					avoid_actor_area 1051 /* Neutral Lureable, Additional A */
+					avoid_actor_area 1052 /* Neutral Lureable, Additional B */
+					avoid_actor_area 1060 /* Neutral Furbearers */
+					avoid_actor_area 1061 /* Neutral Furbearers, Additional A */
+					avoid_actor_area 1062 /* Neutral Furbearers, Additional B */
+
+					avoid_actor_area 5100 /* King */
+					avoid_actor_area 5110 /* Tower & Castle */
+					avoid_actor_area 5350 /* Monastery */
+					avoid_actor_area 5400 /* Wonder */
+
+					avoid_actor_area 10102 /* Minimum Primary Forage Bush - Spacer */
+					avoid_actor_area 10202 /* Minimum Primary Gold - Spacer */
+					avoid_actor_area 10302 /* Minimum Primary Stone - Spacer */
+				}
+
+				create_object ROCK_B
+				{
+					number_of_objects 12
+					set_scaling_to_map_size
+					min_distance_to_players 20
+					set_circular_placement
+					temp_min_distance_group_placement 8
+
+					actor_area 8003
+					actor_area_radius 1
+
+					avoid_actor_area 20 /* Villagers */
+					avoid_actor_area 21 /* Villagers, Additional A */
+					avoid_actor_area 22 /* Villagers, Additional B */
+					avoid_actor_area 30 /* Scout */
+					avoid_actor_area 31 /* Scout, Secondary */
+					avoid_actor_area 32 /* Scout, Tertiary */
+					avoid_actor_area 50 /* Walls */
+					avoid_actor_area 51 /* Walls, Second Layer */
+					avoid_actor_area 52 /* Walls, Third Layer */
+					avoid_actor_area 60 /* Straggler, Spawn */
+					avoid_actor_area 61 /* Straggler, Escalation Mode */
+
+					avoid_actor_area 1000 /* Neutral Forage Bush */
+					avoid_actor_area 1001 /* Neutral Forage Bush, Additional A */
+					avoid_actor_area 1002 /* Neutral Forage Bush, Additional B */
+					avoid_actor_area 1010 /* Neutral Gold */
+					avoid_actor_area 1011 /* Neutral Gold, Additional A */
+					avoid_actor_area 1012 /* Neutral Gold, Additional B */
+					avoid_actor_area 1020 /* Neutral Stone */
+					avoid_actor_area 1021 /* Neutral Stone, Additional A */
+					avoid_actor_area 1022 /* Neutral Stone, Additional B */
+					avoid_actor_area 1030 /* Neutral Small Herdable */
+					avoid_actor_area 1031 /* Neutral Small Herdable, Additional A */
+					avoid_actor_area 1032 /* Neutral Small Herdable, Additional B */
+					avoid_actor_area 1035 /* Neutral Herdable */
+					avoid_actor_area 1036 /* Neutral Herdable, Additional A */
+					avoid_actor_area 1037 /* Neutral Herdable, Additional B */
+					avoid_actor_area 1040 /* Neutral Small Huntable */
+					avoid_actor_area 1041 /* Neutral Small Huntable, Additional A */
+					avoid_actor_area 1042 /* Neutral Small Huntable, Additional B */
+					avoid_actor_area 1045 /* Neutral Huntable */
+					avoid_actor_area 1046 /* Neutral Huntable, Additional A */
+					avoid_actor_area 1047 /* Neutral Huntable, Additional B */
+					avoid_actor_area 1050 /* Neutral Lureable */
+					avoid_actor_area 1051 /* Neutral Lureable, Additional A */
+					avoid_actor_area 1052 /* Neutral Lureable, Additional B */
+					avoid_actor_area 1060 /* Neutral Furbearers */
+					avoid_actor_area 1061 /* Neutral Furbearers, Additional A */
+					avoid_actor_area 1062 /* Neutral Furbearers, Additional B */
+
+					avoid_actor_area 5100 /* King */
+					avoid_actor_area 5110 /* Tower & Castle */
+					avoid_actor_area 5350 /* Monastery */
+					avoid_actor_area 5400 /* Wonder */
+
+					avoid_actor_area 10102 /* Minimum Primary Forage Bush - Spacer */
+					avoid_actor_area 10202 /* Minimum Primary Gold - Spacer */
+					avoid_actor_area 10302 /* Minimum Primary Stone - Spacer */
+				}
+
+				create_object STUMP
+				{
+					number_of_objects 64
+					set_scaling_to_map_size
+					terrain_to_place_on BORDER_TERRAIN
+				}
+
+				create_object FELLED_TREE
+				{
+					number_of_objects 16
+					set_scaling_to_map_size
+					temp_min_distance_group_placement 4
+					terrain_to_place_on BORDER_TERRAIN
+				}
+			endif
+		endif
+	endif

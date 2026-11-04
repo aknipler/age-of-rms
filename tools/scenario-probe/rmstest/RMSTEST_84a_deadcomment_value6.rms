@@ -1,0 +1,52 @@
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<TERRAIN_GENERATION>
+
+if NOT_A_LABEL_84
+  /* DIRT */
+  create_terrain SNOW { base_terrain GRASS land_percent 100 }
+endif
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_84a - inside a branch that never runs, does a comment word whose
+engine number is a control word act as that control word?
+Feeds: docs/token-alias-design.md Sec.3.2 and slice C.
+
+The header is at the bottom on purpose and names no constant whose number is
+a comment marker or a control word.
+
+THE CASE. A conditional on a label nothing defines, so its branch is dead.
+Inside it, a comment holding one terrain word whose number is 6, the number
+the RMS Equivalencies sheet gives the word that closes a conditional. After
+the comment, a create_terrain painting SNOW over all GRASS.
+
+Already measured, 2026-11-02: such words in dead CODE do nothing in DE. 597 of
+them sit in dead text in maps the preview matches tile for tile. This run asks
+only about dead text inside a COMMENT, which those maps never have.
+
+PREDICTIONS, written 2026-11-02 before the run.
+  - The word acts as the close: the conditional ends inside the comment, the
+    create_terrain runs, the map is SNOW, and the real close after it is a
+    stray token.
+  - It does not: the branch stays dead, the map is GRASS.
+Read: probe_scenario.py, terrain histogram. SNOW above 0 means it acts.
+
+Control: 84b, the same with an ordinary lowercase word in the comment.
+
+Generate at: Tiny, 2 players, seed 1000, scenario editor.
+================================================================================
+*/

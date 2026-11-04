@@ -1,0 +1,13 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DIRT land_position 50 50 number_of_tiles 0 base_size 2 }
+<OBJECTS_GENERATION>
+create_actor_area 30 30 1 6
+create_actor_area 90 90 1 4
+create_object GOLD { number_of_objects 10 actor_area_to_place_in 1 }
+create_object STONE { number_of_objects 3 actor_area 2 actor_area_radius 8 }
+create_object FORAGE { number_of_objects 40 avoid_actor_area 2 avoid_actor_area 1 }
+create_object BOAR { number_of_objects 4 actor_area 3 }
+create_object DEER { number_of_objects 30 avoid_all_actor_areas }

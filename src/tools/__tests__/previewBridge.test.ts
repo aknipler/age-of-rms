@@ -26,6 +26,7 @@ import {
   type ToolContext,
 } from "../../../tools-api/index";
 import {
+  includeFilesFromContext,
   objectConstantsFromPublished,
   previewSettingsFromContext,
   runPreviewFromContext,
@@ -231,6 +232,75 @@ describe("runPreviewFromContext", () => {
     if (!at2.ok || !at8.ok) return;
     expect(at2.result.players).toHaveLength(2);
     expect(at8.result.players).toHaveLength(8);
+  });
+});
+
+describe("include files on the context (preview-design Sec.3 rule 11)", () => {
+  // The player lands live in the include, so the count of players says
+  // whether the file was read in.
+  const INCLUDING = `
+<PLAYER_SETUP>
+  random_placement
+<LAND_GENERATION>
+  base_terrain GRASS
+  #include_drs includes/lands.inc
+`;
+  const LANDS = "create_player_lands { terrain_type GRASS land_percent 20 }\n";
+
+  function including(files?: Record<string, string>): ToolContext<ParseResult> {
+    return {
+      ...context(),
+      parseResult: parseRms(INCLUDING, lang),
+      source: INCLUDING,
+      ...(files === undefined
+        ? {}
+        : {
+            referenceData: {
+              language: lang,
+              gameConstants: [] as PublishedGameConstants,
+              includeFiles: files,
+            },
+          }),
+    };
+  }
+  const opts = { seed: 7, collectSnapshots: false };
+
+  it("reads the context's include files in", () => {
+    const outcome = runPreviewFromContext(
+      including({ "includes/lands.inc": LANDS }),
+      refDb,
+      opts,
+    );
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.result.players).toHaveLength(4);
+    expect(outcome.result.notes.some((n) => n.key === "includes")).toBe(false);
+  });
+
+  it("notes the missing install when the context carries no files", () => {
+    const outcome = runPreviewFromContext(including(), refDb, opts);
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.result.players).toHaveLength(0);
+    expect(outcome.result.notes.some((n) => n.key === "includes")).toBe(true);
+  });
+
+  it("lets a caller's own include files win over the context's", () => {
+    const outcome = runPreviewFromContext(
+      including({ "includes/lands.inc": "" }),
+      refDb,
+      { ...opts, includeFiles: new Map([["includes/lands.inc", LANDS]]) },
+    );
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.result.players).toHaveLength(4);
+  });
+
+  it("turns the record into the Map the generator takes", () => {
+    expect(
+      includeFilesFromContext(including({ "a.inc": "x" }))?.get("a.inc"),
+    ).toBe("x");
+    expect(includeFilesFromContext(including())).toBeUndefined();
   });
 });
 

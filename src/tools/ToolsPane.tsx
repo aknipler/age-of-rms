@@ -39,6 +39,7 @@ import {
 import { inProcessRunner } from "./host";
 import { useSelectedTool, useToolHostContext } from "./ToolHostContext";
 import { buildToolContext } from "./buildToolContext";
+import { useIncludeFiles } from "../useIncludeFiles";
 import {
   paramsAreSubmittable,
   resolveParams,
@@ -130,7 +131,11 @@ export function ToolsPane({
     if (host.getPanelState().phase === "suspended") host.resumePanel();
     return () => {
       if (host.getPanelState().phase === "mounted") host.suspendPanel();
-      else host.reset();
+      // A finished run is kept, so a trip to the Code tab to check a finding
+      // does not lose the report. Its snapshot is compared with the live
+      // source on return (`outputStale` below). A run still in flight has no
+      // reader left and no way to deliver, so it is torn down as before.
+      else if (host.getState().phase !== "done") host.reset();
     };
   }, [host]);
 
@@ -251,6 +256,9 @@ export function ToolsPane({
   // of whether the currently-selected tool actually declares the capability.
   const previewView = usePreviewView();
   const previewCut = usePreviewCut();
+  // The same include files the preview pane reads, so a tool generates the
+  // map the pane draws (useIncludeFiles shares one read between the two).
+  const includeFiles = useIncludeFiles(parseResult);
 
   const startRun = useCallback(() => {
     if (!tool || !parseResult) return;
@@ -272,6 +280,7 @@ export function ToolsPane({
       },
       lang,
       gameConstants,
+      includeFiles,
       previewView: { seed: previewView.seed, cutOffset: previewCut.cutOffset },
     });
     // Sec.4.3, Sec.7.2 item 3: the runner is picked per run, at the call
@@ -297,6 +306,7 @@ export function ToolsPane({
     filePath,
     previewView.seed,
     previewCut.cutOffset,
+    includeFiles,
   ]);
 
   useEffect(() => {
@@ -333,6 +343,13 @@ export function ToolsPane({
 
   const canApply = host.canApply(source);
   const stale = state.edits !== null && state.edits.length > 0 && !canApply;
+  // The kept report was made from different text than the editor holds now.
+  // Not shown when the edit-apply notice above already says so.
+  const outputStale =
+    !stale &&
+    state.phase === "done" &&
+    state.output !== null &&
+    state.snapshot !== source;
 
   const apply = () => {
     if (!state.edits) return;
@@ -556,6 +573,15 @@ export function ToolsPane({
           The code changed since this ran. Re-run before applying. Tool edits
           are never rebased.
         </p>
+      )}
+
+      {outputStale && (
+        <HelpTip id="tools.outputStale">
+          <p className={styles.staleNote}>
+            The script has been edited since this ran, so these results may be
+            out of date. Run again to refresh them.
+          </p>
+        </HelpTip>
       )}
 
       {state.error && (

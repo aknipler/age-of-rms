@@ -1,0 +1,10 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { base_layer SNOW terrain_type DIRT land_position 30 50 number_of_tiles 500 base_size 3 zone 1 }
+create_land { terrain_type DIRT land_position 70 50 number_of_tiles 500 base_size 3 zone 2 }
+<ELEVATION_GENERATION>
+create_elevation 2 { base_terrain DIRT base_layer SNOW number_of_tiles 300 number_of_clumps 2 }
+<TERRAIN_GENERATION>
+create_terrain LEAVES { base_layer SNOW number_of_tiles 120 number_of_clumps 2 }

@@ -1,3 +1,8 @@
+// S5, the connection stage (preview-design Sec.6.5, rev 11). The exact model
+// is held to DE by `deWholeScriptMaps.test.ts`, on every connection map of
+// the study (rounds CO and CF). The tests here pin its rules one at a time
+// on small hand-built maps, so a failure names the rule.
+
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,6 +11,7 @@ import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
 import {
+  NO_LAYER,
   createTileGrid,
   tileIndex,
   type TerrainConstantForMasks,
@@ -17,26 +23,13 @@ import {
 } from "../generator/lands";
 import { applyElevation } from "../generator/elevation";
 import { applyCliffs } from "../generator/cliffs";
-import { applyTerrains } from "../generator/terrains";
 import {
-  applyConnections,
-  applyTerrainAlongPath,
-  buildConnectivityIndex,
-  crossPairs,
-  findConnectionPaths,
-  landsCanConnect,
-  landZonePairs,
-  MinHeap,
-  readReplacementRules,
-  readTerrainCosts,
-  readTerrainSizes,
-  resolveReplacement,
-  sameZonePairs,
-  teamPairs,
-  type ReplacementRule,
-} from "../generator/connections";
-import { mulberry32 } from "../generator/rng";
-import type { CanonicalTeams } from "../../generationSettings/teamModel";
+  COMPOSITE_AS_TERRAIN,
+  applyTerrains,
+  type CompositeRecord,
+} from "../generator/terrains";
+import { applyConnections } from "../generator/connections";
+import { createDeStream } from "../generator/deRandom";
 import type {
   InstantiatedScript,
   LandOrigin,
@@ -57,10 +50,12 @@ const rawConstants = JSON.parse(
   ),
 ) as { constants: TerrainConstantForMasks[] };
 const constants: TerrainConstantForMasks[] = rawConstants.constants;
-const GRASS = constants.find((c) => c.rmsConstant === "GRASS")!.constId!;
-const WATER = constants.find((c) => c.rmsConstant === "WATER")!.constId!;
-const DIRT = constants.find((c) => c.rmsConstant === "DIRT")!.constId!;
-const ROAD = constants.find((c) => c.rmsConstant === "ROAD")!.constId!;
+const id = (name: string): number =>
+  constants.find((c) => c.rmsConstant === name)!.constId!;
+const GRASS = id("GRASS");
+const DIRT = id("DIRT");
+const ROAD = id("ROAD");
+const SNOW = id("SNOW");
 
 function settings(
   overrides: {
@@ -104,66 +99,39 @@ function place(
     landResult.origins,
     grown,
   );
-  applyCliffs(
+  const cliffed = applyCliffs(
     instantiated,
     grid,
     constants,
     landResult.origins,
     elevated.stream,
   );
-  applyTerrains(instantiated, grid, constants, landResult.origins, seed);
+  const terrained = applyTerrains(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    cliffed.stream,
+  );
   const connectionsResult = applyConnections(
     instantiated,
     grid,
     constants,
     landResult.origins,
-    seed,
+    terrained.stream,
   );
   return {
     grid,
     dim: instantiated.dim,
     origins: landResult.origins,
+    before: terrained.stream,
     ...connectionsResult,
   };
 }
 
-/** Instantiate a bare script and hand back a fresh flat grid, without running S1-S4, for tests that call applyConnections directly against a hand-built grid/origins. */
-function bareGrid(
-  source: string,
-  seed = 1,
-  overrides?: Parameters<typeof settings>[0],
-) {
-  const instantiated = instantiateScript(
-    parseRms(source, lang),
-    refDb,
-    settings(overrides),
-    seed,
-  );
-  const grid = createTileGrid(instantiated.dim, GRASS);
-  return { instantiated, grid };
-}
-
-function connectionCommand(
-  source: string,
-  name: string,
-  overrides?: Parameters<typeof settings>[0],
-) {
-  const instantiated = instantiateScript(
-    parseRms(source, lang),
-    refDb,
-    settings(overrides),
-    1,
-  );
-  const cmd = instantiated.sections
-    .get("CONNECTION_GENERATION")
-    ?.find((c) => c.name === name);
-  if (!cmd) throw new Error(`fixture has no ${name} command`);
-  return cmd;
-}
-
 const ZERO_SPAN = { start: 0, end: 0 };
 
-function fabricateOrigin(
+function origin(
   x: number,
   y: number,
   player: number | undefined,
@@ -175,7 +143,7 @@ function fabricateOrigin(
     y,
     zone,
     player,
-    baseSize: 3,
+    baseSize: 0,
     circularBase: false,
     clumpingFactor: 8,
     borderFuzziness: 20,
@@ -192,917 +160,225 @@ function fabricateOrigin(
   };
 }
 
-function fabricateTeams(canonical: readonly TeamNumber[]): CanonicalTeams {
-  const sizes = [0, 0, 0, 0, 0];
-  for (const t of canonical) sizes[t]++;
-  const teamCount = new Set(canonical.filter((t) => t !== 0)).size;
-  return { canonical, teamCount, sizes };
+/**
+ * The connection stage alone, on a GRASS map of side `dim` with the given
+ * origins and `<CONNECTION_GENERATION>` body. Returns the map and the draws
+ * the stage spent.
+ */
+function connect(
+  body: string,
+  origins: LandOrigin[],
+  dim = 40,
+  paint?: (grid: TileGrid) => void,
+  composites?: CompositeRecord,
+) {
+  const instantiated = instantiateScript(
+    parseRms(`<CONNECTION_GENERATION>\n${body}\n`, lang),
+    refDb,
+    settings({ playerCount: 2, mapSize: "Tiny" }),
+    1,
+  );
+  const grid = createTileGrid(dim, GRASS);
+  paint?.(grid);
+  const start = createDeStream(1000).state();
+  const result = applyConnections(
+    { ...instantiated, dim },
+    grid,
+    constants,
+    origins,
+    start,
+    composites,
+  );
+  return { grid, ...result, draws: result.stream.count - start.count };
 }
 
-/** Stamps a rectangular land region directly onto grid.landId, for pathfinding/bbox tests that don't need real growth. */
-function stampLand(
-  grid: TileGrid,
-  landIndex: number,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-): void {
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++)
-      grid.landId[tileIndex(grid, x, y)] = landIndex;
-  }
-}
+const count = (grid: TileGrid, terrain: number): number =>
+  grid.terrain.filter((t) => t === terrain).length;
 
-/** Origin tiles by land index, the endpoints `findConnectionPaths` runs between; a `null` entry stands for an origin off the grid. */
-function originTilesAt(
-  grid: TileGrid,
-  ...points: Array<[number, number] | null>
-): number[] {
-  return points.map((p) => (p === null ? -1 : tileIndex(grid, p[0], p[1])));
-}
-
-describe("MinHeap (Sec.11: 'A* uses a binary heap')", () => {
-  it("pops in ascending priority order", () => {
-    const heap = new MinHeap();
-    heap.push(10, 5);
-    heap.push(20, 1);
-    heap.push(30, 3);
-    heap.push(40, 2);
-    const order: number[] = [];
-    while (heap.size > 0) order.push(heap.pop()!);
-    expect(order).toEqual([20, 40, 30, 10]);
-  });
-
-  it("returns undefined when empty", () => {
-    const heap = new MinHeap();
-    expect(heap.pop()).toBeUndefined();
-    expect(heap.size).toBe(0);
-  });
-
-  it("handles ties and a large random sequence correctly (matches a plain sort)", () => {
-    const heap = new MinHeap();
-    const rng = mulberry32(9);
-    const entries: Array<{ value: number; priority: number }> = [];
-    for (let i = 0; i < 200; i++) {
-      const priority = rng() % 50; // deliberately narrow range -- forces ties
-      entries.push({ value: i, priority });
-      heap.push(i, priority);
-    }
-    const expected = [...entries]
-      .sort((a, b) => a.priority - b.priority)
-      .map((e) => e.priority);
-    const actual: number[] = [];
-    while (heap.size > 0) {
-      const value = heap.pop()!;
-      actual.push(entries[value].priority);
-    }
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe("findConnectionPaths (one multi-goal Dijkstra per source land, origin to origin)", () => {
-  it("finds a straight path across uniform-cost terrain, from origin tile to origin tile", () => {
-    const grid = createTileGrid(20, GRASS);
-    stampLand(grid, 0, 2, 10, 2, 10);
-    stampLand(grid, 1, 17, 10, 17, 10);
-    const origins = originTilesAt(grid, [2, 10], [17, 10]);
-    const path = findConnectionPaths(
-      grid,
-      grid.terrain,
-      () => 1,
-      origins,
-      0,
-      [1],
-    ).get(1);
-    expect(path).toBeDefined();
-    expect(path![0]).toBe(tileIndex(grid, 2, 10));
-    expect(path![path!.length - 1]).toBe(tileIndex(grid, 17, 10));
-    expect(path!.length).toBe(16); // x=2..17 inclusive
-  });
-
-  it("omits a target entirely when a cost-0 (impassable) moat fully separates the two origins", () => {
-    const grid = createTileGrid(20, GRASS);
-    stampLand(grid, 0, 0, 0, 4, 19);
-    stampLand(grid, 1, 15, 0, 19, 19);
-    for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER; // a full-height wall
-    const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
-    const origins = originTilesAt(grid, [2, 10], [17, 10]);
-    expect(
-      findConnectionPaths(grid, grid.terrain, costOf, origins, 0, [1]).has(1),
-    ).toBe(false);
-  });
-
-  it("prefers the cheaper route over the shorter one when costs differ", () => {
-    const dim = 20;
-    const grid = createTileGrid(dim, GRASS);
-    stampLand(grid, 0, 0, 9, 0, 9);
-    stampLand(grid, 1, 19, 9, 19, 9);
-    // A short but expensive strip directly between them; everywhere else stays cheap.
-    for (let x = 1; x < 19; x++) grid.terrain[tileIndex(grid, x, 9)] = WATER;
-    const costOf = (terrainId: number): number =>
-      terrainId === WATER ? 50 : 1;
-    const origins = originTilesAt(grid, [0, 9], [19, 9]);
-    const path = findConnectionPaths(
-      grid,
-      grid.terrain,
-      costOf,
-      origins,
-      0,
-      [1],
-    ).get(1);
-    expect(path).toBeDefined();
-    // The cheap detour is longer in TILE COUNT than the direct route across
-    // the expensive strip (18 tiles) would have been, which is exactly what
-    // proves cost, not raw distance, drove the search.
-    expect(path!.length).toBeGreaterThan(19);
-    for (const tile of path!) expect(grid.terrain[tile]).not.toBe(WATER);
-  });
-
-  it("runs ORIGIN to ORIGIN, crossing both lands' own tiles, never nearest edge to nearest edge", () => {
-    // The Golden Hill defect in miniature, two large lands that touch along
-    // x=9/x=10, origins deep inside each. An edge-to-edge search returns a
-    // two-tile path at the seam and the road never reaches either TC. The
-    // path has to start ON land A's origin, end ON land B's origin, and
-    // spend most of its length inside the two lands.
-    const dim = 20;
-    const grid = createTileGrid(dim, GRASS);
-    stampLand(grid, 0, 0, 0, 9, 19); // the whole west half
-    stampLand(grid, 1, 10, 0, 19, 19); // the whole east half
-    const origins = originTilesAt(grid, [2, 10], [17, 10]);
-    const path = findConnectionPaths(
-      grid,
-      grid.terrain,
-      () => 1,
-      origins,
-      0,
-      [1],
-    ).get(1);
-    expect(path).toBeDefined();
-    expect(path![0]).toBe(tileIndex(grid, 2, 10));
-    expect(path![path!.length - 1]).toBe(tileIndex(grid, 17, 10));
-    expect(path!.length).toBe(16); // x=2..17 inclusive, not the 2 tiles at the seam
-    const insideA = path!.filter((t) => grid.landId[t] === 0).length;
-    const insideB = path!.filter((t) => grid.landId[t] === 1).length;
-    expect(insideA).toBe(8); // x=2..9
-    expect(insideB).toBe(8); // x=10..17
-  });
-
-  it("a source whose own origin tile is impassable reaches nothing, and a target whose origin tile is impassable is never reached (guide:1937)", () => {
-    const grid = createTileGrid(20, GRASS);
-    stampLand(grid, 0, 2, 10, 2, 10);
-    stampLand(grid, 1, 17, 10, 17, 10);
-    stampLand(grid, 2, 10, 2, 10, 2);
-    const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
-    const origins = originTilesAt(grid, [2, 10], [17, 10], [10, 2]);
-    grid.terrain[tileIndex(grid, 17, 10)] = WATER; // land 1's origin
-    const fromA = findConnectionPaths(
-      grid,
-      grid.terrain,
-      costOf,
-      origins,
-      0,
-      [1, 2],
-    );
-    expect(fromA.has(1)).toBe(false); // its origin cannot be entered
-    expect(fromA.has(2)).toBe(true); // the sibling is unaffected
-    const fromB = findConnectionPaths(
-      grid,
-      grid.terrain,
-      costOf,
-      origins,
-      1,
-      [0, 2],
-    );
-    expect(fromB.size).toBe(0); // cannot even depart
-  });
-
-  it("two lands sharing one origin tile are both answered, by the same path", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [2, 10], [17, 10], [17, 10]);
-    const paths = findConnectionPaths(
-      grid,
-      grid.terrain,
-      () => 1,
-      origins,
-      0,
-      [1, 2],
-    );
-    expect(paths.get(1)).toBeDefined();
-    expect(paths.get(1)).toEqual(paths.get(2));
-  });
-
-  it("an origin off the grid can be neither source nor target, and never throws", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [2, 10], null);
-    expect(
-      findConnectionPaths(grid, grid.terrain, () => 1, origins, 0, [1]).size,
-    ).toBe(0);
-    expect(
-      findConnectionPaths(grid, grid.terrain, () => 1, origins, 1, [0]).size,
-    ).toBe(0);
-  });
-
-  it("answers several targets from ONE search, each with the path a per-pair search would have found", () => {
-    const grid = createTileGrid(30, GRASS);
-    const origins = originTilesAt(
-      grid,
-      [15, 15], // source in the middle
-      [15, 5], // north
-      [25, 15], // east
-      [15, 25], // south
-    );
-    const batched = findConnectionPaths(
-      grid,
-      grid.terrain,
-      () => 1,
-      origins,
-      0,
-      [1, 2, 3],
-    );
-    expect([...batched.keys()].sort()).toEqual([1, 2, 3]);
-    // Each is the same optimal path a search run for that target alone finds.
-    for (const target of [1, 2, 3]) {
-      const alone = findConnectionPaths(
-        grid,
-        grid.terrain,
-        () => 1,
-        origins,
-        0,
-        [target],
-      ).get(target);
-      expect(batched.get(target)).toEqual(alone);
-    }
-    expect(batched.get(1)!.length).toBe(11); // y=15 down to y=5 inclusive
-  });
-
-  it("reaches a target lying BEYOND another target, recording an origin does not stop the search expanding through it", () => {
-    const grid = createTileGrid(30, GRASS);
-    const origins = originTilesAt(
-      grid,
-      [2, 15],
-      [14, 15], // directly in the way
-      [27, 15], // further along the same row
-    );
-    const paths = findConnectionPaths(
-      grid,
-      grid.terrain,
-      () => 1,
-      origins,
-      0,
-      [1, 2],
-    );
-    expect(paths.get(1)!.length).toBe(13); // x=2..14
-    expect(paths.get(2)!.length).toBe(26); // x=2..27, straight through land 1's origin
-  });
-
-  it("returns an unreachable target absent while still answering its reachable siblings", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [0, 10], [5, 10], [19, 10]); // the last behind the wall
-    for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER;
-    const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
-    const paths = findConnectionPaths(
-      grid,
-      grid.terrain,
-      costOf,
-      origins,
-      0,
-      [1, 2],
-    );
-    expect(paths.has(1)).toBe(true);
-    expect(paths.has(2)).toBe(false);
-  });
-
-  it("drops the source land from its own target set rather than pathing to itself", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [2, 10]);
-    expect(
-      findConnectionPaths(grid, grid.terrain, () => 1, origins, 0, [0]).size,
-    ).toBe(0);
-  });
-});
-
-describe("buildConnectivityIndex / landsCanConnect (the pre-search reachability answer)", () => {
-  const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
-
-  it("agrees with the search on both answers, either side of an impassable wall", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [0, 10], [5, 10], [19, 10]);
-    for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER;
-    const index = buildConnectivityIndex(grid, grid.terrain, costOf, origins);
-    expect(landsCanConnect(index, 0, 1)).toBe(true);
-    expect(landsCanConnect(index, 0, 2)).toBe(false);
-    // The search's own verdict, which this is standing in for.
-    const paths = findConnectionPaths(
-      grid,
-      grid.terrain,
-      costOf,
-      origins,
-      0,
-      [1, 2],
-    );
-    expect(paths.has(1)).toBe(true);
-    expect(paths.has(2)).toBe(false);
-  });
-
-  it("a land whose ORIGIN sits on impassable terrain neither departs nor arrives (guide:1937), and the search agrees both ways", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [2, 10], [17, 10]);
-    grid.terrain[tileIndex(grid, 17, 10)] = WATER; // land 1's origin tile only
-    const index = buildConnectivityIndex(grid, grid.terrain, costOf, origins);
-    expect(landsCanConnect(index, 0, 1)).toBe(false);
-    expect(landsCanConnect(index, 1, 0)).toBe(false);
-    expect(
-      findConnectionPaths(grid, grid.terrain, costOf, origins, 0, [1]).has(1),
-    ).toBe(false);
-    expect(
-      findConnectionPaths(grid, grid.terrain, costOf, origins, 1, [0]).has(0),
-    ).toBe(false);
-  });
-
-  it("only the origin tile decides: a land whose OTHER tiles are all impassable still connects through its origin", () => {
-    // Land 1 is a 5x5 block of WATER with one GRASS tile at its origin on
-    // the block's west edge, so the origin itself is passable and touches
-    // the open map. The old per-tile model would have said the same here,
-    // but for the opposite reason (any passable tile of the land counted);
-    // under the origin model it is the origin tile and nothing else.
-    const grid = createTileGrid(20, GRASS);
-    stampLand(grid, 1, 15, 8, 19, 12);
-    for (let y = 8; y <= 12; y++)
-      for (let x = 15; x <= 19; x++)
-        grid.terrain[tileIndex(grid, x, y)] = WATER;
-    grid.terrain[tileIndex(grid, 15, 10)] = GRASS;
-    const origins = originTilesAt(grid, [2, 10], [15, 10]);
-    const index = buildConnectivityIndex(grid, grid.terrain, costOf, origins);
-    expect(landsCanConnect(index, 0, 1)).toBe(true);
-    expect(
-      findConnectionPaths(grid, grid.terrain, costOf, origins, 0, [1]).has(1),
-    ).toBe(true);
-  });
-
-  it("an origin off the grid connects to nothing", () => {
-    const grid = createTileGrid(20, GRASS);
-    const origins = originTilesAt(grid, [2, 10], null);
-    const index = buildConnectivityIndex(grid, grid.terrain, costOf, origins);
-    expect(landsCanConnect(index, 0, 1)).toBe(false);
-    expect(landsCanConnect(index, 1, 0)).toBe(false);
-  });
-});
-
-describe("teamPairs (Sec.6.5: within-team only, team 0 produces nothing)", () => {
-  it("connects only players on the SAME canonical team, never across teams", () => {
-    const origins = [
-      fabricateOrigin(0, 0, 1),
-      fabricateOrigin(1, 0, 2),
-      fabricateOrigin(2, 0, 3),
-      fabricateOrigin(3, 0, 4),
-    ];
-    const teams = fabricateTeams([1, 1, 2, 2]); // players 1,2 on team 1; players 3,4 on team 2
-    const pairs = teamPairs(origins, teams);
-    expect(pairs).toHaveLength(2);
-    expect(pairs).toContainEqual([0, 1]);
-    expect(pairs).toContainEqual([2, 3]);
-  });
-
-  it("un-teamed players (canonical team 0) produce no pairs at all, not even with each other", () => {
-    const origins = [fabricateOrigin(0, 0, 1), fabricateOrigin(1, 0, 2)];
-    const teams = fabricateTeams([0, 0]); // both un-teamed
-    expect(teamPairs(origins, teams)).toEqual([]);
-  });
-
-  it("ignores neutral lands entirely (no `.player`)", () => {
-    const origins = [
-      fabricateOrigin(0, 0, 1),
-      fabricateOrigin(1, 0, undefined),
-    ];
-    const teams = fabricateTeams([1]);
-    expect(teamPairs(origins, teams)).toEqual([]);
-  });
-});
-
-describe("landZonePairs", () => {
-  it("connects lands from EITHER named zone, cross and intra pairs alike", () => {
-    const origins = [
-      fabricateOrigin(0, 0, 1, -8), // zone A
-      fabricateOrigin(1, 0, 2, -8), // zone A
-      fabricateOrigin(2, 0, 3, -7), // zone B
-      fabricateOrigin(3, 0, 4, -6), // neither zone
-    ];
-    const pairs = landZonePairs(origins, -8, -7);
-    expect(pairs).toHaveLength(3); // C(3,2): 0-1 (intra A), 0-2, 1-2 (cross)
-    expect(pairs).toContainEqual([0, 1]);
-    expect(pairs).toContainEqual([0, 2]);
-    expect(pairs).toContainEqual([1, 2]);
-  });
-});
-
-describe("sameZonePairs (create_connect_same_land_zones: groups by zone, NOT a synonym for all_lands)", () => {
-  it("connects lands WITHIN a shared zone, never across zones", () => {
-    const origins = [
-      fabricateOrigin(0, 0, 1, -9), // zone -9
-      fabricateOrigin(1, 0, undefined, -10), // zone -10
-      fabricateOrigin(2, 0, undefined, -10), // zone -10 (same as the previous one)
-    ];
-    const pairs = sameZonePairs(origins);
-    expect(pairs).toEqual([[1, 2]]); // only the two zone -10 lands pair up
-  });
-
-  it("excludes zone -12 from grouping ('belongs to no zone', Sec.6.1)", () => {
-    const origins = [
-      fabricateOrigin(0, 0, undefined, -12),
-      fabricateOrigin(1, 0, undefined, -12),
-    ];
-    expect(sameZonePairs(origins)).toEqual([]);
-  });
-
-  it("produces nothing when every land is in its own distinct zone", () => {
-    const origins = [
-      fabricateOrigin(0, 0, 1, -9),
-      fabricateOrigin(1, 0, 2, -8),
-      fabricateOrigin(2, 0, 3, -7),
-    ];
-    expect(sameZonePairs(origins)).toEqual([]);
-  });
-});
-
-describe("crossPairs (create_connect_to_nonplayer_land's bipartite pairing)", () => {
-  it("pairs every element of A with every element of B, never within a set", () => {
-    expect(crossPairs([0, 1], [2, 3])).toEqual([
-      [0, 2],
-      [0, 3],
-      [1, 2],
-      [1, 3],
-    ]);
-  });
-
-  it("is empty when either side is empty", () => {
-    expect(crossPairs([], [1, 2])).toEqual([]);
-    expect(crossPairs([1, 2], [])).toEqual([]);
-  });
-});
-
-describe("readTerrainCosts / readTerrainSizes / readReplacementRules (Sec.6.5)", () => {
-  it("terrain_cost accumulates a lookup, last-wins for a repeated terrain", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_lands {",
-      "terrain_cost WATER 5",
-      "terrain_cost DIRT 2",
-      "terrain_cost WATER 9",
-      "}",
-    ].join("\n");
-    const cmd = connectionCommand(source, "create_connect_all_lands");
-    const costs = readTerrainCosts(cmd, constants);
-    expect(costs.get(WATER)).toBe(9);
-    expect(costs.get(DIRT)).toBe(2);
-  });
-
-  it("terrain_size defaults variance to 0 when omitted", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_lands {",
-      "terrain_size DIRT 3\n",
-      "}",
-    ].join("\n");
-    const cmd = connectionCommand(source, "create_connect_all_lands");
-    const sizes = readTerrainSizes(cmd, constants);
-    expect(sizes.get(DIRT)).toEqual({ radius: 3, variance: 0 });
-  });
-
-  it("readReplacementRules + resolveReplacement: a later default_terrain_replacement overrides an earlier specific rule", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_lands {",
-      "replace_terrain GRASS DIRT",
-      "default_terrain_replacement WATER",
-      "}",
-    ].join("\n");
-    const cmd = connectionCommand(source, "create_connect_all_lands");
-    const rules = readReplacementRules(cmd, constants);
-    expect(resolveReplacement(rules, GRASS)).toBe(WATER); // the later wildcard wins
-  });
-
-  it("resolveReplacement: a LATER specific rule still wins over an earlier default_terrain_replacement", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_lands {",
-      "default_terrain_replacement WATER",
-      "replace_terrain GRASS DIRT",
-      "}",
-    ].join("\n");
-    const cmd = connectionCommand(source, "create_connect_all_lands");
-    const rules = readReplacementRules(cmd, constants);
-    expect(resolveReplacement(rules, GRASS)).toBe(DIRT); // GRASS's own later rule wins
-    expect(resolveReplacement(rules, WATER)).toBe(WATER); // untouched terrain still gets the (earlier) wildcard
-  });
-
-  it("resolveReplacement returns undefined (no replacement) when nothing matches and there is no wildcard", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_lands {",
-      "replace_terrain GRASS DIRT",
-      "}",
-    ].join("\n");
-    const cmd = connectionCommand(source, "create_connect_all_lands");
-    const rules = readReplacementRules(cmd, constants);
-    expect(resolveReplacement(rules, WATER)).toBeUndefined();
-  });
-});
-
-describe("applyTerrainAlongPath", () => {
-  it("replaces a disc of tiles around each path tile, sized by terrain_size's radius", () => {
-    const dim = 20;
-    const grid = createTileGrid(dim, GRASS);
-    const center = tileIndex(grid, 10, 10);
-    const rules: ReplacementRule[] = [{ from: GRASS, to: DIRT, order: 0 }];
-    const sizes = new Map([[GRASS, { radius: 2, variance: 0 }]]);
-    applyTerrainAlongPath(
-      grid,
-      [center],
-      grid.terrain.slice(),
-      sizes,
-      rules,
-      mulberry32(1),
-    );
-    expect(grid.terrain[tileIndex(grid, 10, 10)]).toBe(DIRT); // center
-    expect(grid.terrain[tileIndex(grid, 12, 10)]).toBe(DIRT); // exactly radius 2 away, still in the disc
-    expect(grid.terrain[tileIndex(grid, 13, 10)]).toBe(GRASS); // 3 away, outside the disc
-  });
-
-  it("a negative rolled radius replaces nothing at that path tile", () => {
-    const dim = 10;
-    const grid = createTileGrid(dim, GRASS);
-    const center = tileIndex(grid, 5, 5);
-    const rules: ReplacementRule[] = [{ from: GRASS, to: DIRT, order: 0 }];
-    const sizes = new Map([[GRASS, { radius: -1, variance: 0 }]]); // always negative, no variance
-    applyTerrainAlongPath(
-      grid,
-      [center],
-      grid.terrain.slice(),
-      sizes,
-      rules,
-      mulberry32(1),
-    );
-    expect(grid.terrain[center]).toBe(GRASS); // untouched
-  });
-
-  it("radius 0 still replaces the single path tile itself (not a no-op)", () => {
-    const dim = 10;
-    const grid = createTileGrid(dim, GRASS);
-    const center = tileIndex(grid, 5, 5);
-    const rules: ReplacementRule[] = [{ from: GRASS, to: DIRT, order: 0 }];
-    const sizes = new Map([[GRASS, { radius: 0, variance: 0 }]]);
-    applyTerrainAlongPath(
-      grid,
-      [center],
-      grid.terrain.slice(),
-      sizes,
-      rules,
-      mulberry32(1),
-    );
-    expect(grid.terrain[center]).toBe(DIRT);
-    expect(grid.terrain[tileIndex(grid, 6, 5)]).toBe(GRASS); // immediate neighbour untouched
-  });
-
-  it("an absent terrain_size entry defaults to radius 1, variance 0", () => {
-    const dim = 10;
-    const grid = createTileGrid(dim, GRASS);
-    const center = tileIndex(grid, 5, 5);
-    const rules: ReplacementRule[] = [{ from: GRASS, to: DIRT, order: 0 }];
-    applyTerrainAlongPath(
-      grid,
-      [center],
-      grid.terrain.slice(),
-      new Map(),
-      rules,
-      mulberry32(1),
-    );
-    expect(grid.terrain[tileIndex(grid, 5, 5)]).toBe(DIRT);
-    expect(grid.terrain[tileIndex(grid, 6, 5)]).toBe(DIRT); // radius 1 default reaches the neighbour
-    expect(grid.terrain[tileIndex(grid, 7, 5)]).toBe(GRASS); // 2 away: outside
-  });
-});
-
-describe("applyConnections (Sec.6.5 end to end)", () => {
-  it("no CONNECTION_GENERATION section -> no reports, no notes", () => {
-    const { instantiated, grid } = bareGrid("<LAND_GENERATION>\n", 1, {
-      mapSize: "Tiny",
-    });
-    const result = applyConnections(instantiated, grid, constants, [], 1);
+describe("the section (de-connections-objects.md 2.1)", () => {
+  it("does nothing and spends no draw without a section", () => {
+    const result = place("<LAND_GENERATION>\nbase_terrain GRASS\n");
     expect(result.reports).toEqual([]);
-    expect(result.notes).toEqual([]);
+    expect(result.stream).toEqual(result.before);
   });
 
-  // Named for what it asserts: the command declares no `replace_terrain`, so
-  // there is no painting here to check (`applyTerrainAlongPath`'s own describe
-  // block covers that half).
-  it("create_connect_all_players_land pairs the PLAYER lands only, never the neutral one", () => {
-    const { instantiated, grid } = bareGrid(
-      "<CONNECTION_GENERATION>\ncreate_connect_all_players_land {\n}\n",
-      1,
-      { mapSize: "Tiny" },
+  it("burns one draw for an empty section (cn9)", () => {
+    expect(connect("", []).draws).toBe(1);
+  });
+});
+
+describe("one path (3.1 and 3.2)", () => {
+  const two = [origin(5, 20, 1), origin(30, 20, 2)];
+
+  it("paints the start and every tile up to, but not including, the target (cn1)", () => {
+    const { grid } = connect(
+      "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 }",
+      two,
     );
-    const origins = [
-      fabricateOrigin(2, 2, 1),
-      fabricateOrigin(27, 27, 2),
-      fabricateOrigin(5, 27, undefined),
-    ];
-    stampLand(grid, 0, 1, 1, 3, 3);
-    stampLand(grid, 1, 26, 26, 28, 28);
-    stampLand(grid, 2, 4, 26, 6, 28);
-    const result = applyConnections(instantiated, grid, constants, origins, 1);
-    expect(result.reports).toHaveLength(1);
-    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 1 }); // only the two PLAYER lands pair up
+    expect(grid.terrain[tileIndex(grid, 5, 20)]).toBe(ROAD);
+    expect(grid.terrain[tileIndex(grid, 29, 20)]).toBe(ROAD);
+    expect(grid.terrain[tileIndex(grid, 30, 20)]).toBe(GRASS);
+    expect(count(grid, ROAD)).toBe(25);
   });
 
-  it("create_connect_teams_lands with no teams in the lobby: zero pairs plus the 'teams' note", () => {
-    const source = "<CONNECTION_GENERATION>\ncreate_connect_teams_lands {\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, {
-      mapSize: "Tiny",
-      teams: DEFAULT_TEAMS,
-    });
-    const origins = [fabricateOrigin(2, 2, 1), fabricateOrigin(27, 27, 2)];
-    stampLand(grid, 0, 1, 1, 3, 3);
-    stampLand(grid, 1, 26, 26, 28, 28);
-    const result = applyConnections(instantiated, grid, constants, origins, 1);
-    expect(result.reports[0]).toMatchObject({ attempted: 0, placed: 0 });
-    expect(result.notes.some((n) => n.key === "teams")).toBe(true);
+  it("spends four draws per painted tile, even at variance 0 (cn3a)", () => {
+    const { draws } = connect(
+      "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 }",
+      two,
+    );
+    expect(draws).toBe(1 + 4 * 25);
   });
 
-  it("create_connect_all_lands connects regardless of zone; create_connect_same_land_zones does NOT, when the two lands are in different zones", () => {
-    // Different zones (a player land at its own default zone, a neutral
-    // land at the shared default zone) -- all_lands connects them anyway,
-    // same_land_zones does not, since they share no zone.
-    const origins = [
-      fabricateOrigin(2, 2, 1, -9),
-      fabricateOrigin(27, 27, undefined, -10),
-    ];
-
-    const allLands = bareGrid(
-      "<CONNECTION_GENERATION>\ncreate_connect_all_lands {\n}\n",
-      1,
-      { mapSize: "Tiny" },
+  it("paints a square of side 2s + 1 around each tile at variance 0 (cn2)", () => {
+    const { grid } = connect(
+      "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 2 0 }",
+      two,
     );
-    stampLand(allLands.grid, 0, 1, 1, 3, 3);
-    stampLand(allLands.grid, 1, 26, 26, 28, 28);
-    const allLandsResult = applyConnections(
-      allLands.instantiated,
-      allLands.grid,
-      constants,
-      origins,
-      1,
-    );
-    expect(allLandsResult.reports[0]).toMatchObject({
-      attempted: 1,
-      placed: 1,
-    });
-
-    const sameZones = bareGrid(
-      "<CONNECTION_GENERATION>\ncreate_connect_same_land_zones {\n}\n",
-      1,
-      { mapSize: "Tiny" },
-    );
-    stampLand(sameZones.grid, 0, 1, 1, 3, 3);
-    stampLand(sameZones.grid, 1, 26, 26, 28, 28);
-    const sameZonesResult = applyConnections(
-      sameZones.instantiated,
-      sameZones.grid,
-      constants,
-      origins,
-      1,
-    );
-    expect(sameZonesResult.reports[0]).toMatchObject({
-      attempted: 0,
-      placed: 0,
-    });
+    for (let y = 18; y <= 22; y++)
+      expect(grid.terrain[tileIndex(grid, 15, y)]).toBe(ROAD);
+    expect(grid.terrain[tileIndex(grid, 15, 23)]).toBe(GRASS);
   });
 
-  it("create_connect_same_land_zones connects lands that DO share a zone", () => {
-    // Two neutral create_land origins share the default zone (-10, Sec.6.1) --
-    // same_land_zones connects them even though all_lands would too, so
-    // this is the positive case the negative test above needs alongside it.
-    const origins = [
-      fabricateOrigin(2, 2, undefined, -10),
-      fabricateOrigin(27, 27, undefined, -10),
-    ];
-    const { instantiated, grid } = bareGrid(
-      "<CONNECTION_GENERATION>\ncreate_connect_same_land_zones {\n}\n",
-      1,
-      { mapSize: "Tiny" },
-    );
-    stampLand(grid, 0, 1, 1, 3, 3);
-    stampLand(grid, 1, 26, 26, 28, 28);
-    const result = applyConnections(instantiated, grid, constants, origins, 1);
-    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 1 });
-  });
-
-  it("create_connect_to_nonplayer_land: bipartite only, and blocks every LATER connection command with a note", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_to_nonplayer_land {\n}",
-      "create_connect_all_players_land {\n}",
-    ].join("\n");
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Tiny" });
-    const origins = [
-      fabricateOrigin(2, 2, 1),
-      fabricateOrigin(27, 27, 2),
-      fabricateOrigin(5, 27, undefined),
-    ];
-    stampLand(grid, 0, 1, 1, 3, 3);
-    stampLand(grid, 1, 26, 26, 28, 28);
-    stampLand(grid, 2, 4, 26, 6, 28);
-    const result = applyConnections(instantiated, grid, constants, origins, 1);
-    expect(result.reports).toHaveLength(2);
-    // to_nonplayer_land: player x neutral -> exactly 2 pairs (P1-N, P2-N).
-    expect(result.reports[0]).toMatchObject({ attempted: 2 });
-    // the LATER all_players_land command is blocked entirely.
-    expect(result.reports[1]).toMatchObject({ attempted: 0, placed: 0 });
-    expect(
-      result.notes.some((n) => n.key.startsWith("connectionBlockedByBug")),
-    ).toBe(true);
-  });
-
-  it("reports connectionBlocked when no path exists between a pair", () => {
-    const { instantiated, grid } = bareGrid(
-      "<CONNECTION_GENERATION>\ncreate_connect_all_players_land {\nterrain_cost WATER 0\n}\n",
-      1,
-      {
-        mapSize: "Tiny",
+  it("goes around a cost-0 wall rather than through it, and never cuts its corner (cn4)", () => {
+    const { grid, reports } = connect(
+      "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 terrain_cost SNOW 0 }",
+      two,
+      40,
+      (g) => {
+        for (let y = 5; y <= 35; y++) g.terrain[tileIndex(g, 18, y)] = SNOW;
       },
     );
-    const dim = grid.dim; // read the REAL dim -- Tiny is 120, not a guessed value
-    const origins = [
-      fabricateOrigin(2, 10, 1),
-      fabricateOrigin(dim - 3, 10, 2),
-    ];
-    stampLand(grid, 0, 1, 9, 3, 11);
-    stampLand(grid, 1, dim - 4, 9, dim - 2, 11);
-    for (let y = 0; y < dim; y++)
-      grid.terrain[tileIndex(grid, Math.floor(dim / 2), y)] = WATER;
-    const result = applyConnections(instantiated, grid, constants, origins, 1);
-    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 0 });
-    expect(result.reports[0].failures[0].bucket).toBe("connectionBlocked");
+    expect(reports[0]).toMatchObject({ attempted: 1, placed: 1 });
+    expect(count(grid, SNOW)).toBe(31);
+    expect(
+      [4, 36].some((y) => grid.terrain[tileIndex(grid, 18, y)] === ROAD),
+    ).toBe(true);
   });
 
-  /**
-   * Both accumulate_connections tests share one geometry: two player lands
-   * either side of a FULL-HEIGHT wall with a single one-tile gap, so that
-   * gap is the ONLY possible route (same "moat" shape as the earlier,
-   * already-passing impassable-moat test, a partial wall isn't enough,
-   * since a path can simply detour around it through open space elsewhere
-   * on the map). Command 1 always paints that gap tile from GRASS to WATER
-   * (`replace_terrain`, its own `terrain_cost WATER 0` forces its path
-   * through the gap in the first place). Command 2 always declares
-   * `terrain_cost WATER 0` and reconnects the SAME pair, so whether it
-   * succeeds depends entirely on whether it reads the pre-S5 snapshot
-   * (gap still GRASS, cost 1) or the live grid (gap now WATER too,
-   * impassable) -- exactly the accumulate_connections switch.
-   */
-  function bottleneckSetup(source: string, seed: number) {
-    const { instantiated, grid } = bareGrid(source, seed, { mapSize: "Tiny" });
-    const dim = grid.dim;
-    const midY = Math.floor(dim / 2);
-    const wallX = Math.floor(dim / 2);
-    const origins = [
-      fabricateOrigin(4, midY, 1),
-      fabricateOrigin(dim - 5, midY, 2),
-    ];
-    stampLand(grid, 0, 3, midY - 1, 5, midY + 1);
-    stampLand(grid, 1, dim - 6, midY - 1, dim - 4, midY + 1);
-    for (let y = 0; y < dim; y++) {
-      if (y === midY) continue; // the single gap
-      grid.terrain[tileIndex(grid, wallX, y)] = WATER;
-    }
-    const result = applyConnections(
-      instantiated,
-      grid,
-      constants,
-      origins,
-      seed,
+  it("a cost-0 origin blocks the paths arriving at it, not the ones leaving it (cn5a, cn5b)", () => {
+    const body =
+      "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 terrain_cost DIRT 0 }";
+    const atStart = connect(body, two, 40, (g) => {
+      g.terrain[tileIndex(g, 5, 20)] = DIRT;
+    });
+    expect(atStart.reports[0].placed).toBe(1);
+    const atTarget = connect(body, two, 40, (g) => {
+      g.terrain[tileIndex(g, 30, 20)] = DIRT;
+    });
+    expect(atTarget.reports[0].placed).toBe(0);
+    expect(atTarget.reports[0].failures[0].bucket).toBe("connectionBlocked");
+  });
+
+  it("takes a painted tile's layer away", () => {
+    const { grid } = connect(
+      "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 }",
+      two,
+      40,
+      (g) => g.layer.fill(SNOW),
     );
-    return { result, grid };
-  }
-
-  it("accumulate_connections: without it, a second command's terrain_cost ignores what the first command just painted", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_players_land {\nterrain_cost WATER 0\nreplace_terrain GRASS WATER\n}",
-      "create_connect_all_players_land {\nterrain_cost WATER 0\n}",
-    ].join("\n");
-    const { result } = bottleneckSetup(source, 5);
-    expect(result.reports[0]).toMatchObject({ placed: 1 }); // paints the (only open) corridor to WATER
-    // Command 2's `terrain_cost WATER 0` reads the FROZEN pre-S5 snapshot,
-    // where the corridor was still GRASS -- so it is unaffected by what
-    // command 1 just painted and finds the same route again.
-    expect(result.reports[1]).toMatchObject({ placed: 1 });
+    expect(grid.layer[tileIndex(grid, 10, 20)]).toBe(NO_LAYER);
+    expect(grid.layer[tileIndex(grid, 10, 25)]).toBe(SNOW);
   });
 
-  it("accumulate_connections: WITH it, a later command's terrain_cost DOES see an earlier command's painted output", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_players_land {\nterrain_cost WATER 0\nreplace_terrain GRASS WATER\n}",
-      "accumulate_connections",
-      "create_connect_all_players_land {\nterrain_cost WATER 0\n}",
-    ].join("\n");
-    const { result } = bottleneckSetup(source, 5);
-    expect(result.reports[0]).toMatchObject({ placed: 1 }); // paints the (only open) corridor to WATER
-    // Command 2 now reads the LIVE grid: the corridor itself is now WATER
-    // too, cost 0, and it was the only route -- blocked.
-    expect(result.reports[1]).toMatchObject({ placed: 0 });
-    expect(result.reports[1].failures[0].bucket).toBe("connectionBlocked");
-  });
-
-  it("accumulate_connections: even WITH it, pairs inside ONE command never see each other's paint (RMSTEST_43a/43b)", () => {
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "accumulate_connections",
-      "create_connect_all_players_land {\nterrain_cost WATER 0\nreplace_terrain GRASS WATER\n}",
-    ].join("\n");
-    const { instantiated, grid } = bareGrid(source, 5, { mapSize: "Tiny" });
-    const dim = grid.dim;
-    const midY = Math.floor(dim / 2);
-    const wallX = Math.floor(dim / 2);
-    // Two lands west and one east, so BOTH west->east pairs must cross the
-    // wall's single gap -- and they have different source lands, so they are
-    // separate searches even after batching. The first of them paints that
-    // gap to WATER, which this command's own `terrain_cost WATER 0` calls
-    // impassable: a live read would block the second pair, a per-command
-    // snapshot does not.
-    const origins = [
-      fabricateOrigin(4, midY - 6, 1),
-      fabricateOrigin(4, midY + 6, 2),
-      fabricateOrigin(dim - 5, midY, 3),
-    ];
-    stampLand(grid, 0, 3, midY - 7, 5, midY - 5);
-    stampLand(grid, 1, 3, midY + 5, 5, midY + 7);
-    stampLand(grid, 2, dim - 6, midY - 1, dim - 4, midY + 1);
-    for (let y = 0; y < dim; y++) {
-      if (y === midY) continue; // the single gap
-      grid.terrain[tileIndex(grid, wallX, y)] = WATER;
+  it("reads a composite tile as painted, and the tile it repaints stops being one (5.3)", () => {
+    const composites: CompositeRecord = {
+      kind: new Uint8Array(40 * 40),
+      terrain: new Uint16Array(40 * 40).fill(GRASS),
+      layer: new Uint16Array(40 * 40).fill(NO_LAYER),
+    };
+    for (let x = 0; x < 40; x++) {
+      composites.kind[20 * 40 + x] = COMPOSITE_AS_TERRAIN;
+      composites.terrain[20 * 40 + x] = 62;
     }
-    const result = applyConnections(instantiated, grid, constants, origins, 5);
-    expect(result.reports[0]).toMatchObject({ attempted: 3, placed: 3 });
+    const { grid } = connect(
+      "create_connect_all_players_land { replace_terrain 62 ROAD terrain_size GRASS 0 0 terrain_size 62 0 0 }",
+      two,
+      40,
+      undefined,
+      composites,
+    );
+    expect(grid.terrain[tileIndex(grid, 10, 20)]).toBe(ROAD);
+    expect(composites.kind[20 * 40 + 10]).toBe(0);
+    expect(composites.kind[20 * 40 + 35]).toBe(COMPOSITE_AS_TERRAIN);
   });
+});
 
-  it("replacement rules never cascade inside one command: a tile this command painted is not re-read as its new terrain", () => {
-    // GRASS -> DIRT and DIRT -> WATER in the same command. Consecutive path
-    // tiles' radius-1 discs overlap, so every overlap tile is painted twice;
-    // reading `terrainOf` live would find DIRT there the second time and take
-    // it to WATER. Frozen, it reads GRASS both times and stops at DIRT. This
-    // is also exactly the property `PaintCoverage`'s dedup relies on.
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "create_connect_all_players_land {\nreplace_terrain GRASS DIRT\nreplace_terrain DIRT WATER\n}",
-    ].join("\n");
-    const { instantiated, grid } = bareGrid(source, 3, { mapSize: "Tiny" });
-    const dim = grid.dim;
-    const origins = [
-      fabricateOrigin(4, 10, 1),
-      fabricateOrigin(dim - 5, 10, 2),
+describe("the command list (2.3)", () => {
+  const lands = [origin(5, 5, 1), origin(30, 30, 2), origin(5, 30, undefined)];
+  const road =
+    "{ replace_terrain GRASS ROAD replace_terrain DIRT DESERT terrain_size GRASS 0 0 }";
+
+  it("connects every land for same_land_zones, exactly as all_lands (k10)", () => {
+    const zoned = [
+      origin(5, 5, 1, -9),
+      origin(30, 30, 2, -8),
+      origin(5, 30, undefined),
     ];
-    stampLand(grid, 0, 3, 9, 5, 11);
-    stampLand(grid, 1, dim - 6, 9, dim - 4, 11);
-    const result = applyConnections(instantiated, grid, constants, origins, 3);
-    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 1 });
-    expect(grid.terrain).toContain(DIRT);
-    expect(grid.terrain).not.toContain(WATER);
+    const a = connect(`create_connect_all_lands ${road}`, zoned).grid.terrain;
+    const b = connect(`create_connect_same_land_zones ${road}`, zoned).grid
+      .terrain;
+    expect(b).toEqual(a);
   });
 
-  it("accumulate_connections: a path tile's terrain_size is looked up in the command's OWN starting terrain, not in what the command has painted so far", () => {
-    // The sharpest observable the per-command snapshot has, now that every
-    // search runs before any painting: `terrain_size` is keyed on the path
-    // tile's terrain, so a live read would size disc N+1 from the terrain
-    // disc N just painted onto it. GRASS is radius 1 and DIRT radius 5, and
-    // the command paints GRASS to DIRT, so a live read widens the band from
-    // the second path tile onwards.
-    const source = [
-      "<CONNECTION_GENERATION>",
-      "accumulate_connections",
-      "create_connect_all_players_land {\nreplace_terrain GRASS DIRT\nterrain_size GRASS 1 0\nterrain_size DIRT 5 0\n}",
-    ].join("\n");
-    const { instantiated, grid } = bareGrid(source, 3, { mapSize: "Tiny" });
-    const dim = grid.dim;
-    // One row apart on uniform-cost terrain, so the cheapest path is exactly
-    // the straight row between them and the band's width is the whole story.
-    const origins = [
-      fabricateOrigin(4, 10, 1),
-      fabricateOrigin(dim - 5, 10, 2),
-    ];
-    stampLand(grid, 0, 3, 9, 5, 11);
-    stampLand(grid, 1, dim - 6, 9, dim - 4, 11);
-    const result = applyConnections(instantiated, grid, constants, origins, 3);
-    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 1 });
-    let dirt = 0;
-    for (let y = 0; y < dim; y++) {
-      for (let x = 0; x < dim; x++) {
-        if (grid.terrain[tileIndex(grid, x, y)] !== DIRT) continue;
-        dirt++;
-        expect(Math.abs(y - 10)).toBeLessThanOrEqual(1);
-      }
-    }
-    expect(dirt).toBeGreaterThan(0);
+  it("connects nothing for teams_lands in a lobby without teams (cn7a)", () => {
+    const { grid, notes } = connect(
+      `create_connect_teams_lands ${road}`,
+      lands,
+    );
+    expect(count(grid, ROAD)).toBe(0);
+    expect(notes.some((n) => n.key === "teams")).toBe(true);
   });
 
+  it("to_nonplayer_land writes over the next k commands, k the player lands, and a later one survives (cn7d)", () => {
+    const { grid, notes } = connect(
+      [
+        `create_connect_to_nonplayer_land ${road}`,
+        "create_connect_all_players_land { replace_terrain GRASS SNOW terrain_size GRASS 0 0 }",
+        "create_connect_all_lands { replace_terrain GRASS SNOW terrain_size GRASS 0 0 }",
+        "create_connect_all_players_land { replace_terrain GRASS DIRT terrain_size GRASS 0 0 }",
+      ].join("\n"),
+      lands,
+    );
+    expect(count(grid, SNOW)).toBe(0);
+    expect(count(grid, ROAD)).toBeGreaterThan(0);
+    expect(count(grid, DIRT)).toBeGreaterThan(0);
+    expect(
+      notes.filter((n) => n.key.startsWith("connectionBlockedByBug")),
+    ).toHaveLength(2);
+  });
+});
+
+describe("between commands: the undo (3.3)", () => {
+  const two = [origin(5, 20, 1), origin(30, 20, 2)];
+
+  it("a later command does not see an earlier command's road, and both show at the end", () => {
+    // The second command turns ROAD into SNOW. It cannot see the first
+    // command's road, so the end shows the road, not snow.
+    const { grid } = connect(
+      [
+        "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 }",
+        "create_connect_all_players_land { replace_terrain ROAD SNOW terrain_size GRASS 0 0 terrain_size ROAD 0 0 }",
+      ].join("\n"),
+      two,
+    );
+    expect(count(grid, ROAD)).toBe(25);
+    expect(count(grid, SNOW)).toBe(0);
+  });
+
+  it("with accumulate_connections, a later command does see it (cn6b)", () => {
+    const { grid } = connect(
+      [
+        "accumulate_connections",
+        "create_connect_all_players_land { replace_terrain GRASS ROAD terrain_size GRASS 0 0 }",
+        "create_connect_all_players_land { replace_terrain ROAD SNOW terrain_size GRASS 0 0 terrain_size ROAD 0 0 }",
+      ].join("\n"),
+      two,
+    );
+    expect(count(grid, SNOW)).toBe(25);
+  });
+});
+
+describe("applyConnections end to end", () => {
   it("goldenHill.rms (the tutorial's final script): each connection reaches the land ORIGINS at both ends, where the TC sits", () => {
     // A beta tester finished the tutorial and the roads in the preview
     // stopped well short of every TC. Connections run "between the origins

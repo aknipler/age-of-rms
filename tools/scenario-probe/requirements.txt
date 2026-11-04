@@ -1,1 +1,1 @@
-AoE2ScenarioParser>=0.8.3
+AoE2ScenarioParser>=0.9.4

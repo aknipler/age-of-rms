@@ -98,15 +98,27 @@ function place(
     landResult.origins,
     grown,
   );
-  applyCliffs(
+  const cliffed = applyCliffs(
     instantiated,
     grid,
     constants,
     landResult.origins,
     elevated.stream,
   );
-  applyTerrains(instantiated, grid, constants, landResult.origins, seed);
-  applyConnections(instantiated, grid, constants, landResult.origins, seed);
+  const terrained = applyTerrains(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    cliffed.stream,
+  );
+  applyConnections(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    terrained.stream,
+  );
   const objectsResult = applyObjects(
     instantiated,
     grid,

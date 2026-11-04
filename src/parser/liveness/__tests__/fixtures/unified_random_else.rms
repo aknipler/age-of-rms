@@ -1,0 +1,17 @@
+/* From rms-check by Divy1211 (github.com/Divy1211/rms-check), GPL-3.0,
+   test_rms folder, copied 2026-11 for Age of RMS's liveness tests. */
+
+if 1_PLAYER_GAME     #const PLAYER_COUNT 1
+elseif 2_PLAYER_GAME #const PLAYER_COUNT 2
+elseif 3_PLAYER_GAME #const PLAYER_COUNT 3
+elseif 4_PLAYER_GAME #const PLAYER_COUNT 4
+elseif 5_PLAYER_GAME #const PLAYER_COUNT 5
+elseif 6_PLAYER_GAME #const PLAYER_COUNT 6
+elseif 7_PLAYER_GAME #const PLAYER_COUNT 7
+elseif 8_PLAYER_GAME #const PLAYER_COUNT 8
+endif
+
+if 2_PLAYER_GAME
+else
+    #const ISLAND_COUNT (PLAYER_COUNT)
+endif

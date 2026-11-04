@@ -92,6 +92,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "random-or-direct",
         title: "Random or direct placement",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.tab.playerSetup" },
         extraAnchors: [
@@ -122,6 +123,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "player-lands",
         title: "Give the players some land",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.addCommand" },
         extraAnchors: [{ kind: "region", id: "breakdown.main" }],
@@ -168,6 +170,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "hill-in-the-middle",
         title: "A hill in the middle",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         // Same anchor/extraAnchors/nudge as "player-lands" (not a lookalike
         // config, but literally the same element), so the callout lands in
@@ -238,6 +241,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "hills",
         title: "Hills",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.tab.elevationGeneration" },
         extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
@@ -287,6 +291,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "cliffs",
         title: "Cliffs",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.tab.cliffGeneration" },
         extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
@@ -331,6 +336,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "trees",
         title: "Trees",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.tab.terrainGeneration" },
         extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
@@ -383,6 +389,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "road-to-hill",
         title: "A road to the hill",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.tab.connectionGeneration" },
         extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
@@ -424,6 +431,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "starting-units",
         title: "Starting units",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "help", id: "breakdown.tab.objectsGeneration" },
         extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
@@ -501,6 +509,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "gold-on-the-hill",
         title: "Gold on the hill",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         // Anchored to the Add Command button itself, not the whole card-list
         // region (2026-09-16 fix): `breakdown.cardList` can be tall and its
@@ -559,6 +568,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       {
         id: "everyone-elses-resources",
         title: "Everyone else's resources",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         // Same anchor fix as "gold-on-the-hill" above, same reason.
         anchor: { kind: "help", id: "breakdown.addCommand" },

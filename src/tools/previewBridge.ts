@@ -29,6 +29,7 @@ import type {
   PreviewSettings,
 } from "../preview/generator/types";
 import type { ObjectConstant } from "../preview/generator/objects";
+import type { IncludeFiles } from "../preview/generator/includes";
 import {
   isMapSize,
   isTeams,
@@ -145,8 +146,32 @@ export function runPreviewFromContext(
   const bridged = previewSettingsFromContext(ctx, overrides);
   if (!bridged.ok) return bridged;
   if (!ctx.parseResult) return { ok: false, reason: "no-settings" };
+  // The context's include files unless the caller passed its own, so every
+  // tool generates the map the preview pane draws without each one
+  // remembering to forward them.
+  const withIncludes: PreviewOptions = {
+    ...opts,
+    includeFiles: opts.includeFiles ?? includeFilesFromContext(ctx),
+  };
   return {
     ok: true,
-    result: generatePreview(ctx.parseResult, refDb, bridged.settings, opts),
+    result: generatePreview(
+      ctx.parseResult,
+      refDb,
+      bridged.settings,
+      withIncludes,
+    ),
   };
+}
+
+/**
+ * `ToolReferenceData.includeFiles`, a plain record on the contract, as the
+ * Map the generator takes. Undefined without `read-reference` or without an
+ * install, which the generator reads as "no install" and notes.
+ */
+export function includeFilesFromContext(
+  ctx: ToolContext<ParseResult>,
+): IncludeFiles | undefined {
+  const files = ctx.referenceData?.includeFiles;
+  return files === undefined ? undefined : new Map(Object.entries(files));
 }

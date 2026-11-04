@@ -46,6 +46,13 @@ export const LAST_OPEN_FILE_KEY = "lastOpenFile";
  */
 export const SCRIPTS_SUBPATH = "resources\\_common\\random-map-scripts";
 
+/**
+ * Where DE keeps the files a script's `#include_drs` names, which resolve
+ * against this folder (`includes/scaling.inc` is
+ * `<install>\resources\_common\drs\gamedata_x2\includes\scaling.inc`).
+ */
+export const GAMEDATA_SUBPATH = "resources\\_common\\drs\\gamedata_x2";
+
 /** Where Steam itself is normally installed, i.e. where to look for the library list. */
 export const STEAM_ROOT_CANDIDATES: readonly string[] = [
   "C:\\Program Files (x86)\\Steam",
@@ -81,6 +88,11 @@ export function installFolderIn(steamLibraryRoot: string): string {
 /** `<install>\resources\_common\random-map-scripts`. */
 export function scriptsFolderIn(installFolder: string): string {
   return `${trimTrailingSlash(installFolder)}\\${SCRIPTS_SUBPATH}`;
+}
+
+/** `<install>\resources\_common\drs\gamedata_x2`. */
+export function gamedataFolderIn(installFolder: string): string {
+  return `${trimTrailingSlash(installFolder)}\\${GAMEDATA_SUBPATH}`;
 }
 
 /**
@@ -134,25 +146,46 @@ export async function findDeScriptsFolder(
 export async function candidateScriptFolders(
   probe: FolderProbe,
 ): Promise<string[]> {
+  return (await candidateInstallFolders(probe)).map(scriptsFolderIn);
+}
+
+/**
+ * DE's `gamedata_x2` folder, where `#include_drs` files live, or `null` when
+ * the game isn't found. The preview reads include files from here
+ * (src/useIncludeFiles.ts). Same candidates and the same sequential probe as
+ * `findDeScriptsFolder`.
+ */
+export async function findDeGamedataFolder(
+  probe: FolderProbe,
+): Promise<string | null> {
+  for (const install of await candidateInstallFolders(probe)) {
+    const candidate = gamedataFolderIn(install);
+    if (await probe.exists(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Every place DE might be installed, in the order they are tried, each once. */
+async function candidateInstallFolders(probe: FolderProbe): Promise<string[]> {
   const folders: string[] = [];
   const seen = new Set<string>();
   const add = (folder: string) => {
-    const key = folder.toLowerCase();
+    const trimmed = trimTrailingSlash(folder);
+    const key = trimmed.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    folders.push(folder);
+    folders.push(trimmed);
   };
 
   for (const steamRoot of STEAM_ROOT_CANDIDATES) {
     // The Steam root is itself library 0, and on a single-drive install it is
     // the only one, so it is added whether or not the library list reads.
-    add(scriptsFolderIn(installFolderIn(steamRoot)));
+    add(installFolderIn(steamRoot));
     for (const library of await readSteamLibraries(probe, steamRoot)) {
-      add(scriptsFolderIn(installFolderIn(library)));
+      add(installFolderIn(library));
     }
   }
-  for (const install of DIRECT_INSTALL_CANDIDATES)
-    add(scriptsFolderIn(install));
+  for (const install of DIRECT_INSTALL_CANDIDATES) add(install);
 
   return folders;
 }

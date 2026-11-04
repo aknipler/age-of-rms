@@ -74,6 +74,32 @@ describe("buildToolContext", () => {
     expect(ctx.referenceData).toEqual({ language: lang, gameConstants });
   });
 
+  it("read-reference carries the install's include files as a plain record", () => {
+    const includeFiles = new Map([["includes/a.inc", "#const A 1\n"]]);
+    const ctx = buildToolContext({
+      ...baseInput(["read-reference"]),
+      includeFiles,
+    });
+    expect(ctx.referenceData?.includeFiles).toEqual({
+      "includes/a.inc": "#const A 1\n",
+    });
+    // A record survives the worker runner's structured clone and JSON alike.
+    expect(JSON.parse(JSON.stringify(ctx.referenceData?.includeFiles))).toEqual(
+      ctx.referenceData?.includeFiles,
+    );
+  });
+
+  it("leaves include files out without read-reference, and the key out without files", () => {
+    const includeFiles = new Map([["includes/a.inc", "#const A 1\n"]]);
+    const denied = buildToolContext({
+      ...baseInput(["read-ast"]),
+      includeFiles,
+    });
+    expect("referenceData" in denied).toBe(false);
+    const none = buildToolContext(baseInput(["read-reference"]));
+    expect("includeFiles" in none.referenceData!).toBe(false);
+  });
+
   it("read-preview-view grants BOTH seed and cutOffset", () => {
     const ctx = buildToolContext(baseInput(["read-preview-view"]));
     expect(ctx.previewView).toEqual({ seed: 42, cutOffset: 17 });

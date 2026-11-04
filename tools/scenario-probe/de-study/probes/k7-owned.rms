@@ -1,0 +1,15 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT base_size 6 number_of_tiles 900 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object STONE { set_place_for_every_player number_of_objects 2 min_distance_to_players 7 max_distance_to_players 11 }
+create_object GOLD { set_place_for_every_player number_of_objects 2 min_distance_to_players 7 max_distance_to_players 11 }
+create_object FORAGE { set_place_for_every_player number_of_objects 2 min_distance_to_players 6 max_distance_to_players 9 }
+create_object DEER { set_place_for_every_player number_of_objects 2 min_distance_to_players 9 max_distance_to_players 13 }
+create_object BOAR { set_place_for_every_player number_of_objects 2 min_distance_to_players 9 max_distance_to_players 13 }
+create_object OAKTREE { set_place_for_every_player number_of_objects 2 min_distance_to_players 6 max_distance_to_players 9 }
+create_object RELIC { set_place_for_every_player number_of_objects 1 min_distance_to_players 7 max_distance_to_players 11 }
+create_object SHEEP { set_place_for_every_player number_of_objects 2 min_distance_to_players 5 max_distance_to_players 7 }

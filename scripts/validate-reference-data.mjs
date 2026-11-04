@@ -151,40 +151,80 @@ if (languageData) {
     );
   }
 
-  // `tokenId` uniqueness. The parser resolves an aliased `#const` by asking
-  // which command holds an id, so two commands claiming one id makes that
-  // question ambiguous and the answer arbitrary — a map would silently render
-  // as whichever entry the index happened to keep. The schema types the field
-  // but cannot see across entries, which is the same gap the min/max check
-  // below exists for.
-  const commandsByTokenId = new Map();
+  // `tokenId` checks, over every entry kind and `structuralTokens`. The engine
+  // gives each word one integer, so two entries claiming one id is a data
+  // error whatever kinds they are. It also makes the parser's alias question
+  // ("which command holds this id?") ambiguous, and a map would silently
+  // render as whichever entry the index happened to keep. The schema types the
+  // fields but cannot see across entries, the same gap the min/max check below
+  // exists for.
+  const tokenIdOwners = new Map();
+  const structuralTexts = new Set();
   let tokenIdsOk = true;
-  for (const command of languageData.commands) {
-    if (typeof command.tokenId !== "number") continue;
-    const owner = commandsByTokenId.get(command.tokenId);
-    if (owner !== undefined) {
-      hadError = true;
-      tokenIdsOk = false;
-      console.error(
-        `✗ language.json: tokenId ${command.tokenId} is claimed by both "${owner}" and "${command.name}"`,
-      );
-      continue;
-    }
-    commandsByTokenId.set(command.tokenId, command.name);
-    // The field is only ever set from a run, and `notes` is where the run is
-    // named. Enforced rather than trusted, because an id transcribed from a map
-    // author's comment is exactly what BUG-005 spent three rounds refusing.
-    if (!command.notes) {
-      hadError = true;
-      tokenIdsOk = false;
-      console.error(
-        `✗ language.json: command "${command.name}" declares tokenId ${command.tokenId} with no notes naming the run that measured it`,
+  const tokenIdFail = (message) => {
+    hadError = true;
+    tokenIdsOk = false;
+    console.error(`✗ language.json: ${message}`);
+  };
+  const checkTokenId = (label, entry, needsRunNotes) => {
+    const hasId = typeof entry.tokenId === "number";
+    const hasSource = typeof entry.tokenIdSource === "string";
+    // A number with no stated source cannot be told apart from one copied off a
+    // map author's comment, which is what BUG-005 spent three rounds refusing.
+    if (hasId !== hasSource) {
+      tokenIdFail(
+        `${label} has ${hasId ? "a tokenId and no tokenIdSource" : "a tokenIdSource and no tokenId"}`,
       );
     }
+    if (!hasId) return;
+    // One word is one id, so two entries with the same name share it. That is
+    // `base_terrain` and `base_layer`, each both a standalone command and a
+    // block attribute. Different names on one id is the error.
+    const word = entry.name ?? entry.text;
+    const owner = tokenIdOwners.get(entry.tokenId);
+    if (owner !== undefined && owner.word !== word) {
+      tokenIdFail(
+        `tokenId ${entry.tokenId} is claimed by both ${owner.label} and ${label}`,
+      );
+    } else if (owner === undefined) {
+      tokenIdOwners.set(entry.tokenId, { label, word });
+    }
+    // A run is described in `notes`, so a reader can find what was measured.
+    // The sheet needs no such line, since its source string names it.
+    if (
+      needsRunNotes &&
+      hasSource &&
+      entry.tokenIdSource.startsWith("RMSTEST_") &&
+      !entry.notes
+    ) {
+      tokenIdFail(
+        `${label} cites ${entry.tokenIdSource} for tokenId ${entry.tokenId} with no notes describing the run`,
+      );
+    }
+  };
+  for (const [kind, singular] of [
+    ["commands", "command"],
+    ["attributes", "attribute"],
+    ["directives", "directive"],
+    ["controlKeywords", "control keyword"],
+  ]) {
+    for (const entry of languageData[kind] ?? []) {
+      checkTokenId(`${singular} "${entry.name}"`, entry, true);
+    }
+  }
+  for (const token of languageData.structuralTokens ?? []) {
+    if (structuralTexts.has(token.text)) {
+      tokenIdFail(`structuralTokens lists "${token.text}" twice`);
+    }
+    structuralTexts.add(token.text);
+    // The schema has no `notes` on these, so a run-sourced one cannot cite its
+    // run in place. None is run-sourced today, and the check would have to
+    // grow a notes field first.
+    checkTokenId(`structural token "${token.text}"`, token, false);
   }
   if (tokenIdsOk) {
     console.log(
-      `✓ language.json: ${commandsByTokenId.size} command tokenId(s), unique and each citing a run`,
+      `✓ language.json: ${tokenIdOwners.size} tokenId(s) across all entries and ${structuralTexts.size} structural token(s), unique and each with a source`,
     );
   }
 
@@ -225,6 +265,7 @@ if (languageData) {
   }
 
   checkMapSizeJoin(languageData);
+  checkLabelGroups(languageData);
 }
 
 // Mojibake: a non-ASCII character that has been through the wrong encoding
@@ -493,6 +534,44 @@ function checkMapSizeJoin(languageData) {
       `✓ MAP_SIZES ⟷ predefinedLabels: ${resolved.length} sizes resolve, ascending (${summary})`,
     );
   }
+}
+
+// `predefinedLabels[].group` ⟷ `labelGroups`: name liveness reads the groups
+// as constraints, so a label naming a group that does not exist would silently
+// drop its constraint, and a group with fewer than two members constrains
+// nothing and is a leftover.
+function checkLabelGroups(languageData) {
+  const groups = languageData.labelGroups ?? [];
+  const ids = new Set(groups.map((g) => g.id));
+  const members = new Map(groups.map((g) => [g.id, 0]));
+  let ok = true;
+  const fail = (message) => {
+    hadError = true;
+    ok = false;
+    console.error(`✗ ${message}`);
+  };
+  if (ids.size !== groups.length)
+    fail("language.json: labelGroups has a duplicate id");
+  for (const label of languageData.predefinedLabels ?? []) {
+    if (label.group === undefined) continue;
+    if (!ids.has(label.group)) {
+      fail(
+        `language.json: "${label.name}" names group "${label.group}", which labelGroups does not declare`,
+      );
+      continue;
+    }
+    members.set(label.group, members.get(label.group) + 1);
+  }
+  for (const [id, count] of members) {
+    if (count < 2)
+      fail(
+        `language.json: labelGroups "${id}" has ${count} member(s), and a group needs at least two`,
+      );
+  }
+  if (ok)
+    console.log(
+      `✓ predefinedLabels ⟷ labelGroups: ${groups.length} groups, every member resolves`,
+    );
 }
 
 if (hadError) {

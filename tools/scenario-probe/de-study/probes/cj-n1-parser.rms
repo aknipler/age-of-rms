@@ -1,0 +1,17 @@
+#const A 4
+#const B1 rnd(-A,A)
+#const B2 rnd(-A,A)
+#const B3 rnd(A,8)
+if UNDEFINED_LABEL_X
+#const P 70
+elseif
+#const P 30
+endif
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT land_position (B1 * 5 + 20) 25 number_of_tiles 0 base_size 3 }
+create_land { terrain_type DIRT land_position (B2 * 5 + 50) 25 number_of_tiles 0 base_size 3 }
+create_land { terrain_type SNOW land_position (B3 * 5 + 40) 50 number_of_tiles 0 base_size 3 }
+create_land { terrain_type ROAD land_position P 75 number_of_tiles 0 base_size 3 }

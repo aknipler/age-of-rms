@@ -114,7 +114,7 @@ describe("foldGeneration", () => {
     const table = blocks.find(
       (b) =>
         b.kind === "table" &&
-        b.rows.some((r) => r[0] === "Player 1" && r[1] === "Gold"),
+        b.rows.some((r) => r[0] === "Gold" && r[1] === "Player 1"),
     );
     expect(table).toBeDefined();
   });
@@ -133,6 +133,35 @@ describe("foldGeneration", () => {
 });
 
 describe("buildBalanceOutput", () => {
+  it("reports variance across runs, and none for a figure that never changes", () => {
+    const gold: PlacedObject = {
+      objectRef: "GOLD",
+      x: 10,
+      y: 10,
+      player: 1,
+      category: "resource-gold",
+    };
+    const varied = new Map();
+    foldGeneration(varied, 2, [gold], players, refDb);
+    foldGeneration(varied, 2, [], players, refDb);
+    const steady = new Map();
+    foldGeneration(steady, 2, [gold], players, refDb);
+    foldGeneration(steady, 2, [gold], players, refDb);
+    const rowOf = (stats: Map<number, Map<number, Map<never, never>>>) => {
+      const table = buildBalanceOutput(stats, [2], 2).find(
+        (b) => b.kind === "table",
+      );
+      if (!table || table.kind !== "table") throw new Error("no table");
+      return table.rows.find((r) => r[0] === "Gold" && r[1] === "Player 1")!;
+    };
+    // Columns: Resource, Player, Avg amount, Amount variance, ...
+    const mixed = rowOf(varied);
+    // Values A and 0 give variance (A/2)^2, which is the mean squared.
+    expect(Number(mixed[3])).toBe(Number(mixed[2]) ** 2);
+    expect(Number(mixed[3])).toBeGreaterThan(0);
+    expect(rowOf(steady)[3]).toBe("0");
+  });
+
   it("omits a resource with zero occurrences for every player", () => {
     const stats = new Map();
     foldGeneration(
@@ -154,7 +183,7 @@ describe("buildBalanceOutput", () => {
     const table = blocks.find((b) => b.kind === "table");
     expect(
       table && table.kind === "table"
-        ? table.rows.some((r) => r[1] === "Stone")
+        ? table.rows.some((r) => r[0] === "Stone")
         : true,
     ).toBe(false);
   });

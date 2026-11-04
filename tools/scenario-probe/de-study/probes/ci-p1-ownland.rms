@@ -1,0 +1,10 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type DESERT land_position 30 30 base_size 8 land_percent 4 land_id 4 zone 41 }
+create_land { terrain_type DESERT land_position 70 35 base_size 8 land_percent 4 zone 42 }
+create_land { terrain_type DESERT land_position 45 75 base_size 8 land_percent 4 zone 43 }
+<OBJECTS_GENERATION>
+create_object GOLD { number_of_objects 1 number_of_groups 60 place_on_specific_land_id 4 set_gaia_object_only terrain_to_place_on DESERT temp_min_distance_group_placement 3 }
+create_object DEER { number_of_groups 10 set_gaia_object_only terrain_to_place_on DESERT }

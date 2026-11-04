@@ -34,6 +34,10 @@ interface InstanceValueProps {
   helpId: string;
   /** Per-argument tip text; `null` shows none, undefined falls back to `helpId`'s shared entry. */
   helpText?: string | null;
+  /** Ghost text for the empty field, overriding the one the argument's type gives. */
+  hint?: string;
+  /** Refuse a blank commit, see ValueEditor's `required`. */
+  required?: boolean;
 }
 
 // docs/breakdown-design.md Sec.3.4/Sec.4.11, set-value edits, commit on
@@ -46,6 +50,8 @@ export function AttributeValueEditor({
   def,
   helpId,
   helpText,
+  hint,
+  required,
 }: InstanceValueProps) {
   const { tokens, applyEdit, requestFocus, noteCommit } = useBreakdownContext();
   const text = renderArg(arg, tokens);
@@ -78,6 +84,8 @@ export function AttributeValueEditor({
       anchorOffset={arg.span.start}
       helpId={helpId}
       helpText={helpText}
+      hint={hint}
+      required={required}
       allowSpaces={isExpr || wasQuoted}
       names={isExpr ? null : namesSlotOf(def)}
       onCommit={(value, restoreFocus) => {

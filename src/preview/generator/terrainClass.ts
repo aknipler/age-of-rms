@@ -49,6 +49,31 @@ export const CLASS_CLIFF_BLOCKING = 0x4f;
 /** A land of a terrain with any of these bits writes height 0 whatever its `base_elevation` (3.0). */
 export const CLASS_FLAT_LAND = 0x47;
 
+/**
+ * The composite terrains, by id, each as [primary, secondary]. A script can
+ * paint one like any terrain, and the game shows the tile as the primary
+ * terrain with the secondary as its layer (preview-design Sec.6.4, rev 11).
+ * Taken from the study's content data for build 101.103.54800
+ * (`tools/scenario-probe/de-study/evidence/de-findings-cg-cj.md` 5.1), which
+ * names 62 as 77 over 60 and 34 as 0 over 32. Engine data rather than RMS
+ * vocabulary, so it lives here like `cliffs.ts`'s cliff styles.
+ */
+export const COMPOSITE_TERRAINS: ReadonlyMap<
+  number,
+  readonly [number, number]
+> = new Map([
+  [33, [6, 32]],
+  [34, [0, 32]],
+  [36, [6, 32]],
+  [38, [25, 32]],
+  [39, [6, 75]],
+  [43, [14, 25]],
+  [44, [0, 76]],
+  [61, [75, 60]],
+  [62, [77, 60]],
+  [103, [6, 78]],
+]);
+
 /** Terrain ids reach 199 in the dat. The table is sized past that so an id from a newer patch still indexes it. */
 const TABLE_SIZE = 1024;
 

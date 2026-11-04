@@ -345,6 +345,17 @@ export interface ToolReferenceData {
   language: LanguageData;
   /** Generated from reference/schemas/game-constants.schema.json (Sec.2). */
   gameConstants: PublishedGameConstants;
+  /**
+   * The game's `#include_drs` files the script names, read from the user's
+   * DE install, by lowercased path relative to `gamedata_x2` with forward
+   * slashes. A plain record rather than a Map, for the same reason
+   * `language` is plain data. Absent when no install was found or the
+   * script includes nothing. A path missing from the record is a file the
+   * install lacks, which the game reads as empty (preview-design Sec.3 rule
+   * 11). Hand it to the preview as `PreviewOptions.includeFiles`, or let
+   * `runPreviewFromContext` do so.
+   */
+  includeFiles?: Record<string, string>;
 }
 
 /**

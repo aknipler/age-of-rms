@@ -1,0 +1,171 @@
+{
+  "startedAt": "2026-10-28T03:39:49.474Z",
+  "errors": {
+    "readTextFileMissing": "string: failed to open file at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "readFileMissing": "string: failed to open file at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "statMissing": "string: failed to get metadata of path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "lstatMissing": "string: failed to get metadata of path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "readDirMissing": "string: failed to read directory at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist with error: The system cannot find the path specified. (os error 3)",
+    "mkdirExisting": "string: failed to create directory at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\probe-dir with error: Cannot create a file when that file already exists. (os error 183)",
+    "mkdirParentMissing": "string: failed to create directory at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\a\\b with error: The system cannot find the path specified. (os error 3)",
+    "removeMissing": "string: failed to get metadata of path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "removeNonEmptyDir": "string: failed to remove path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\probe-dir with error: The directory is not empty. (os error 145)",
+    "writeTextFileParentMissing": "string: failed to open file at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)"
+  },
+  "mappedCodes": {
+    "readTextFileMissing": "ENOENT",
+    "readFileMissing": "ENOENT",
+    "statMissing": "ENOENT",
+    "lstatMissing": "ENOENT",
+    "readDirMissing": "ENOENT",
+    "mkdirExisting": "EEXIST",
+    "mkdirParentMissing": "ENOENT",
+    "removeMissing": "ENOENT",
+    "removeNonEmptyDir": "ENOTEMPTY",
+    "writeTextFileParentMissing": "ENOENT"
+  },
+  "roundTripExistsMs": {
+    "n": 50,
+    "min": 9.4,
+    "median": 12.2,
+    "max": 990.5
+  },
+  "roundTripExistsIdleMs": {
+    "n": 50,
+    "min": 26.8,
+    "median": 32.6,
+    "max": 44.2
+  },
+  "runs": {
+    "median": {
+      "chars": 42423,
+      "initMs": 472.2,
+      "commitMs": {
+        "n": 20,
+        "min": 150.3,
+        "median": 606.3,
+        "max": 1133.7
+      },
+      "logCount": 20,
+      "logMs": 2215.3,
+      "readFirstBlobMs": 330.2,
+      "roundTrip": true,
+      "noteRoundTrip": true,
+      "disk": {
+        "bytes": 114695,
+        "files": 67
+      }
+    },
+    "largest": {
+      "chars": 366303,
+      "initMs": 350.2,
+      "commitMs": {
+        "n": 20,
+        "min": 118,
+        "median": 534.8,
+        "max": 725.3
+      },
+      "logCount": 20,
+      "logMs": 1108.4,
+      "readFirstBlobMs": 330.7,
+      "roundTrip": true,
+      "noteRoundTrip": true,
+      "disk": {
+        "bytes": 218308,
+        "files": 67
+      }
+    }
+  },
+  "calls": {
+    "other.readFile": {
+      "n": 2,
+      "ms": 63
+    },
+    "other.stat": {
+      "n": 2,
+      "ms": 64
+    },
+    "other.mkdir": {
+      "n": 14,
+      "ms": 332
+    },
+    "other.writeFile": {
+      "n": 2,
+      "ms": 60
+    },
+    "median.commit.readFile": {
+      "n": 160,
+      "ms": 7882
+    },
+    "median.commit.stat": {
+      "n": 140,
+      "ms": 5211
+    },
+    "median.commit.writeFile": {
+      "n": 136,
+      "ms": 3844
+    },
+    "median.commit.mkdir": {
+      "n": 56,
+      "ms": 1271
+    },
+    "median.log.readFile": {
+      "n": 67,
+      "ms": 4942
+    },
+    "median.log.stat": {
+      "n": 9,
+      "ms": 549
+    },
+    "median.log.writeFile": {
+      "n": 8,
+      "ms": 458
+    },
+    "median.log.mkdir": {
+      "n": 14,
+      "ms": 381
+    },
+    "median.log.lstat": {
+      "n": 1,
+      "ms": 61
+    },
+    "largest.commit.readFile": {
+      "n": 160,
+      "ms": 6085
+    },
+    "largest.commit.stat": {
+      "n": 140,
+      "ms": 4137
+    },
+    "largest.commit.writeFile": {
+      "n": 135,
+      "ms": 3247
+    },
+    "largest.commit.mkdir": {
+      "n": 55,
+      "ms": 1079
+    },
+    "largest.log.readFile": {
+      "n": 65,
+      "ms": 2936
+    },
+    "largest.log.stat": {
+      "n": 7,
+      "ms": 483
+    },
+    "largest.log.writeFile": {
+      "n": 7,
+      "ms": 254
+    },
+    "largest.log.mkdir": {
+      "n": 3,
+      "ms": 89
+    },
+    "largest.log.lstat": {
+      "n": 1,
+      "ms": 40
+    }
+  },
+  "ok": true,
+  "finishedAt": "2026-10-28T03:41:33.065Z"
+}

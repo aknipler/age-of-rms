@@ -14651,3 +14651,505 @@ Raw and shared block cards. "Edit in Code tab" was a disabled stub that read "wi
 ### 2026-10-26 Update asks to save first
 
 "Update and restart" now settles unsaved edits before the installer closes the app. `useDocument` returns `ensureSavedBefore`, the same guard Open, New and close use, and `App.tsx` calls it with a new `update` action before `update.install()`. The dialog reads "Save and Update", "Update Without Saving" and Cancel, and Cancel leaves the update strip in place. A clean document updates with no prompt. `UnsavedChangesDialog.test.tsx` pins the wording and the choices. Not seen in the real app, since the updater only runs in a packaged build with a newer release published.
+
+## 2026-10-27 Community Maps design, rev 1
+
+`docs/community-maps-design.md` written from `CREATION_PLAN.md` Sec.A.6. It recommends a public GitHub catalog repository the app reads through one generated index, publishing by pull request after a GitHub device flow sign-in, versions recognised by the SHA-256 of their LF-normalised text so the app never writes into a script, and tournament links fetched from Liquipedia by the catalog's own scheduled workflow, since Liquipedia's terms forbid sharing a database key and the app would share it with every user. Liquipedia's API terms were read the same day and are cited in Sec.2. Submissions are proposed as a link out to the organiser's form because pooled maps are often secret. Design only. Six spikes and eight owner questions gate the slices.
+
+Rev 2 the same day, from the owner's first answers. A tournament set is one match. Competitions run in the app with public submissions, a close date stamped by the relay and organiser-signed results, matching how the RMS Discord runs them today, so the link out was dropped. The owner preferred no-account publishing, so GitHub sign-in became a small serverless relay that alone holds the GitHub token, with an Ed25519 author key in the Windows Credential Manager proving that each new version comes from the map's own author. Sec.6.5 lists what that costs. aoe2map.net was measured through its own JSON API. It holds 769 maps, its newest 40 span January 2023 to June 2026, and its code was last pushed November 2024, so it is offered as an optional read only second source rather than the home for the feature.
+
+Rev 3 the same day, from the owner's answers to rev 2's questions. aoe2map.net is dropped. Publishing is automatic. The relay runs every check and commits straight to the catalog, with a Report button and a maintainer hide list instead of pull request review, and every check is on content since an open source app cannot prove a request came from itself. Parser errors only warn. Competitions are added by a maintainer, results too, and a competition may seal entries until it closes, encrypted in the repository by the relay and revealed by a workflow. Edited copies of another author's map are allowed through an Edit a copy action that records `basedOn`, requires a changelog and prints the credit from the catalog's own record. Reading `scriptHeader.ts` for the owner's "Edited by" question found two clashes. A catalog buffer with no path would be stamped on first save with the downloader as Author, and the per-save "Last modified" refresh would break hash recognition, so the hash now leaves the header block out and catalog buffers start as opened files. Licence options are tabled in Sec.6.8 with one catalog-wide CC BY 4.0 recommended.
+
+Rev 4 the same day. The owner replaced Edit a copy with new versions of the map itself, since scripters copy a script, change it and upload it, so anyone may now upload a version of any map, recorded with its parent and publisher. On upload the app checks the header and writes a changelog comment under it, and the relay refuses an upload that does not match. The Author row keeps the creators, a new Edited by row lists other editors in the version's line of parents, a new Published as row lets a copied file be recognised wherever it travels, and the changelog is rebuilt from the catalog on each upload so a branch never inherits entries it does not contain. The hash now leaves the changelog out as well as the header. Reading `stampHeader` found that pasting a script into File > New stacks a second header naming the paster as Author above the original, so the upload check handles that case. The whole catalog is CC BY 4.0, and hidden competition entries are confirmed. Asked whether local file versioning (`CREATION_PLAN.md` Sec.A.3) would make this simpler, Sec.4.5 answers partly. It removes guessing a file's origin and parent and shares the diff view, but not the relay, keys or checks, so it recommends designing A.3 as a local revision log and building both from a shared core. Open questions are now who may version someone else's map (Q1), the Author label, archiving others' maps, hiding names in sealed competitions and the A.3 plan.
+
+Rev 5 the same day. Anyone may upload a new version of any map and it shows at once. There is no creator Hide button. Instead Report sits on each map and on each row of its version list, and a version report lets a maintainer hide that version alone. The changelog takes the owner's layout, a title line with version, date and editor, then one `- ` line per change, stored as a `changes` array per version in `map.json`. Change lines go through `sanitizeField`, since a standalone `*/` in free text would end the comment early. The header keeps its Author label, and sealed competitions hide maps but not names. Q3 (archiving someone else's map) and Q5 (designing A.3 next) stay open.
+
+## 2026-10-28 Header row Created by, and Community Maps design rev 6
+
+The stamped header's Author row is now labelled Created by (`LABELS.author` in `src/hooks/scriptHeader.ts`), on the owner's decision, so it reads clearly beside the Edited by row the community maps design adds. The field key stays `author`. Headers stamped before the change keep their Author row, which costs nothing, since ownership is tracked per session from the rows the app wrote and an opened file is never refreshed. The test helper `rowFor` matched a label by bare prefix, and "Created" is a prefix of "Created by", so it now matches the label plus its column padding. The Settings author name HelpTip names the new row. `scriptHeader.test.ts` 29/29, `patch.unit.test.ts` and `helpCoverage` green, `validate:reference` passed. Run sheet section 50.
+
+`docs/community-maps-design.md` rev 6 settles rev 5's Q2 and Q3. Anyone may upload someone else's map as a new map with no statement of authorship asked for, and the Created by row names its real creator, recorded with no key beside a separate `uploadedBy`. Report covers anyone who lies. Sec.4.5 gains a table comparing a revision log inside the app with Git integration for local history. Q5 (designing A.3 next as the revision log) stays open.
+
+Later the same day, the owner's questions on the A.3 comparison corrected it. The first table mixed what the user sees with what stores the history. Git can be a hidden store in the app's data folder, needing no account and no Git knowledge, so Sec.4.5 now compares three options, an own snapshot store, a hidden Git store, and Git visible beside the script. "One repository holding every map" is only a problem when the repository sits in a folder the user shares with other things, and "shares nothing with the catalog" was wrong, since the shared hash rule, version record and diff view fit any store.
+
+`docs/community-maps-design.md` rev 7 the same day, from the owner's next decisions. Local history (CREATION_PLAN Sec.A.3) will be a History panel over a hidden Git store in the app's data folder, and is the next design pass. A new Sec.4.6 matches scripts to catalog maps by content through a MinHash fingerprint over the lexer's tokens with comments dropped and DE boilerplate on a stop list, so a copy with its header deleted is still recognised, and the index lists each map's most similar maps, shown as a list in its details and a chip on its card. Spike S8 calibrates the run length, stop list and thresholds on the corpus. A new Sec.6.10 makes the catalog a versioned public API from the start, static `v1/` reads on GitHub Pages, `/v1/` relay routes with stable error codes, and `docs/community-api.md` with test vectors, to be offered to other programs once stable. Competitions gain an `announces` time so an announcement appears in every program at once without a push server, and a one-time prompt offers a startup check. A new version's dialog has an editable Edited by name field stored as `editedBy`, while Created by on a new version always comes from the catalog. No owner questions remain open.
+
+## 2026-10-28 Spike S8 (content fingerprint), startup check, Local History design rev 1
+
+Spike S8 ran with `tools/fingerprint-probe/` (README holds the method and output) over DE's 188 shipped maps, 40 community maps and 21 local copies. Settings chosen: runs of 3 tokens with comments dropped, names the script defines with `#const` or `#define` replaced by one placeholder, runs found in at least 10% of DE's shipped maps left out (4,743), 64 hashes. Unrelated pairs reach p99 0.09 overlap, real versions 0.31 to 1.00. Comeer v1.4 to v1.5 read only 0.31 because the copy of v1.4 on disk has an unclosed `/*` on line 196, so under DE's nested comments its last 835 of 1,031 lines are comment and its live code is a fifth of v1.5's, all inside it. The first write-up said v1.5 had five times the code, and the owner caught it since the two should be near identical, so containment, estimated from the overlap and each fingerprint's run count, is the measure for the version guess (real versions 0.93 to 1.00, unrelated p99 0.31). Thresholds 0.6 for the guess, 0.4 for the similar list and 0.8 for the chip are in community-maps-design Sec.4.6. The sample of real versions is four relationships, so the thresholds are a starting point. A first reading called Pa Site "built from" Fortified Clearing on the strength of a 0.95 score alone, softened to what the score shows.
+
+The competition check at startup is on by default with no prompt, matching the update check the app already makes at every startup, with a setting to turn it off.
+
+Reading `isomorphic-git`'s source for the history design found its `pack` command writes whole objects with no deltas and it has no `gc`, so community-maps-design Sec.4.5's claim that a hidden Git store is far smaller than an own snapshot store was wrong. Both cost the compressed size of each version, measured at a 5.3 KB median over 52 maps. The claim is corrected in place. `docs/local-history-design.md` rev 1 designs CREATION_PLAN Sec.A.3 on the owner's choice of a hidden Git store. A bare repository per script written with plumbing commands only, a Tauri fs adapter injected so Vitest can pass Node's own fs, a snapshot on every save that changes the map hash, restore as an undoable edit after a snapshot of the replaced text, moved files reconnected by hash and then by fingerprint, and the shared core with community maps. Five owner questions and spikes H1 to H3.
+
+`docs/local-history-design.md` rev 2 the same day, from the owner's answers. Every snapshot is kept, Save As shows the original's history behind a divider, and the panel is a pane over the editor. Crash recovery for unsaved work was split off as CREATION_PLAN Sec.A.8, not designed. The owner asked about saves that change the header's credit rows or the changelog without touching the map, which rev 1 skipped. New Sec.4.1 skips a save only when it differs from the last snapshot in nothing but the rows the app refreshes by itself, and records header or changelog edits as their own `scope: header` snapshot folded under the one before in the panel, rather than overwriting it, since a snapshot may already be compared, restored, tagged or published. Q5 (whether to keep optional notes) is the one question left.
+
+`docs/local-history-design.md` rev 3 the same day. Notes on snapshots stay, optional and never prompted, offered as changelog lines on publish. No owner questions remain open, and spikes H1 to H3 gate the slices.
+
+## 2026-10-28, RMSTEST Batch 18 run in the editor
+
+The only batch still marked not run in `tools/scenario-probe/rmstest/README.md` was Batch 18 (scripts 75a to 80). Run in DE through the scenario editor, 23 maps at seeds 1000 to 1002. Results are in that README's Batch 18 section.
+
+**Findings.** A cost 0 terrain under a land blocks every road to that land (75a, with a control 75b that roads reach it). The terrain_size disc is painted up to the origin tile (76). An undeclared terrain_size equals radius 1 variance 0, tile for tile (77a and 77b). Both spacing attributes on one `create_terrain` are enforced independently, at gaps of 2 and 10 tiles (78). The second `create_player_lands` under `grouped_by_team` puts all eight lands at one fixed spot on the first ring, so the guide's bug reproduces (80). Script 79 was not decisive the first time, since `base_size 20` merges the lands into one blob whatever the grouping does, and a smaller `base_size` cannot reach the overflow. It was rerun the same day reading each player's origin from a VILLAGER placed 3 tiles from the start (the editor placed no STONE). Teammates sit 41 to 51 apart on the 301-tile ring and neighbouring teams 29 to 32 apart, against the model's 45 and 30, at all three seeds, so there is no clamp and no expansion. Every player unit lies within `[17.5, 101.5]`, so origins also look held to `[base, dim - base]` at variance 0, which Sec.6.1 item 7 applies only above variance 0.
+
+**Not yet taken into the spec.** `preview-design.md` Sec.6.1, 6.4 and 6.5, Sec.15 item 33 and the BUG-029 entry in `known-issues.md` are unchanged. The ring radius of about 50 measured at size 200 is explained by item 7 (the last command's `circle_radius 25` is 50 on 200), so it is not an anomaly. The possible clamp correction to item 7 needs a second map.
+
+**Tooling.** AoE2ScenarioParser 0.8.3 cannot read scenario version 1.59, so the maps were read with 0.9.8 in a scratch virtual environment, and `probe_scenario.py` and `export_de_fixture.py` still fail on the installed 0.8.3. Upgrading the installed package is the open choice.
+
+## 2026-10-28 Local History spike H1
+
+`isomorphic-git` driven through `@tauri-apps/plugin-fs` inside the real app (`npm run tauri dev`, debug build), from a temporary self-running module that wrote its results to the app data folder and closed the app. Run four times, then taken back out. `src/main.tsx`, both capability files and `package.json` are as before, and the packages were installed and removed with `--no-save`. The module, its last output and how to wire it in again are in `tools/history-spike/`. A bare repository per script works end to end, including notes, and the first snapshot's text came back byte for byte on a 42 KB and a 366 KB map. Two things the library's docs do not say came out of the first two runs. It needs a global `Buffer`, and it binds `readlink` and `symlink` at construction, so the first run failed in `bindFs` until stubs were added. The plugin's errors are strings with the Windows error number, mapped to `ENOENT`, `EEXIST` and `ENOTEMPTY`. A snapshot costs about 24 plugin calls and walking the log about 4 per snapshot, so the design (rev 4) gives each script a `snapshots.json` for the panel's list. Round trips measured 12 to 63 ms, far above normal, most likely because the window was hidden while the session ran over Remote Control. They are owed again with the window on screen before slice 1.
+
+## 2026-10-28 Local History spikes H1 run again, H2 and H3
+
+H1 run again with the window on screen, through the same temporary module, which now also records the page's visibility, focus and frame rate at each step and brings its window to the front. The page stayed visible and focused at 60 frames a second throughout, and desktop captures taken outside the app showed the window in front. A snapshot took a median 117 to 123 ms, walking the log of 20 snapshots 200 ms, and a plugin round trip 5 to 10 ms, about five times faster than the earlier runs with the window hidden. A core command with no plugin cost 6 ms, so the bridge itself is most of each round trip in a debug build. H2 bundled only the commands the design uses with esbuild, 184 KB minified and 59 KB gzipped (`isomorphic-git` 71 KB, `pako` 46 KB, `buffer` 25 KB), against a main bundle of about 4.1 MB, so the design loads it with a dynamic `import()` on the first snapshot. H3 opened Monaco's diff editor over the running app on Vanguard with three one-number edits and on Menindee v2.3 against v2.5. It worked with the app's setup unchanged, coloured both sides with the `aoe2-rms` language in light and dark, computed the diff in the existing editor worker in 49 to 83 ms, and switched to one column below 900 px, which the app's default 800 px window is. The design is at rev 5 and nothing gates slice 1. `src/main.tsx`, both capability files, `package.json` and `package-lock.json` were checked byte for byte against copies taken before the run, and the packages were installed and removed with `--no-save`. The spikes and both result files are in `tools/history-spike/`. Timings taken from the app need the page's own visibility recorded beside them, since a hidden WebView2 window slowed every figure about fivefold.
+
+## 2026-11-01 — preview-design rev 11: the terrain stage, the connections and whole scripts, DE-exact
+
+Rev 11 takes up the owner's DE study from round ET to round CJ (`tools/scenario-probe/de-study/evidence/de-findings-cg-cj.md`, `de-terrain-stage.md`, `de-connections-objects.md` Sections 2, 3 and 10, and the GP revision notes of the land and elevation write-ups). Objects stay out. The preview now reproduces DE tile for tile, terrain, elevation, layer and cliffs, on 328 of the 342 archived maps no earlier gate held, against 166 before. The spec's Appendix A has the changelog, and the replaced text is below.
+
+What was built, by file.
+
+- `terrains.ts` rewritten as DE's terrain stage on the game's stream, with `resolveComposites`, `clearBeachLayers` and the beach marks. `TileLists` in `elevation.ts` is exported for it.
+- `connections.ts` rewritten as DE's connection stage, with the command list, the best-first path, the rectangles, the undo and the composite view.
+- `tokenFilter.ts`, new, for scripts whose conditionals span section headers.
+- `instantiate.ts`. The roll first, dead blocks not rolled, bare `elseif`, names in `rnd()` bounds, the preamble as `<PLAYER_SETUP>`, the editor's labels, and the token filter.
+- `lands.ts`. Untyped lands paint 0, assigned lands keep zone −10, `circle_radius` on assigned lands, no player setup without lands.
+- `index.ts`. The base fill's layer rule, the order of the stage ends, the connection stage's cleanup and beach, and the beach layers.
+- `cliffs.ts`. Cell index wrap for a piece's neighbour. `elevation.ts` and `terrains.ts` count every player origin.
+- `terrainClass.ts`. `COMPOSITE_TERRAINS`, ten pairs from the study's content data.
+- `types.ts`. `PreviewSettings.lobby`.
+- Tests. `deWholeScriptMaps.test.ts` and `de-whole-script-maps.json`. `terrains.test.ts` and `connections.test.ts` rewritten around the measured rules, the beach-rule tests kept. New parser-rule tests in `instantiate.test.ts`. Five older tests that asserted refuted behaviour updated (`cleanupNote`, `index`, `lands`).
+- `tools/scenario-probe/export_de_fixture.py` writes to the new fixture by default, records `lobbySize`, and names the probe file. `requirements.txt` asks for AoE2ScenarioParser 0.9.4.
+
+How it was measured. A throwaway probe ran all 343 archived maps not already in a fixture through `generatePreview` after each change and printed the tiles that differed, and was deleted at the end. The archived maps are DE's 1.59 scenario format, which AoE2ScenarioParser 0.8.3 cannot read. The study's own environment (`RMS/de-disassembly/.venv`, AoE2ScenarioParser 0.9.4) read them.
+
+BUG-029 closed with it (moved below from `docs/known-issues.md`).
+
+### Rev 10 Sec.6.4 and Sec.6.5, replaced by rev 11 (moved verbatim 2026-11-01)
+
+### 6.4 Terrains (S4)
+
+Sequential per `create_terrain T { … }`, in script order (guide: "generated sequentially… positions cannot be directly specified"):
+
+- Budget: `land_percent` (of total map) or `number_of_tiles` — default **`122 × dim/120`** — **MEASURED, side-length scaled, not area** (RMSTEST_14, 2026-07-31; guide:1616, "default:122 tiles on a tiny map"). Same correction as Sec.6.2 and the same measurement: DIRT tile counts of 120/121 on Tiny and 148/146 on Small, a ratio of **1.22** against 1.20 for side length and 1.44 for area. The fit is close to exact — `122 × dim/120` predicts 122 and 146.4 against measured 120.5 and 147. **Terrain growth also shows no overshoot**, unlike elevation: measured counts land on the budget rather than ~3-6% above it, so do not carry Sec.6.2's overshoot allowance across to terrains; `number_of_clumps` default 1; scaling per attribute — note the terrain-specific rule: `set_scale_by_groups` scales **both** clumps and tiles for terrains (guide), unlike elevation.
+- Eligible tiles: **terrain == `base_terrain` AND (no `base_layer`, or layer == `base_layer`)**. **CORRECTED 2026-08-07, and this reverses a pin made in rev 4 — the two guide lines genuinely disagree, so the reason for preferring one is the whole of the argument.**
+  - guide:1471, inside **`base_layer`'s own entry**, states the combination rule normatively and gives a worked example: "If used together with base_terrain, the new terrain will be placed only where **both** the base and the layer apply."
+  - guide:1603 is an aside inside **`land_percent`'s** entry, explaining why `land_percent 100` does not fill the map: "terrain will only be replaced where the appropriate base_terrain **or** base_layer is present". It is not about combining the two attributes at all; the "or" is covering both attribute names in a sentence about something else.
+
+  The dedicated entry wins, on this project's own "look for the sentence" discipline: 1471 is the sentence about combining them and 1603 is not. The disjunction also makes the attribute pointless — under OR, adding `base_layer` can only ever _widen_ the eligible set, so "place this terrain on the desert that is layered over grass" matched every bare grass tile on the map. Rev 4's stated objection to the conjunction, that it "narrows the eligible set to the intersection", is exactly what the attribute is for. **Worth one RMSTEST** (Sec.15 item 24) since two guide lines conflict, but nothing about the conjunction reading is in tension with anything else measured. Within `height_limits` if given; ≥`spacing_to_other_terrain_types` from any tile of a _different_ terrain (distance-transform query); **pinned approximation:** cliff tiles also count as foreign terrain for this spacing — the engine gets this via under-cliff terrain 16, which we don't simulate (Sec.9.7); ≥ each `spacing_to_specific_terrain T d` (accumulated list); `set_flat_terrain_only`: also ≥spacing from sloped tiles (only when spacing ≥1 — guide); `set_avoid_player_start_areas d` (default 13 when bare): ≥d from player origins with mild variance.
+
+- Clump seeds from eligible set; grow restricted to eligible tiles, adjacent clumps merging naturally. **Terrains have their own `clumping_factor` regimes — do not reuse Sec.6.1's land table.** Guide:1646–1648 gives a different default, a different useful range, and different boundaries, and there is no directional regime at all:
+
+  | `clumping_factor` (terrain) | Guide:1647–1648                                                                                  | Model                                                                            |
+  | --------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+  | negative                    | "extremely snakey"                                                                               | strongly favour `neighborsOwned == 1`                                            |
+  | 0 to ~15                    | "more irregular" (0–5) → "rounder terrain patches" (5–25)                                        | weight rises **continuously** with `neighborsOwned`, steepness ramping with `cf` |
+  | above ~15                   | _still inside_ the guide's range (useful 0–25, moderate 5–25) — the saturation is ours, measured | saturated; no further change, no directional streaking                           |
+
+  Note the third row's guide column, since rev 6 had it wrong: guide:1647 gives the useful range as 0–25 and guide:1648 calls 5–25 moderate, so **15–25 is inside both**. The saturation at ~15 is RMSTEST_20's finding and it stands on its own; the guide does not corroborate it and must not be quoted as if it did.
+
+  **MEASURED (RMSTEST_20, 2026-08-01).** Nine terrains, one clump each, identical 400-tile budgets, same map and same run so only `cf` differs:
+
+  | `cf`        | −5        | 0     | 3     | 5     | 8     | 15        | 20    | 25    | 40    |
+  | ----------- | --------- | ----- | ----- | ----- | ----- | --------- | ----- | ----- | ----- |
+  | circularity | **0.035** | 0.068 | 0.128 | 0.172 | 0.217 | **0.272** | 0.222 | 0.217 | 0.268 |
+
+  (Circularity is `4·π·area/perimeter²`, normalised so a disc is 1.0, a solid square 0.785 and a one-tile-wide snake tends to 0.)
+
+  Two readings, and the first is the one that matters:
+
+  **The bucket model is the wrong shape.** `cf` 0 → 15 is a smooth, near-linear ramp with **no step at the guide's stated 5 boundary**. RMSTEST_20's header recorded in advance that a smooth ramp would mean exactly this, so the prediction is not being fitted after the fact. Replace the buckets with a continuous weight whose steepness is a function of `cf`.
+
+  **The saturation point is ~15, not 25.** Above 15 the values plateau in the 0.22–0.27 band and stop responding, so the clamp survives but sits lower than the guide's useful range suggests.
+
+  Negative remains dramatically separate at 0.035 and keeps its own rule.
+
+  Default **20** (guide:1646, "different than for lands"), which by this measurement is already in the saturated band — where the land default of 8 is mid-ramp. That difference between the two defaults is real and is why the tables stay separate even now that both are continuous. Rev 4 corrected the land table and left its terrain twin pointing at it, which was the same error one level down.
+
+- `terrain_mask 1/2` — **two behaviours, and the difference is which terrain OWNS the tile, not how it is drawn (clarified 2026-08-07).** guide:1502-1509: mask 1's new terrain "is masked over the base terrain and inherits its properties", mask 2's "is masked under the base terrain and provides new properties", where "properties" is spelled out to include placement restrictions, automatic objects such as forest trees, and minimap colour. So:
+  - **mask 1**: write the new terrain into `layer`; `terrain` keeps the base, and a later command's `base_terrain` still matches the tile.
+  - **mask 2**: the new terrain takes `terrain` and the previous base moves into `layer`. A later `base_terrain` naming the old base no longer matches, and the tile's habitat and automatic-object behaviour change with it.
+
+  guide:2486 gives the same direction from the object side: `layer_to_place_on` "works for terrain_mask 1, but not when set to 2 ... because the layer has become the main terrain". **An implementation collapsed both into "write to `layer`" on the reasoning that Sec.9 renders masking as a flat tint anyway, so the distinction would be invisible. It is not a rendering distinction at all**, and under that reading every mask-2 command was a no-op for the rest of the pipeline — `AD4 - Pag - v1.2.rms` uses mask 2 in two of its first three terrain commands. Only the visual BLEND is out of scope (Sec.9 item 6); which terrain owns the tile is not. Honesty note in Sec.9. `beach_terrain`: hand the terrain to the beach step that runs when this command finishes, scoped to the tiles this command claimed — the attribute picks the terrain, the step picks the tiles (see the beach subsection below). Skip it entirely if a <CONNECTION_GENERATION> section exists — the guide documents that bug; emulating it IS the honest choice, plus a note. Skipping the ATTRIBUTE is not skipping the beach: the coastline still takes the engine's own default, which is what the attribute would have been overriding.
+
+**AUTOMATIC BEACHES ARE ENGINE BEHAVIOUR, NOT A COMMAND — added 2026-08-07.** Nothing in a script asks for them: the community DE terrain table states the rule on the beach terrains' own rows (id 2 BEACH "automatically placed when land terrains border water", id 37 ICYSHORE "created when snowy terrains border water"), and `beach_terrain` above exists to OVERRIDE it per command, which is why guide:1483 gives that attribute a default of BEACH. Without it a preview draws land meeting open water with no shoreline at all — 536 such tiles on `AD4 - Pag - v1.2.rms`.
+
+Each **land** tile takes ITS OWN beach terrain (`beachTerrain` in `game-constants.json`, populated for all 131 rows) where it borders something deeper than itself. The beach is on the land side. The depth mask is taken before any write, so a new beach cannot make its neighbour look shallower than it was.
+
+**Adjacency is 8 connected, measured 2026-10-15.** A land tile borders something deeper when any of its eight neighbours is deeper, the diagonals included. A neighbour off the map is never deeper, so land running to the map edge takes no beach there. On a straight coast this is one row of sand. On a coast at 45 degrees it is two, because the tile one step inland still touches water at a corner. Five saved DE maps match this tile for tile and none matches the 4 connected reading, which the preview used until this date. RMSTEST_75 (one DIRT land on WATER with two 20 row border cuts) has 180 beach tiles against 140 for 4 connected. The two RMSTEST_52 maps (ragged coasts against open water and against shallows) have 721 and 862 against 538 and 631, so the land and shallows boundary follows the same rule. The two RMSTEST_15 maps have 432 against 420. Gate `deBeachMaps.test.ts` restores each map's beach to its land, runs the pass and expects DE's terrain back exactly.
+
+**THREE DEPTHS ARE READ, ONE BOUNDARY IS EDGED — corrected 2026-08-08, half of it withdrawn 2026-08-12 (BUG-010).** The map has land, **shallows** and open water. Sand appears where LAND meets either of the other two and **nowhere else**: `RMSTEST_52` put the three in a known order and counted 3 and 2 tiles on the shallows/open-water boundary against 336/312 and 30/90 on the other two, which is a triple junction rather than a rule. So a shallows band running out to sea comes out **sand, shallow, shallow, sea**, and the sentence below about edging every boundary between two depths applies to the landward one only. **The three-value mask still earns its place** — `isWater` alone calls `DLC_MANGROVESHALLOW` and the navigable ice family dry, so an `isWater`-only test leaves those coasts with no beach at all, which is the gap the depth model was introduced to close and which the landward half keeps closed. What the withdrawn half rested on: a `terrain_state` line about "thinner blending of shallows and beach terrain", read as evidence the two are adjacent by default when it describes an adjacency the author supplies. **A guide sentence that a construct CAN be configured is not a statement that the engine does it unasked.** Corpus effect of the withdrawal, measured at seed 7 on Normal: 6 of 32 maps change, total beach 8984 → 7577, the largest being `W4 - Immersion` 1752 → 1016 and `TL Tres Leches` 1045 → 678; one map gains a single tile through a downstream cascade.
+
+Original text, for the shallows enumeration it carries: The map has land, **shallows** and open water, and the engine edges every boundary between two of them rather than only the outer one. Shallows are the terrain both land units and ships can cross — the community DE table's `Unit Pathing: all`, carried as `isHybrid` in `game-constants.json` — and there are ten of them: 4 SHALLOW, 26 Ice Navigable, 54 DLC_MANGROVESHALLOW, 55 DLC_MANGROVEFOREST, 59 DLC_NEWSHALLOW, 90 Forest Reeds (Shallows), 93 and 94 Moddable Walkable Shallows, 111 MUDDY_SHALLOW, 115 YELLOW_SHALLOW. The nine beach terrains and the five rice farms share that pathing value and are excluded: a beach is what the rule PRODUCES rather than a thing it edges, and a rice farm is not wet. So a shallows band running from a coast out to sea comes out **sand, shallow, sand, sea** — edged on both of its sides. Two of the ten are forests placed on shallows rather than shallows proper (55, 90); treating them as shallows is a flagged judgment call, on the grounds that both are named as growing out of a shallow rather than out of dry ground.
+
+**`isHybrid` is ORTHOGONAL to `isWater` and deliberately does not replace it.** The two answer different questions and disagree in both directions. `isWater` is the placement question every other stage asks — can a building go here, does a cliff avoid it, is an object out of its habitat — and by that reading a shallow IS water. Depth is the question only this rule asks, and by that reading a shallow is neither land nor water: `DLC_MANGROVESHALLOW` is buildable, walkable ground that `isWater` correctly calls dry and the table still calls a shallow. Folding hybrid into `isWater` would have moved every consumer of the water mask, which is a far larger claim than this rule needs. All ten hybrid rows therefore also carry a `beachTerrain` — seven of them read `null` until this correction, and only because the first derivation pass read `isWater` and stopped.
+
+Unlike `isWater` and `isForest`, `isHybrid` has **no name-heuristic fallback**: `YELLOW_SHALLOW` is a shallow and `YELLOW_SHALLOW_WATER` is open water, so no pattern separates them, and all 131 rows carry the field explicitly. A terrain the table has never covered falls back to `isWater`'s own answer, which leaves it behaving exactly as it did before the field existed.
+
+Measured at seed 7 on Normal over the tracked corpus: nine maps change and the beach present when `<TERRAIN_GENERATION>` starts never decreases on any of them (`W4 - Immersion.rms` 1324 → 2468 final, `QS_Three_Bays_v1.1.rms` 2753 → 3700, `TL Tres Leches.rms` 376 → 1045). Two maps end with FEWER beach-family tiles than before (Pag 1364 → 1294, `Chaotic_Straitv0.99.rms` 4831 → 4805) and both are downstream cascade rather than lost coastline: Pag writes `create_terrain DLC_BEACH2 { base_terrain SHALLOW … }`, so shallows edged earlier are no longer SHALLOW for that command to convert, and its `<CONNECTION_GENERATION>` then replaces plain BEACH with DIRT where it would have left DLC_BEACH2 alone.
+
+**WHEN IT RUNS — corrected 2026-08-07, having first shipped as a single pass after S5.** The beach step happens at the END OF LAND GENERATION and again at the end of every `create_terrain` command, so a beach exists for the whole of `<TERRAIN_GENERATION>` instead of appearing after it. The single late pass was refuted by the corpus rather than by argument: `base_terrain BEACH` has **67 uses across the tracked maps** (five consecutive in `AK_Namatjira.rms`, plus `DLC_WETBEACH`/`BEACH_BUILDABLE` variants elsewhere), and a beach that does not exist until after S5 matches none of them — those commands ran against an empty eligible pool and painted nothing, which reads as a quiet map rather than an error. Running late also made the pass the last writer on every coastal tile, so it silently undid the conversions those commands were for.
+
+**Rev 10 (2026-10-19) moves the first pass from the end of the land stage to just before S4's first command.** DE's `lh1` maps grow hills on the DESERT around a WATER land, and they match only if that DESERT is not beached when S2 runs, so the game runs no beach pass at the end of the land stage. Whether it runs one before `<TERRAIN_GENERATION>` is untested (Sec.15 item 58). The preview keeps one there for the `base_terrain BEACH` idiom above, and on a script with no `create_terrain` it changes nothing the pass at the end of S4 would not redo. The per-command passes and the pass after S5 stand.
+
+**EVERY run dresses the WHOLE grid, and the per-command step is UNCONDITIONAL — corrected 2026-08-08.** What is scoped to the painting command's own tiles is `beach_terrain` (guide:1483: "placed where the CURRENT terrain borders water"), not the step itself. The grid-wide part is load-bearing: a command that paints water puts land it never touched onto the coast, and only a grid-wide pass dresses that land.
+
+An earlier version made the per-command step fire **only when the command set `beach_terrain`**, on the argument that an unconditional pass eats its own output — `create_terrain X { base_terrain BEACH }` converts the beach and the step converts X's waterline straight back, since X borders water and X's own row grows a BEACH. **The argument is sound and its conclusion was wrong, because it counted only the tiles that touch water.** Split the two cases:
+
+- **A coast whose only beach IS the waterline.** The command converts that one-tile strip and the step converts it back, so the command is a no-op. That is the correct outcome, not a broken idiom: there was no beach anywhere else for it to act on.
+- **A land made OF beach** (a beach clump, a `base_terrain BEACH` fill, a wide `DLC_WETBEACH` shelf). Every beach tile converts to X **except** the tiles touching water, which revert. The idiom does its work on the interior, which is the whole reason a script writes it.
+
+So the unconditional step preserves the 67-use idiom rather than destroying it, and it also beaches the new coastline a command paints, which the conditional version left bare (measured at seed 7 on Normal: 873 unbeached coastal tiles on Pag, 829 on `24hr_Mont Saint Michel.rms`). The conditional reading protected the case where nothing was at stake and broke the case where something was. Sec.15 item 31 (below) closes the one thing this left genuinely unmeasured — the S5/`<CONNECTION_GENERATION>` moment described next.
+
+`beach_terrain` is passed into the pass rather than acting on its own, so the attribute picks the terrain and the pass picks the tiles. That is what makes a NON-beach `beach_terrain` work (guide:1488 warns docks then cannot be built there, so the engine honours it), which a data-default-only pass would overwrite. A `beach_terrain` naming a WATER terrain instead reproduces guide:1485's documented cascade, replacing the whole clump at paint time, which is why the pass itself never needs to iterate.
+
+**A pass now runs after S5 too — MEASURED 2026-09-02, RMSTEST_70, Sec.15 item 31 CLOSED.** Connection painting can carve new water, and the engine dresses it: three runs, a causeway built by `replace_terrain` through open water with no other land/water boundary nearby, and beach consistently appeared beside the carved path's interior, not only at its ends. The pre-2026-09-02 reasoning against a third pass rested on one datum — `beach_terrain` is documented to stop working entirely when a `<CONNECTION_GENERATION>` section exists — which turned out to describe a different mechanism (the `beach_terrain` attribute on a `create_terrain` command) than the one this measures (the unconditional, no-command-needed automatic pass); the two are independent and only the second was ever in question here. Cost of the old gap, at seed 7 on Normal, before this fix: 873 unbeached coastal tiles on Pag and 829 on `24hr_Mont Saint Michel.rms`, against 0 on `AK_Namatjira.rms`; Pag now reads 2688 beach tiles total post-fix.
+
+- Failures: `terrainAbsent` (no eligible tiles at all — e.g. base_terrain never present on the map: a real, common map bug this preview should surface), `spacingConflict` (eligible set emptied by spacing), `growthShortfall` (partial growth — the same bucket S1 and S2 use; rev 3 invented a `budgetShortfall` name here that was never in Sec.7's union, so Sec.13's per-bucket unit test could never have been written for it).
+
+**The end of the terrain stage, rev 10 (MEASURED 2026-10-19).** After every `create_terrain` command S4 ends with three steps, in this order.
+
+1. Every cliff line tile gets back the terrain it had when a cliff first touched it (Sec.6.3). That is its own earlier terrain, so a line across a DIRT land leaves DIRT, and the guide's "base terrain" is wrong (`co1`, where the base terrain would give 247 and 125 DESERT tiles DE has as DIRT). The layer is not restored (untested).
+2. Sec.6.1's cleanup pass runs with WATER, terrain 1 exactly, as the reference. A tile that is not water with water on both opposite sides, or in pass 1's diagonal patterns, becomes water and loses its layer, base terrain included. The tile keeps its `grid.landId`, as the game keeps its zone. Rev 9 measured the pass on 16 maps with water lands, a diagonal case among them, and the desert twins of the same scripts show it is specific to water. Its place is now measured too. On `wc1` seed 1000, running it at the end of the land stage gives 20 different tiles, the terrain-70 tile among them, so hills and cliffs are placed against the coast before the cleanup.
+3. The beach pass runs over the whole map, by this section's rules.
+
+### 6.5 Connections (S5)
+
+Per connection command, build the node set: `create_connect_all_players_land` → player-land origins (incl. assigned lands); `…teams_lands` → **all pairs within each canonical team** (Sec.3.1), teams taken independently, no cross-team pairs. **Un-teamed players produce no pairs at all — including with each other.** Canonical team 0 is "not on a team", not "the team of everyone left over", and an implementer who treats it as a group draws land bridges between players who are not allies, which is exactly the kind of confident lie goal 1 forbids. A lobby with no teams therefore yields no team connections, and the Sec.3.1 `"teams"` drawer note fires; `…all_lands` → all land origins, all pairs, regardless of zone. `…same_land_zones` → **GROUPS by `.zone` and connects all pairs WITHIN each zone independently, never across zones — CORRECTED 2026-08-06.** A prior reading of this section parsed "`…all_lands` / `…same_land_zones` → all land origins, all pairs" as one shared behaviour for both commands, which an implementation session built and shipped before review caught it. That was wrong: cross-checked against two independent community RMS references (not the guide this section otherwise cites, and not yet confirmed in-game the way this doc's RMSTEST_* runs confirm other facts — a real run is still owed here, tracked as a new Sec.15 verify item), both describing `same_land_zones` as zone-partitioned. It also fits the zone defaults Sec.6.1 already measured without needing a new assumption: every `create_land` shares zone −10 while every player land gets its own `playerNumber − 10`, so on an unmodified script this command connects only the neutral lands to each other and leaves player lands untouched — which is the entire reason it exists as something other than a plain synonym for `…all_lands`. `…land_zones z1 z2` → lands of those zones, all cross+intra pairs; `…to_nonplayer_land` → player×neutral pairs only (and emulate its documented bug: it blocks all subsequent connection commands — note emitted).
+
+- Endpoints. **A connection runs from the source land's ORIGIN tile to the target land's ORIGIN tile**, `LandOrigin.x/y`, the same tile the TC's `max_distance_to_players 0` band is centred on in Sec.6.6. The path therefore crosses both lands' own interiors and paints over their terrain like any other tile's. Sourced from the guide, which states it once for the section ("along a path between the origins of lands", guide:1730) and again per command (guide:1759/1774/1792), and from one in-game observation on the tutorial's Golden Hill (a beta tester's report, 2026-09-17, where the roads reach the TC in game). **`RMSTEST_76` is written (2026-09-21, BUG-029, tools/scenario-probe/rmstest README Batch 18) and not yet run** — it checks the one consequence of moving the endpoint to the origin tile that hasn't been looked at: whether the `terrain_size` disc painted along the path actually reaches that far too, into the land's own body, rather than being clipped at the edge by some unmodelled mechanism. **CORRECTED 2026-09-17.** Rev 6 through the 2026-08-11 batching rewrite had the search seeded from EVERY tile of the source land and accepting the FIRST tile of a target land it closed, which joins the two lands' nearest edges instead. On Golden Hill every road stopped 24 to 36 tiles short of the TC, one land radius, and the tutorial's final render showed exactly that.
+- Pathfinding. **One multi-goal Dijkstra per SOURCE land**, not one search per pair, seeded from the source's origin tile, and each of that source's targets is answered when its origin tile closes. Cost per tile = accumulated `terrain_cost` for its terrain (default 1; ≤0 → impassable). A heuristic is deliberately absent, since A*'s optimality covers only the first goal popped out of a goal set, so aiming one at the nearest remaining target returns non-optimal paths to the rest. **Answer the unreachable pairs before searching**, by flooding the command's passable tiles into connected components once and asking whether the two origin tiles share one. Otherwise a single unreachable target makes its search exhaust the whole component and cancels the saving (measured 2026-08-11, when batching alone bought `24hr_Caverns.rms` 15% and batching plus the component check 5.0×; re-timed 2026-09-17 under the origin model at 290 ms for S5, with `AD4 - Pag - v1.2.rms` at 233 ms). Departing and arriving are the same test, the origin tile's own passability. A cost-0 terrain under a land origin means "the connections to that land will not be generated at all" (guide:1937), in either direction. The earlier per-tile model had an asymmetry here (depart from any component the land's tiles touched, arrive only through the land's own passable tiles); it described the old seeding, not the engine, and is withdrawn with it. **This symmetric claim is BUG-029, still unmeasured against the real engine, and `RMSTEST_75a`/`75b` are written (2026-09-21, tools/scenario-probe/rmstest README Batch 18) and not yet run** — three lands under one `create_connect_all_lands`, one of them wholly cost-0 terrain and placed off the other two's line so an unrelated path cannot be mistaken for one touching it, checking that connections to the blocked land fail from BOTH of its potential neighbours and not just one. An origin off the grid, which the guide records as a crash (guide:818), is a `connectionBlocked` failure, never a throw.
+- Costs and replacements read the terrain state **at the start of S5** unless `accumulate_connections` (DE semantics — guide); with it, they read the state at the start of the CURRENT COMMAND. **Accumulation is between commands and not within one — measured, `RMSTEST_43a`/`43b`, Sec.15 item 22** (456 road tiles across eight generations, flag on and flag off, zero spread, against a control quantity that varied normally). Rev 6 and earlier said "prior connections' output" without saying at what granularity, and the implementation read it as live pair-to-pair; that reading is withdrawn. It also has to be, for the batching above: a per-command snapshot is what makes one search per source land equivalent to one per pair rather than a deviation.
+- One further consequence of the frozen read, and it is the difference between a 3.0 s map and a 0.9 s one: within a command, **a tile's painted value is a pure function of the snapshot**, so a second disc covering it writes what is already there. Track which tiles a command has painted and skip the repeats. `24hr_Caverns.rms` declares `terrain_size DLC_RAINFOREST 420 0` on a 240-wide map — a disc larger than the map, re-scanned per path tile over thousands of them.
+- No path (impassable moat of cost-0 terrain, or unreachable land) → that pair's connection simply isn't produced (engine behavior) + `connectionBlocked` failure with the pair identified — prime 5.2 material.
+- Terrain application along the path: for each path tile, radius = `terrain_size[terrain].radius ± uniform(variance)` (per-tile roll; negative effective radius → replace nothing — guide:1965). **When no `terrain_size` entry exists for the terrain the path is crossing, radius defaults to 1 and variance to 0** (guide:1958/1960) — rev 3 left this unspecified, and it decides whether a default connection is drawn 1 tile or 3 tiles wide, which is about as visible as preview differences get; 2 of the 12 connection-using corpus maps omit `terrain_size` entirely. **Still only guide-sourced, not measured — Sec.15 item 39** (this paragraph and the 2026-09-02 status line below both mislabelled it "item 32" — a mistake caught 2026-09-21, corrected in place; item 32 is the already-closed detached-seed question further down this section, an unrelated topic, and item 39 is the real, correctly-numbered entry that already describes this exact gap in full). `RMSTEST_70`'s undeclared-`terrain_size` DIRT causeway fragmented into dozens of small/single-tile patches in two of its three runs, which a deterministic radius-1/variance-0 disc on every 4-adjacent path tile should not produce; a dedicated run (declared vs undeclared `terrain_size`, reading path width and gap frequency) would settle whether the true default carries real variance. **`RMSTEST_77a`/`77b` are written (2026-09-21, tools/scenario-probe/rmstest README Batch 18) and not yet run** — a matched pair, one declaring `terrain_size GRASS 1 0` explicitly and the other omitting it entirely on an otherwise byte-identical map, so a difference between the two isolates real hidden variance from any other explanation for RMSTEST_70's fragmentation. Note also that **radius 0 still replaces a single-tile-wide path** (guide:1963) — 0 is a real width, not a no-op, so the disc for radius 0 is the path tile itself. Within the disc, apply `replace_terrain old→new` (accumulated list; `default_terrain_replacement` = replace-everything, overriding earlier list entries but not later ones — emulate by expansion order). Replacements reference pre-S5 terrain per the same accumulate rule — so within one command they never cascade (`GRASS→DIRT` and `DIRT→WATER` in the same block leaves a grass tile at DIRT), and the radius lookup for a path tile reads the terrain the command STARTED with, not what an earlier disc has since painted onto it.
+
+### preview-design rev 10 changelog (moved verbatim 2026-11-01)
+
+## Appendix A: rev 10 changelog
+
+A replacement round for elevation and cliffs, from measurement. The owner's study (rounds EC and EC2, 2026-10-17 to 19) reproduced DE's `<ELEVATION_GENERATION>` and `<CLIFF_GENERATION>` tile for tile on 51 saved maps from 22 probe scripts, every reading predicted before the run. Rev 10 folds it in and the build followed the same day. The study's first leads came from AoE2RMSIDE (Apache 2.0), which it read, restated in its own words and tested rule by rule. No code from it entered the repo.
+
+**Replaced.**
+
+1. **Sec.6.2.** The game's layers, lists, shuffle, seeds, growth and smoothing replace the statistical model, its fitted seed weight, density amplification, overshoot allowance and height rings.
+2. **Sec.6.3.** The game's cells, walk, painting, water repair and cliff pieces replace the coarse walk. The default maximum count is 9, and lengths are max-exclusive.
+3. **Sec.6.1 growth rule 12.** Heights are written during growth, on the leftover fill's rolled cells too, so a raised land has a rim.
+4. **Sec.6.4's end.** Cliff lines restored, then the WATER cleanup, then the beach, and no beach pass at the end of the land stage.
+5. **Sec.8.** The game's stream now runs through S3, and substreams start at S4.
+
+**Added.** The cleanup's restore draws (Sec.6.1 rule 11). `base_layer` cleared on painted tiles (rule 10). `placementClass` and `decorations` on terrain rows (Sec.12), from `tools/extract-constants --terrain-generation`. `PreviewResult.cliffPieces`. Sec.13's elevation and cliff gate. `max_number_of_cliffs` defaults to 9 in `language.json`.
+
+**Withdrawn.** The "no effect without an elevation section" reading of `base_elevation` (the heights stand, `lh2`), Sec.13's elevation-bias tests, Sec.9 item 7. **Closed.** Sec.15 item 20. **Opened.** Items 56 to 59.
+
+**What the build found.**
+
+1. The port matched all 51 maps on its first run. Five mutants then showed the gate can tell the rules apart, each failing exactly the maps the write-up names for it. No restore draws fails `gr1`, the unlink edge at y + r fails 15 maps (`el2` to `el7`, `cl3`, `gr1`), a beach pass at the end of the land stage fails `lh1` and `wc1`, restoring cliff lines to the base terrain fails `co1`, `cl4` and `gr1`, and no height on the leftover fill fails `lh1` and `lh2`.
+2. The beach at the end of the land stage, which rev 9 kept for the `base_terrain BEACH` idiom, is refuted by `lh1`, so it moved to the start of S4.
+3. Comeer's tutorial picture changed only in its hill shading, and the land-stage gate and the Comeer seed checks are unchanged.
+
+### BUG-029 closed 2026-11-01 with preview-design rev 11 (moved verbatim from docs/known-issues.md)
+
+Closed by measurement, not by the RMSTEST_75a/75b and 77a/77b runs the entry planned. The owner's DE study measured both questions in rounds CO and CF. A connection runs between land origins (cn1), and a cost-0 origin blocks the paths arriving at it and not those leaving it (cn5a, cn5b), so neither the guide's reading nor the preview's 'both directions' was right. Sec.6.5 rev 11 carries the rule, and `deWholeScriptMaps.test.ts` holds it to every connection map of the study.
+
+### BUG-029 — 2026-09-17 — connection endpoints are guide-sourced, not measured
+
+**Status:** OPEN, verify item. **SCRIPTS WRITTEN 2026-09-21, NOT YET RUN.** **Area:** `src/preview/generator/connections.ts`, `docs/preview-design.md` Sec.6.5. The 2026-09-17 fix (roads stopped one land radius short of every TC on the tutorial's Golden Hill) moved connections from nearest-edge to origin-to-origin on the guide's word (guide:1730, 1759, 1792) and one in-game observation that the road reaches the TC. Two consequences of that model have no RMSTEST_* run behind them and are worth one: that a cost-0 terrain under a land ORIGIN blocks connections to that land in BOTH directions (guide:1937, the engine may well still depart from it), and that the road's `terrain_size` disc paints over the player's own land right up to the origin tile rather than stopping at the land edge.
+
+**Both now have scripts, tracked in `tools/scenario-probe/rmstest/README.md`'s Batch 18, ready to run against a real DE install.** `RMSTEST_75a_costzero_origin_blocked` / `RMSTEST_75b_costzero_origin_control` (a matched pair) put three lands under one `create_connect_all_lands`, one of them wholly cost-0 terrain and placed off the other two's line, and check that connections to it fail from BOTH of its potential neighbours rather than just one — the withdrawn per-tile model's own asymmetry (depart from anywhere the land's tiles touched, arrive only through its own passable tiles) is exactly the shape of bug this is checking was not carried forward into the origin-to-origin rewrite. `RMSTEST_76_terrainsize_intrudes_origin` checks the second consequence directly: a deterministic, variance-free `terrain_size` disc on a road running to a land's origin, reading whether ROAD tiles appear inside the land's own former footprint or stop at its edge.
+
+## 2026-11-02 — rev 11 amended: the drain writes the target, and include files come from the install
+
+The DE study's note `tools/scenario-probe/de-study/evidence/amendment-2026-11-02-drain-includes.md` explained the 14 maps `deWholeScriptMaps.test.ts` marked `known`, and both fixes are built. All 342 maps match, and none is marked `known` any more.
+
+What was built, by file.
+
+- `terrains.ts`. The drain writes the pass's target terrain and layer instead of painting. Under `terrain_mask 1` a seed's untested neighbour that is not the base gets the base terrain under the layer. That was Menindee's 11 PALM_DESERT tiles at seeds 1004 and 1005.
+- `includes.ts`, new. `includeKey`, `includePathsIn` (from a parse), `includePathsInText` (a plain scan for the main thread), `loadIncludeFiles` (the transitive read, with an injected reader) and `mapSpanToSource`.
+- `tokenFilter.ts`. With an `IncludeSource`, a live `#include_drs` reads the file in where it stands, through the same filter, so its draws and definitions fall in reading order. A dead one reads nothing. A missing file reads as empty and is reported. A file that includes itself reads once. The filter returns each insertion, and draws are keyed by their offset in the expanded text.
+- `instantiate.ts`. A script with includes goes through the filter when files were supplied. At the end every command, attribute, argument and note span is mapped back to the author's text, spans from inside an include landing on its directive, and duplicate notes are dropped. The note for a missing install or file is reworded. `#includeXS` no longer raises it.
+- `types.ts`, `index.ts`. `PreviewOptions.includeFiles`, passed to S0.
+- `settings/scriptFolder.ts`. `GAMEDATA_SUBPATH`, `gamedataFolderIn` and `findDeGamedataFolder`, sharing the install candidates with the scripts folder search.
+- `useIncludeFiles.ts`, new, and `usePreviewResult.ts`. The app finds the install once per session, reads the files a script names when that set changes, and sends them with each preview request.
+- Tests. `includes.test.ts`, new, 18 tests on made-up files, each of the four core rules mutation-tested. `deWholeScriptMaps.test.ts` reads the include files from a local install (or `AOE2DE_DIR`) and skips the Bazi maps without one. The fixture lost its 14 `known` marks.
+- Docs. preview-design Sec.3 rules 9 and 11, Sec.6.4 step 5 and the mask table, Sec.9 item 2 withdrawn, Sec.10's `PreviewOptions`, Sec.13, Sec.15 items 60 and 61 closed, Appendix A's amendment. Run sheet section 52.
+
+Measured. Cloning Bazi's 45 include files (458 K characters) for the worker takes about 8 ms in Node, against about 250 ms for the ParseResult sent beside them, so the files go with every request rather than through a cache in the worker that a respawn would lose.
+
+Not covered. Other callers of `generatePreview` (the Consistency Checker, Advanced Tools) pass no include files, so for them an include still reads as empty with the note. The app path is untested in the real Tauri host (run sheet section 52).
+
+Full `npm test`, 5332 of 5335 green, the three red all timeouts under load (`index.test.ts` determinism on 24hr_A Heart Map at 16 to 19 s, `seedCheck.test.ts` at 6 s), 121/121 alone. `tsc`, eslint and Prettier clean on the changed files.
+
+### Same day, the Advanced Tools take the include files too
+
+A tool that generates must see the files the preview pane reads, or it checks another map. `ToolReferenceData` (`tools-api/index.ts`) gains an optional `includeFiles` record, granted with `read-reference` and absent without an install. `buildToolContext` fills it from `useIncludeFiles`, which `ToolsPane` now calls, and which shares one read with the preview pane through a module-level promise keyed on the set of paths. `runPreviewFromContext` forwards the record to the generator unless the caller passes its own, which covers the Consistency Checker's generations and the Balance Summary, and `PreviewHandleStore.generate` once something constructs it (nothing does yet). The Consistency Checker's static pass passes it to `instantiateScript`, and Land Placement's `useEmission` reads the files itself for its `#const` table. The Constants Usage tool reads the AST only and is unchanged. tools-api-design.md records the field, run sheet section 52 gained items 6 to 8.
+
+Tests. `buildToolContext.test.ts` (the record, its capability gate, no key without files), `previewBridge.test.ts` (read in, noted when absent, the caller's files win, record to Map), `consistencyChecker.test.ts` (a cliff-count contradiction visible only through an include). The two bridge rules and the checker's static pass were each mutation-tested.
+
+### Same day, What's New for 0.11
+
+`whatsNew0110` in `src/tutorial/content/whatsNew.ts`, an announcement only since no new control needs a spotlight. It covers the DE-exact terrain and connections, scripts with conditionals spanning sections, include files from the install (preview and tools) and the Created by header row, and adds local history to the coming-up list. It fires only once `package.json` reads 0.11.0.
+
+## 2026-11-02 Designs for include resolution, token IDs and name liveness (CREATION_PLAN A.1, A.2, A.4)
+
+Three design docs, rev 1, nothing built. `docs/include-resolution-design.md`, `docs/token-alias-design.md`, `docs/name-liveness-design.md`. CREATION_PLAN's three entries point to them.
+
+Measured for them, with two throwaway probes run by exact path and deleted. One parsed and validated 243 scripts (44 corpus, 19 local, DE's 180 shipped) with every include read from the install. The other ran the token filter over the 342 maps `deWholeScriptMaps.test.ts` holds.
+
+- **Includes.** 176 scripts use `#include_drs`, 2,165 diagnostics are softened by it, and only 12 are answered by a name an include defines. Lifting the softening shows DE's own `Stranded.rms` defining `#const FOREST_IDENTIFICATIO 500` and using `FOREST_IDENTIFICATION` 1,887 times. It would also raise 14 uses under an `if` on their own name and 195 RMS0300 suggestions in numbered families (`9_PLAYER_GAME` against `8_PLAYER_GAME`), which the design's two rules keep quiet. Parsing all 54 DE include files takes 84 ms, so the parser worker caches them.
+- **Token IDs.** The RMS Equivalencies sheet, which earlier sessions could not fetch, came through its xlsx export with its colour classes. 153 IDs. `*/` is 70, valued `HOUSE`, `ATTR_ATTACK_GRAPHIC` and `CITY_OF_LAKES`. `MILL` is 68, `}`, which explains parser-design's "MILL can close a block". Under the 70 rule `Chaotic_Straitv0.99.rms` is not truncated at all, against the recorded 51% loss, and RMSTEST_83 will settle it.
+- **Control-valued constants in dead code do not act as control words in DE.** 597 of them (`SHALLOW` as `elseif`, `GRASS3` as `end_random`, and others) sit in dead text in 14 of the 342 maps the preview matches tile for tile, which could not happen if DE read them. Comments inside dead code are untested and get a run.
+- **A preview defect.** `instantiate.ts` re-parses the filtered text and parses include files without `commentOpenAliases`, so a script that goes through the token filter loses the 69 truncation. Fixed by token-alias slice A.
+- **Liveness.** Of 107,635 value uses of script `#const` names, every cheap rule together settles 85,965, leaving 21,670 in 79 scripts for the full model. `24hr_Blind Valley.rms` is the type, every constant defined in the one branch a 100/0/0 `start_random` always takes.
+
+rms-check's liveness page and its eleven test maps (`test-maps/rms-check/`) were still available and are the A.4 model's source. Two of its probability rules disagree with DE's measured roll (a first arm at 0% still runs, a total of 99 is exhaustive), and its "unknown name is undefined" breaks the positive-resolver rule. The design records all three.
+
+## 2026-11-02 Include resolution slice A, the index and the softening (CREATION_PLAN A.1)
+
+The Code tab's checks now know the names a script's `#include_drs` files define, and the missing-name checks stop turning down to info once those files were read. Built from `docs/include-resolution-slice-a-brief.md`. The name lookup, autocomplete and hover (slice C) and the two quieting rules (slice B) are not built.
+
+- `src/parser/includeIndex.ts`, pure. `IncludeFiles`, `includeKey`, `includePathsIn` and `includePathsInText` moved here from the generator, which re-exports them. `buildIncludeIndex(parse, files, parseFile)` returns each included name with the outer `#include_drs` token, the file it sits in and whether a branch guards it, plus the paths the install lacks. `parseFile` is how the worker's cache gets in without the pure module owning state.
+- `ParseOptions.externalSymbols` and `includesUnread`. The parser's RMS0202 check runs before any `ParseResult` exists, so the worker scans the source for the paths, walks the cached files for their names and passes both. Without options an include still softens, as before.
+- `validate(result, refDb, { resolvedIncludes })`. Each included name stands in as a definition at its directive, so RMS0303 gives the engine's answer with no change to `isDefinedAbove`. RMS0302 and RMS0312 skip those stand-ins, since an include's `#define` has no line of its own in the open script. With an index, only a `#include_drs` the app could not read softens, and `#includeXS` no longer does.
+- `src/editor/includeCache.ts`, pure. The worker keeps one `IncludeState`, replaced on each includes message. A key the app asked for and the install lacks reads as empty and does not soften. A key not asked for yet, a path the user has just typed, does. A text compare (`===`) decides whether a cached parse is reused.
+- `useIncludeLoad(source)` in `src/useIncludeFiles.ts` carries the `requested` keys beside the files, and `useIncludeFiles` wraps it, so its four callers are unchanged. `useParsedDocument` posts the files to the worker when they change, then sends a parse of the current text so the diagnostics catch up without a keystroke. A generation counter, bumped when the worker is created, re-runs that effect for a fresh worker.
+
+Deviation from the brief. `IncludeState` gained a fourth field, `parse`, so `indexFor` can parse a file the cache lacks. `receiveIncludes` fills the cache for every file, so the fallback is rare.
+
+Measured by a throwaway probe over 243 scripts (the top-level `test-maps`, `test-maps/local` and DE's 180 shipped maps), files read from the install, then deleted.
+
+| Measure                                               | Value                                                                                                    |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Diagnostics carrying the include sentence             | **0**                                                                                                    |
+| RMS0202 warnings on `Stranded.rms`                    | **1,887**, all `FOREST_IDENTIFICATION`                                                                   |
+| RMS0202 warnings on other scripts that use an include | **71** (Pa_Site 40, Dorothea Quarry 18, fortified_clearing 10, real_world_australia 2, Arabian Desert 1) |
+| RMS0300 warnings                                      | **197**, the design's figure (195 numbered-family sites plus AK_Namatjira's 2)                           |
+
+The probe's first pass counted 360 for the third row because it included scripts with no include, whose RMS0202 warnings (the `$SpawnAvoidance` build-tool tokens in Acclivity, Wade and others) are warnings today and unrelated to this change. Restricted to scripts that use an include it gives 71, the design's figure. Slice B's Rule 2 removes the numbered-family RMS0300 sites. The probe's list also shows two in Rage Forest 2026 (`PREDATOR_A_POLAR_BEAR` against `PREDATOR_B_POLAR_BEAR`, and the same for the wolf) that differ in a letter, not in digits, so Rule 2 will not remove them. The total still equals the design's 197, so the design's split between numbered sites and the Namatjira pair is not exact. Slice B should list every RMS0300 by script before pinning the count.
+
+Mutation tests, each restored byte for byte. A requested but missing key read as unread (the cache test went red). The inner directive reported for a nested name (first survived, because the fixture's outer and inner directives were both token 0, so the fixture was rebuilt with a line before the outer directive and the mutant then went red). `validate` ignoring `resolvedIncludes` (four validate tests went red).
+
+Run sheet section 53 is owed against a real `npm run tauri dev`.
+
+## 2026-11-03 RMSTEST Batch 20 run, and token alias slice A (CREATION_PLAN A.2)
+
+**Batch 20.** The editor harness saved the six maps on 2026-11-02, and they were read the next day. Results are in `tools/scenario-probe/rmstest/README.md`, section "Batch 20". 82a came out SNOW on all 14,400 tiles with 82b and 82c GRASS, so a word valued 70 ends a live comment. 83 (Chaotic Strait) placed 2 town centres, so its comment ends early and the rest of the script generates, which reverses BUG-012's recorded 51% loss. Its 0 HOUSE says nothing, since lines 559 to 562 place into actor area 2000 and nothing in the script creates it. 84a and 84b were both GRASS, so a word valued 6 in a dead branch does not close it and slice C has no premise. Slice B is open. The six `rt82a` to `rt84b` script copies were removed from the game folder.
+
+**Slice A, built from `docs/token-alias-slice-a-brief.md`.**
+
+- `reference/schemas/language.schema.json` defines `tokenId`, `tokenIdSource` and `structuralToken` once under `$defs`, and the four entry kinds and a new top-level `structuralTokens` reference them.
+- `scripts/validate-reference-data.mjs` checks every kind together. An id is owned by one word, every `tokenId` has a `tokenIdSource` and the reverse, a run source has `notes`, and `structuralTokens` texts are unique.
+- `tools/token-ids/import.mjs` and its README. It reads the sheet's CSV, writes 142 entries and 11 `structuralTokens`, never overwrites a run-measured id, and clears earlier sheet ids on a rerun. Unmatched rows `set_other_zone_avoidance_distance` (31) and `create_connect_teams_land` (64), and the seven names the sheet lacks, match the brief's Sec.2 exactly.
+- `buildLanguageIndex` admits only `RMSTEST_*` sources to `commandsByTokenId`, so it still holds 32 alone and `#const L 48` is still an unknown name.
+- `COMMENT_CLOSE_ID = 70` in `validate.ts`, and `src/parser/__tests__/tokenData.test.ts` pins it and `COMMENT_OPEN_ID` to `structuralTokens`.
+- `instantiateScript` takes `parseOptions` as a sixth parameter and passes it to both its parses. `generatePreview` builds the options once per constants array in a `WeakMap`.
+- `docs/parser-design.md` Sec.2.1 records that control-valued words do nothing in dead code and that live keyword aliases have no population. The design doc, `README.md`'s thanks and `CLAUDE.md` follow.
+
+Deviations from the brief.
+
+- `base_terrain` and `base_layer` are each both a command and an attribute, and the engine has one id per word. The import gives both entries the id, and the validate rule became "no two different words share an id" where the brief said no two entries. The brief's stop-and-ask did not cover it, so this was decided here and the owner should confirm it.
+- The source tag is `equivalencies-2026-11-02`, as the brief pins, though the CSV was fetched 2026-11-03. It matched the brief's counts row for row.
+- Only the preview pane's path passes the options. The consistency checker and Land Placement's `useEmission` still call `instantiateScript` without them, so their second parse keeps the defect for a script that both goes through the token filter and has a 69-valued word in a comment. The checker has the constants in hand, and `useEmission` does not.
+
+Mutation tests, each restored exactly. The four validate rules were broken in a scratch copy of the validator, schema and data (never the real file), each failing with a readable message and exit 1, and the shared-id baseline passing. The source filter in `buildLanguageIndex` was removed and both new alias tests went red. `parseRms(filtered.text, …)` losing its options turned two B2 tests red, and `generatePreview` not passing them turned its own test red.
+
+Another session was editing `language.json`, the schema, the validator, `language.ts` and `validate.ts` throughout (name liveness slice A, `labelGroups`). It overwrote one edit of this session, `COMMENT_CLOSE_ID` in `validate.ts`, which was redone, and all of this session's other edits were checked present at the end. `src/parser/liveness/__tests__/tmp/profile.test.ts` is that session's scratch file and is the only thing `prettier --check` flags.
+
+Full `npm test`, 5422 of 5429 green, the 7 red all timeouts under load in `index.test.ts` determinism and `seedCheck.test.ts`, 122/122 when those two files were rerun alone. `tsc`, eslint on the changed files, `validate:reference` and `check:generated-types` clean.
+
+## 2026-11-03 Include resolution slice B, the two quieting rules and the measured gate (CREATION_PLAN A.1)
+
+Built from `docs/include-resolution-slice-b-brief.md`. With the include files read, the editor's false warnings stay quiet and every warning left on the corpus is pinned with a verdict.
+
+- Rule 1 in `src/parser/parser.ts`. `guardedByOwnName(name)` walks the open `if` frames and returns true when a frame's current branch tests that name, so `if X avoid_actor_area X endif` draws no RMS0202. An `else`, an earlier branch and `start_random` never count. It removes 14 sites (Pa_Site 10, Dorothea Quarry 3, Arabian Desert 1), the design's figure.
+- Rule 2 in `src/parser/validate.ts`. `isFamilySibling(a, b)` drops RMS0300's did-you-mean when stripping digits gives equal strings, or the names share every underscore part but one single letter.
+- `npm run measure:includes` (`includeResolution.measure.test.ts`, `vitest.includes.config.ts`, excluded from `npm test`) runs 243 scripts through `includeCache.ts` as the worker does. Final counts. Diagnostics carrying the include sentence 0. `Stranded.rms` 1,887 RMS0202, all `FOREST_IDENTIFICATION`. Other include scripts 57 RMS0202, every one pinned with a verdict (Dorothea Quarry 15, Pa_Site 30, fortified_clearing 10, real_world_australia 2), all true positives. RMS0300 3. The 66 scripts with no include print RMS0202 289, RMS0300 0, RMS0303 1.
+- The brief expected RMS0300 to read 0 and told the session to stop and ask if it did not. It read 3: `special_map_borderstones.rms`, `special_map_holyline.rms` and `special_map_yinyang.rms` test `PH_TROPICALSOUTH` or `PH_TROPICALEAST` where DE's other maps define `PH_TROPHICALSOUTH` and `PH_TROPHICALEAST`. They are one inserted letter in the middle of a word, so neither rule applies, and they are real typos. The gate pins the three as true positives (assertion 4 compares to a pinned list). The owner confirmed this on 2026-11-03.
+
+Mutation tests, each restored byte for byte. `guardedByOwnName` accepting any branch (the else test went red). `isFamilySibling` without the lettered clause (its pair test went red). Without the digit clause (the gate's RMS0300 list grew by `CONFIG_RIVER_A8`, `9_PLAYER_GAME` and the rest).
+
+Run sheet section 54 is owed against a real `npm run tauri dev`.
+
+## 2026-11-03 Include resolution slice C, the name lookup (CREATION_PLAN A.1)
+
+Built from `docs/include-resolution-slice-c-brief.md`. Autocomplete, hover, the resolve flash and the two `#const` quick fixes know the names a script's include files define.
+
+- `ParseResult.includeIndex?` is set by the parser worker after `validate` from the index it already built, and `parseRms` never sets it. `encodeParseResultForWire` copies named fields, so it stays off the wire (tested). `IncludedName.valueText` holds a `#const`'s value, joining a parenthesised one.
+- `nameLookup.ts`. A new `included` resolution. The first definition wins across the script and its includes by comparing the script's `nameToken` with the include's `directiveToken`. An include name only below the use stays `unknown`. `suggest` lists included names at `sourceOrder` 0.5 from `INCLUDED_MIN_PREFIX` 2 letters. `includesUnread(script)` replaces `parse.includes.length > 0` in `unknownNameOffer` and `moveUpPlan`. `describeSuggestion` says "from <file>".
+- Consumers. `constReview.ts` and `wordResolvesToConst` count an included name as resolved, the completion list flashes it, and the compiler found the missing `KIND_BY_SOURCE` entry for the new source.
+- Deviation from the brief. The hover sentence is `describeIncludedHover` in `nameLookup.ts` (pure), called from `describeScriptName`, because `aoe2RmsCompletion.ts` imports Monaco and no test loads it. Its test sits in `nameLookup.test.ts`.
+- Constants Usage marks never-defined rows whose RMS0202 is still info with "(may be in an include file the app could not read)". It gained no capability, as D5 of the brief says.
+
+Mutation tests, each restored byte for byte. `resolveName` without the position comparison (the whichever-first test went red). No `INCLUDED_MIN_PREFIX` (the suggest test went red). `includesUnread` true for any include (both offer tests went red).
+
+Full `npm test` 196 files and 5430 tests, 5428 green. The two red are `index.test.ts` determinism timeouts under load, 97/97 alone. `tsc`, ESLint and `validate:reference` are clean, Prettier is clean on every changed file (two other files already failed it: `src/parser/liveness/__tests__/tmp/profile.test.ts` and `docs/user-guide.md`).
+
+Run sheet section 55 is owed against a real `npm run tauri dev`.
+
+## 2026-11-03 Sec.15 items 40 and 41 closed from RMSTEST_79 and 80
+
+Batch 18's 79 and 80 ran 2026-10-28 and are now taken into `docs/preview-design.md` Sec.15 as CLOSED headers in front of the original text, the same form item 42 uses.
+
+- Item 40 (`grouped_by_team` packing overflow, RMSTEST_79 rerun read from start units). Teammates 41 to 51 apart and neighbouring teams 29 to 32 apart on the 301-tile ring, against 45 and 30 from Sec.6.1 Player lands item 5. Nothing clamps the spacing and the ring does not grow. The origins also clamp to `[base, dim − base]` at variance 0, which `circlePoint` in `lands.ts` already does whatever the variance. Sec.6.1 item 7 is reworded to say so.
+- Item 41 (guide:857's multi-land bug, RMSTEST_80). The second command's eight lands all sit at p 0, angle 0 on the last command's ring, at (150, 100) on every seed, as rev 9 predicted from the arithmetic. The rectangle case (no `circle_radius`) is still unseen in DE.
+
+No code changed. Neither map is in a preview gate.
+
+## 2026-11-03 Name liveness slice A, the engine and the measurement (CREATION_PLAN A.4)
+
+Built from `docs/name-liveness-slice-a-brief.md`. It reports nothing in the editor. The build stopped for the owner on two of the brief's triggers (Sec.4), the 50 ms budget and the node cap, so slice B is not briefed yet.
+
+What exists. `src/parser/liveness/` holds `bdd.ts`, `atoms.ts` (atoms, D, the random block rule), `walk.ts` (the token walk), `analyse.ts` (verdicts, dead branches, the second walk for switches) and `describe.ts`. `labelGroups` and `predefinedLabels[].group` are in `language.json`, its schema and `validate:reference` (11 groups, two new checks, each mutation tested once). Seven rms-check files sit in `__tests__/fixtures/` with their credit header, the README thanks gained a line, and `npm run measure:liveness` runs the 243 scripts.
+
+Deviations from the brief, each a decision the owner should see.
+
+- **D1 skips `string` slots.** Read literally, D1 counts `create_object_group HARE` in rms-check's `back_prop.rms` as a read of the script's `#const HARE`, and design Sec.8 says that file has no value use. The only `string` argument of any command or attribute is `groupName`, so the walk skips arguments whose `ArgumentDef.type` is `string`, the same reason a directive's own name is skipped. The fixture's answer comes out as the design states.
+- **Size atoms are keyed by `dimensions`, not by the `mapSize` field.** D5 reads the field, which is absent on MAPSIZE_MINI, MASSIVE up to LUDICROUS and LUDIKRIS_MAP. Those labels became free atoms outside the "exactly one size" group, so `elseif MAPSIZE_MASSIVE` after a chain of the seven offered sizes read as impossible. That was 807 contradiction branches on the first full run, 50 in Murkwood alone. Labels of one size share a `dimensions` value, so the group now has 14 sizes. Murkwood fell to 2 switch cases.
+- **The BDD is hand-tuned.** The unique table and the ite cache are typed-array hash tables with a lossy fixed-size cache, not `Map`s keyed by strings, and the 1,000,000-entry memo clearing is gone since the cache cannot grow. Behaviour is the same, the brief's test list passes, and it was 8 times faster on TL Frontline.
+- **Three cost fixes found by profiling Arabia.** D was joined onto a growing conjunction once per closed block, which rebuilt it each time (about 300,000 nodes on one script), so `domain()` now joins from the farthest variable upward. At-most-one is built in about 2n nodes by `oneOf`, not pairwise. Guards are lazy thunks, built only when a definition, a use or a reported branch needs them. A reversed variable order was tried and was worse (it overflowed 5,000,000 nodes on Arabia), so atoms stay in order of first use as the design says.
+- **Uses and branches are recorded for the open script only.** Include files contribute definitions. The per-token guard the brief mentions is not stored, since nothing reads it yet.
+- `describeCondition` names an arm "arm 2 of random block 3". Slice B can add line numbers.
+
+Measurement (`npm run measure:liveness`, 243 scripts: 44 corpus, 19 local, 180 DE). 233 complete and 10 overflow at the brief's 200,000 node cap. Live 113,627, dead 6, maybe 1,523 uses. 293 contradiction branches and 548 switch cases. The most maybe uses on one script is 205 (Pilgrims), so the 500 trigger did not trip. Dead uses are 6, under the 200 trigger. All seven fixture answers match design Sec.8.
+
+**Triggers that tripped.**
+
+- **Time.** 47 to 66 scripts (it moved between runs) take more than 50 ms in the second run, the slowest about 245 ms (nomad, LandNomad, Team Glaciers, Stranded 209 ms). Design Sec.7 says what follows, the analysis moves to a second pass the parser worker runs after it posts the parse result.
+- **Node cap.** Ten scripts overflow at 200,000 nodes and report nothing, Pa_Site_v1.1, Rage Forest 2026, local Arabia, DE Arabia, Arabian Desert, Blind_Random, Capricious, Forest Breach, Michi, MountainRange. At 1,000,000 nodes seven of them complete and three still overflow (MountainRange, Michi, Blind_Random), with the slowest then 730 ms. Raising the cap is a trade against time and memory, the owner's call.
+
+The 6 dead uses, each owed a verdict in slice B.
+
+- `24hr_Mont Saint Michel.rms` line 111, `MAPSIZE` twice. Every branch writes `#const SIZE #const MAPSIZE 80`, so `SIZE` takes the next `#const` as its value, the way `tokenFilter.ts` reads it, and `MAPSIZE` is never defined. Whether the engine reads the line that way is unmeasured.
+- `ALP_test.rms` line 20, `ALP_DEG_P1`. Defined only from line 26, which is RMS0303's positional case.
+- `Dorothea Quarry.rms` lines 1001, 1107 and 1211, `BUILDING_DISTANCE`. Defined in `includes/empire_buildings.inc` only inside the else of `NOMAD_START`.
+
+One contradiction was read to check the model. Scandanavia's `elseif VERTICAL_MAP` follows `percent_chance 100 #define HORIZONTAL_MAP` and `percent_chance 0 #define VERTICAL_MAP`, so under DE's roll the second arm can never be taken and the branch is dead. BR_FallofRome's 26 are chains whose earlier branches already cover every size, ending in a `BR_CENTRAL_48` nothing defines. The other 291 were not read one by one.
+
+All 293 contradiction branches, by file with the count, then the line of each branch keyword.
+
+- BR_FallofRome.rms (26): 1364 1413 1461 1509 1557 1606 1654 1703 8261 8263 8265 8412 8414 8416 8560 8562 8564 8711 8713 8715 8862 8864 8866 9018 9020 9022
+- Dorothea Quarry.rms (18): 128 150 172 194 227 229 231 233 235 237 239 241 243 245 247 249 265 267
+- Eruption.rms (15): 521 611 709 772 829 902 987 1062 3678 3880 6037 6046 6142 6265 6375
+- Scandanavia.rms (15): 105 160 174 189 205 221 237 253 269 283 298 314 330 346 362
+- Team Glaciers.rms (15): 235 265 295 325 355 358 385 388 391 415 418 421 443 446 449
+- The_Passage.rms (15): 3280 3346 3412 3478 3544 3610 3676 3742 6163 6246 6304 6328 6335 6356 6483
+- Sandrift.rms (10): 2622 3055 3841 5968 6051 6109 6133 6140 6161 6288
+- LandMadness.rms (9): 726 789 846 919 1004 1079 4267 4471 4708
+- Cliffbound.rms (7): 3868 3951 4009 4033 4040 4061 4188
+- Dunesprings.rms (7): 4676 4759 4817 4841 4848 4869 4996
+- FrigidLake.rms (7): 90 3486 3688 6061 6165 6287 6396
+- Golden_Stream.rms (7): 5425 5508 5566 5590 5597 5618 5745
+- Hollow_Woodlands.rms (7): 3652 3735 3793 3817 3824 3845 3972
+- Karsts.rms (7): 6233 6316 6374 6398 6405 6426 6553
+- Lowland.rms (7): 3396 3598 5794 5803 5899 6021 6130
+- Marketplace.rms (7): 4054 4257 6656 6665 6761 6883 6992
+- Meadow.rms (7): 4337 4543 6867 6876 6972 7094 7203
+- Mountain_Dunes.rms (7): 4069 4152 4210 4234 4241 4262 4389
+- River_Divide.rms (7): 3789 3872 3930 3954 3961 3982 4109
+- Shrubland.rms (7): 3989 4072 4130 4154 4161 4182 4309
+- Acclivity.rms (6): 5180 5382 7287 5181 5383 7288
+- special_map_snakepit.rms (6): 289 335 381 668 670 672
+- TL Cape of Storms.rms (6): 812 1305 1309 1327 1357 1511
+- Wade.rms (5): 6390 6592 8715 8724 8820
+- 24hr_Blind Valley.rms (4): 39 41 243 244
+- Enclosed.rms (4): 3609 3813 3610 3814
+- Haboob.rms (4): 3576 3780 3577 3781
+- Serengeti.rms (4): 674 705 728 766
+- TL Grand Bara.rms (4): 218 221 224 227
+- TL Frontline.rms (3): 728 756 783
+- AD4 - Ra.rms (2): 22 40
+- Aftermath.rms (2): 6209 6533
+- Bulls_Eyes.rms (2): 46 64
+- Crater.rms (2): 401 504
+- Morass.rms (2): 3623 3805
+- NorthernIsles.rms (2): 5580 5783
+- Ravines.rms (2): 215 271
+- SacredSprings.rms (2): 3653 3858
+- Sandbank.rms (2): 266 285
+- Sardis.rms (2): 262 399
+- Shoals.rms (2): 3578 3779
+- Socotra.rms (2): 816 974
+- Venn.rms (2): 48 66
+- Wolf_Hill.rms (2): 357 401
+- 24hr_Battle Lines 1.0.rms (1): 24
+- 24hr_Mont Saint Michel.rms (1): 107
+- AmazonTunnel.rms (1): 107
+- Aquarena.rms (1): 894
+- Archipelago.rms (1): 545
+- Continental.rms (1): 307
+- Loch Ness.rms (1): 839
+- Nile Delta.rms (1): 89
+- Pacific_Islands.rms (1): 1559
+- real_world_bohemia.rms (1): 268
+- SeizeTheMountain.rms (1): 793
+- TL Team Acropolis.rms (1): 1767
+
+Mutation tests, each restored byte for byte. A first arm at 0 made impossible (atoms test went red). The exhaustive total set to 100 (the 99-then-1 test went red). `free()` returning FALSE (the unknown-name test and the `test_check_dead_paths` fixture went red). D3 dropped (the `unified_multiple_def` fixture went red).
+
+Full `npm test` 195 files and 5429 tests, 5426 green. The 3 red are `index.test.ts` determinism timeouts on 24hr_A Heart Map under load, 9/9 alone. `tsc`, ESLint and Prettier on the changed files and `validate:reference` are clean. No run sheet section, since nothing reaches the editor.
+
+## 2026-11-03 Token alias slice B, a word valued 70 closes a comment (CREATION_PLAN A.2)
+
+Built from `docs/token-alias-slice-b-brief.md`. RMSTEST_82a came back snow with both controls grass and 83 placed Chaotic Strait's town centres, so a word valued 70 ends a comment and that map is not truncated. 84a came back grass, so slice C stays unbuilt.
+
+What changed.
+
+- `commentCloseAliases(constants)` in `validate.ts` (the old `commentOpenAliases` body factored into `aliasesValued`), a `commentCloseAliases` option on `LexOptions` and `ParseOptions`, and a close branch in the lexer's `markComments`. Inside a comment a word in the set lowers the depth by one and stays trivia. Outside a comment it is an ordinary word.
+- The parser worker, the preview's `parseOptionsFor`, `includeResolution.measure.test.ts`, `liveness.measure.test.ts` and `liveness/fixtures.test.ts` all pass the set beside the open one.
+- New pure `src/parser/commentWalk.ts`. `validate` reads comments through it so RMS0111, RMS0112 and RMS0113 do not depend on how the parse was configured. A corpus test pins it to the lexer on 74 maps.
+- RMS0111 is now reported once per game comment, at its first 69 word. Error when the comment runs to the end of the file or skips a token the written markers leave live (the message names the line where the comment ends), otherwise the new RMS0113 (info). RMS0112 (warning) fires on every word valued 70, with one message when the comment ends at the word and another when it closes one nested level.
+- `commentOpenWarning` became `commentMarkerWarning` and warns at 70 too, as does the const offer's `valueSuffix`.
+
+Censuses, printed by `corpus.test.ts` on this disk (74 maps).
+
+- 69 census, `[comment-alias] 1 of 74 corpus maps are truncated in game`, `broken/BCC2-Rekawa.rms`. Chaotic Strait left it.
+- 70 census, `[comment-close] 3 of 74 corpus maps run text after a word valued 70 inside a comment`, `24hr_Mont Saint Michel.rms`, `Chaotic_Straitv0.99.rms`, `local/Fortress.rms`.
+
+Two things the brief did not predict.
+
+- Chaotic Strait gets four RMS0112, not two. Besides the `HOUSE` pair on lines 560 and 561 there are two for `YANG_MASK1`, which the script defines as 70 on line 23 and uses inside the disabled block at line 26 and the commented `create_terrain` at line 463. The brief's stop trigger (exactly one RMS0113 and no RMS0111) holds. Whether a script's own `#const` closes a comment in game is not measured, and if it does, the commented `create_terrain YANG_MASK2` block on lines 463 to 464 runs. A DE run of that map with the `YANG_MASK2` terrain visible would settle it. The corpus test pins four.
+- The 342 whole script DE maps, `measure:includes` (6 of 6) and `validate:reference` are unchanged. Nothing in the gates uses a word valued 70 inside a comment.
+
+Mutation tests, each restored byte for byte. Dropping the lexer's close branch (4 lexer tests red, among them 82a, the nested case and the Chaotic Strait shape). Making `walkComments` ignore closes (7 `validate.test.ts` tests red, including the Chaotic Strait RMS0113 case). Dropping the written-live condition so RMS0111 fires whenever a comment ends early (the Chaotic Strait and extra-closer RMS0113 tests red). Not marking stray closes in the walk (the corpus agreement test red).
+
+Full `npm test` 196 files and 5455 tests, 5449 green. The 6 red are load timeouts in `inlineComment.test.ts` (Arena), `index.test.ts` determinism and `seedCheck.test.ts`, 205/205 when the three files were rerun alone. `tsc`, `validate:reference`, ESLint (no errors) and Prettier clean, `npm run measure:includes` passes. Run sheet section 56 is owed.
+
+## 2026-11-04, run sheet feedback round
+
+Built from the owner's notes while working through the run sheet.
+
+- The S0 "isn't simulated" note now carries a `snippet` (`line N: first words`) so it names the part of the script. The sentence is unchanged, since the checker merges notes by sentence. Notes can be hidden per script in the Notes box (`hiddenNotes` in `PreviewViewContext`, keyed by file path and a note id built from the sentence and snippet, since the key holds offsets that move on every edit).
+- A finished Advanced Tools run now survives a tab switch. `ToolsPane` resets on unmount only when the run is unfinished, and shows a stale line when the run's snapshot differs from the editor text.
+- Balance Summary orders rows by resource then player, adds variance for amount, nearest distance and object count, and calls the third figure "Objects/run". It counts each placed resource object, not clusters, so the old "Patches/run" label overstated what it measured.
+- RMS0202 in a number slot now offers a one-character did-you-mean from the script's constants, the include files' names and the built-ins, with the same family-sibling exemption as RMS0300 (`isFamilySibling` moved from `validate.ts` to `parser.ts`, still re-exported).
+- Regenerate on Edit switch beside Seed. Off, `usePreviewResult` sends nothing when only the script changed, marks the map stale and shows a click to generate chip. Seed, settings and include files still regenerate.
+- Not fixed: typing lag on `Stranded.rms`. The cause matches `diagnostics-latency-report.md` fix 3, the UI thread copying the whole parse to the preview worker on each request. Not measured on Stranded itself, since the install on this machine is stripped.
+- Run sheet section 55 added, and items 52.3, 53.1, 53.2 and 53.5 reworded. CREATION_PLAN A.9 records the click-a-note-to-highlight idea.
+
+### 2026-11-04, preview requests carry the script text, not the parse
+
+`diagnostics-latency-report.md` fix 3, built. `PreviewRequest` now holds `source` and `cutOffset` in place of a `ParseResult`, so the UI thread copies a string instead of megabytes of tree when it posts a request. The preview worker parses the text itself with the editor parser's comment aliases and keeps the last parse (a re-roll or settings change parses nothing), then cuts it with `truncateAst` when `cutOffset` is set. The old memoised cut on the main thread is gone with it. A probe over Bazi and Pa_Site showed the script and tokens are identical with and without the include options, so the worker's parse matches the editor's for the generator. Full `npm test` not run, only `src/tools`, `src/components` and `truncateAst` suites (all green) plus `tsc`. The saving is estimated from the report's Vanguard figures and not measured on Stranded.
+
+### 2026-11-04, Stranded.rms typing lag measured and fixed
+
+Measured on DE's `Stranded.rms` from the install, in a browser copy of the development build with mocked Tauri IPC, visible pane at 61 to 62 frames a second. Five keys typed 200 ms apart froze the main thread for 1,281 to 1,927 ms after each parse or preview result. The preview request change in the entry above was correct but not the cause. React 19.2's development build diffs every changed prop into a table for the Performance panel, and each component holding the parse result got about 255,000 rows per commit. Full figures are in `diagnostics-latency-report.md` Sec.10.
+
+- `src/devReactTracks.ts`, imported first in `main.tsx`, removes `console.timeStamp` in a development build so react-dom never turns the tracks on. `aorms.reactTracks` set to 1 keeps them.
+- `MapSidePanel` is wrapped in `memo`, so a keystroke no longer re-renders the preview pane and the hidden Reference table (45 ms of rows and their HelpTips per key in development).
+- The Land Placement panel's preview channel generates only while a component reads it (`generateOnlyWhileRead` in `PreviewResultContext.tsx`). It used to run a second full generation of every edit, open or not, though its comment said otherwise.
+- `useParsedDocument` drops a reply for text the document has moved past, unread for a big document, so the 103 to 175 ms tree unpack no longer lands mid-typing. `reparseNow`'s replies are exempt (BUG-001's fast path), a dropped reply clears the "already sent" text so an undo is parsed, and the content ref now updates in a layout effect.
+
+After, the same five keys gave tasks of 92 to 143 ms. Left: about 95 ms of React render per key in development (report fix 7, not built) and one 100 to 125 ms unpack after typing stops (fix 6). A release build was not measured.
+
+Tests. `useParsedDocument.test.tsx` gained four, `previewResultChannels.test.tsx` and `devReactTracks.test.ts` are new, and each was mutation checked (the text check, the resend reset, the exact flag, the panel gate). `tsc` and eslint clean on the changed files, Prettier run. Full `npm test` gave 5467 of 5471 green, the four red all timeouts under load in `index.test.ts` determinism on 24hr_A Heart Map and `seedCheck.test.ts`, 122/122 when the two files were rerun alone. Run sheet 55.6 reworded and 55.8 to 55.11 added.
+
+## 2026-11-04 Parse options for the checker and Land Placement (CREATION_PLAN A.2)
+
+Closes the gap left after token alias slice A. `instantiateScript` parses a script a second time after the token filter, and only the preview passed it the first parse's options. A script with a word valued 69 or 70 in a comment was read differently by the checker and Land Placement's emission than by the editor.
+
+- `src/preview/generator/parseOptions.ts` holds `parseOptionsFor(constants)`, moved out of `generator/index.ts` with its `WeakMap` cache. It takes any table with `rmsConstant`, `constId` and `category`, so the preview, the checker and the panel share it.
+- `consistencyChecker.ts` builds the options once beside its reference data and passes them to each static pass. `useEmission.ts` builds them once at module scope from the bundled `game-constants.json`, since the panel holds no reference data of its own.
+- `src/preview/__tests__/parseOptions.test.ts` pins the two alias sets, the built-in names and the cache identity.
+
+Checks. The new test 2/2, the preview determinism suite 97/97, the checker and all Land Placement suites 769/769. `tsc` clean, eslint and Prettier clean on the changed files. No full `npm test` this session. Run sheet section 56 is still owed.

@@ -221,6 +221,15 @@ describe("a committed name our data does not know", () => {
     expect(screen.getByRole("group").textContent).toMatch(/RMS0111/);
   });
 
+  it("warns beside Create when the value is 70 (RMS0112)", async () => {
+    render(<Harness initialSource={SRC} />);
+    await commitValue("GRASS", "FORREST");
+    fireEvent.change(screen.getByLabelText("Value"), {
+      target: { value: "70" },
+    });
+    expect(screen.getByRole("group").textContent).toMatch(/RMS0112/);
+  });
+
   it("Did you mean puts the built-in name in the field and flashes it", async () => {
     render(<Harness initialSource={SRC} />);
     await commitValue("GRASS", "FORREST");

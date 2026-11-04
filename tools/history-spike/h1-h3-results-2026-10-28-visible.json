@@ -1,0 +1,346 @@
+{
+  "startedAt": "2026-10-28T05:14:39.944Z",
+  "errors": {
+    "readTextFileMissing": "string: failed to open file at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "readFileMissing": "string: failed to open file at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "statMissing": "string: failed to get metadata of path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "lstatMissing": "string: failed to get metadata of path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "readDirMissing": "string: failed to read directory at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist with error: The system cannot find the path specified. (os error 3)",
+    "mkdirExisting": "string: failed to create directory at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\probe-dir with error: Cannot create a file when that file already exists. (os error 183)",
+    "mkdirParentMissing": "string: failed to create directory at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\a\\b with error: The system cannot find the path specified. (os error 3)",
+    "removeMissing": "string: failed to get metadata of path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)",
+    "removeNonEmptyDir": "string: failed to remove path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\probe-dir with error: The directory is not empty. (os error 145)",
+    "writeTextFileParentMissing": "string: failed to open file at path: C:\\Users\\assas\\AppData\\Roaming\\com.aorms.app\\history-spike\\does-not-exist\\file.txt with error: The system cannot find the path specified. (os error 3)"
+  },
+  "mappedCodes": {
+    "readTextFileMissing": "ENOENT",
+    "readFileMissing": "ENOENT",
+    "statMissing": "ENOENT",
+    "lstatMissing": "ENOENT",
+    "readDirMissing": "ENOENT",
+    "mkdirExisting": "EEXIST",
+    "mkdirParentMissing": "ENOENT",
+    "removeMissing": "ENOENT",
+    "removeNonEmptyDir": "ENOTEMPTY",
+    "writeTextFileParentMissing": "ENOENT"
+  },
+  "roundTripExistsMs": {
+    "n": 50,
+    "min": 8.8,
+    "median": 10.1,
+    "max": 17.5
+  },
+  "roundTripCoreMs": {
+    "n": 50,
+    "min": 4.7,
+    "median": 6.1,
+    "max": 19
+  },
+  "roundTripExistsIdleMs": {
+    "n": 50,
+    "min": 4.4,
+    "median": 5.1,
+    "max": 8.2
+  },
+  "runs": {
+    "median": {
+      "chars": 42423,
+      "initMs": 102.6,
+      "commitMs": {
+        "n": 20,
+        "min": 103.9,
+        "median": 117.3,
+        "max": 149
+      },
+      "logCount": 20,
+      "logMs": 200,
+      "readFirstBlobMs": 35.5,
+      "roundTrip": true,
+      "noteRoundTrip": true,
+      "disk": {
+        "bytes": 114691,
+        "files": 67
+      }
+    },
+    "largest": {
+      "chars": 366303,
+      "initMs": 73.1,
+      "commitMs": {
+        "n": 20,
+        "min": 98.8,
+        "median": 122.8,
+        "max": 181.3
+      },
+      "logCount": 20,
+      "logMs": 199,
+      "readFirstBlobMs": 40.2,
+      "roundTrip": true,
+      "noteRoundTrip": true,
+      "disk": {
+        "bytes": 218311,
+        "files": 67
+      }
+    }
+  },
+  "calls": {
+    "other.readFile": {
+      "n": 2,
+      "ms": 14
+    },
+    "other.stat": {
+      "n": 2,
+      "ms": 11
+    },
+    "other.mkdir": {
+      "n": 14,
+      "ms": 73
+    },
+    "other.writeFile": {
+      "n": 2,
+      "ms": 15
+    },
+    "median.commit.readFile": {
+      "n": 160,
+      "ms": 1590
+    },
+    "median.commit.stat": {
+      "n": 140,
+      "ms": 1031
+    },
+    "median.commit.writeFile": {
+      "n": 135,
+      "ms": 852
+    },
+    "median.commit.mkdir": {
+      "n": 55,
+      "ms": 291
+    },
+    "median.log.readFile": {
+      "n": 67,
+      "ms": 448
+    },
+    "median.log.stat": {
+      "n": 9,
+      "ms": 58
+    },
+    "median.log.writeFile": {
+      "n": 9,
+      "ms": 53
+    },
+    "median.log.mkdir": {
+      "n": 15,
+      "ms": 65
+    },
+    "median.log.lstat": {
+      "n": 1,
+      "ms": 8
+    },
+    "largest.commit.readFile": {
+      "n": 160,
+      "ms": 1674
+    },
+    "largest.commit.stat": {
+      "n": 140,
+      "ms": 1040
+    },
+    "largest.commit.writeFile": {
+      "n": 130,
+      "ms": 824
+    },
+    "largest.commit.mkdir": {
+      "n": 50,
+      "ms": 262
+    },
+    "largest.log.readFile": {
+      "n": 65,
+      "ms": 423
+    },
+    "largest.log.stat": {
+      "n": 7,
+      "ms": 45
+    },
+    "largest.log.writeFile": {
+      "n": 6,
+      "ms": 38
+    },
+    "largest.log.mkdir": {
+      "n": 2,
+      "ms": 10
+    },
+    "largest.log.lstat": {
+      "n": 1,
+      "ms": 5
+    }
+  },
+  "ok": true,
+  "after": {
+    "windowSize": [800, 600],
+    "small": {
+      "label": "Vanguard, three one-number edits",
+      "originalLines": 1751,
+      "modifiedLines": 1751,
+      "timedOut": false,
+      "diffMs": 83.2,
+      "worstMainThreadGapMs": 47.2,
+      "lineChanges": 3,
+      "quitEarly": null,
+      "identical": null,
+      "sideBySide": false,
+      "tokenClassesShown": 5,
+      "insertedLinesDrawn": 0,
+      "deletedLinesDrawn": 3,
+      "light": {
+        "at": "2026-10-28T05:15:26.839Z",
+        "editorBackground": "rgb(255, 255, 255)",
+        "insertBackground": null,
+        "tokenClassesShown": 5
+      },
+      "dark": {
+        "at": "2026-10-28T05:15:34.162Z",
+        "editorBackground": "rgb(37, 37, 38)",
+        "insertBackground": null,
+        "tokenClassesShown": 5
+      }
+    },
+    "versions": {
+      "label": "Menindee v2.3 to v2.5",
+      "originalLines": 2624,
+      "modifiedLines": 2620,
+      "timedOut": false,
+      "diffMs": 49,
+      "worstMainThreadGapMs": 16.9,
+      "lineChanges": 11,
+      "quitEarly": null,
+      "identical": null,
+      "sideBySide": false,
+      "tokenClassesShown": 5,
+      "insertedLinesDrawn": 2,
+      "deletedLinesDrawn": 17,
+      "light": {
+        "at": "2026-10-28T05:15:42.081Z",
+        "editorBackground": "rgb(255, 255, 255)",
+        "insertBackground": "rgba(155, 185, 85, 0.2)",
+        "tokenClassesShown": 5
+      },
+      "dark": {
+        "at": "2026-10-28T05:15:49.417Z",
+        "editorBackground": "rgb(37, 37, 38)",
+        "insertBackground": "rgba(155, 185, 85, 0.2)",
+        "tokenClassesShown": 5
+      }
+    },
+    "maximisedSize": [1536, 816],
+    "versionsMaximised": {
+      "label": "Menindee v2.3 to v2.5, maximised",
+      "originalLines": 2624,
+      "modifiedLines": 2620,
+      "timedOut": false,
+      "diffMs": 51,
+      "worstMainThreadGapMs": 29.6,
+      "lineChanges": 11,
+      "quitEarly": null,
+      "identical": null,
+      "sideBySide": true,
+      "tokenClassesShown": 5,
+      "insertedLinesDrawn": 2,
+      "deletedLinesDrawn": 6,
+      "light": {
+        "at": "2026-10-28T05:15:58.928Z",
+        "editorBackground": "rgb(255, 255, 255)",
+        "insertBackground": "rgba(155, 185, 85, 0.2)",
+        "tokenClassesShown": 5
+      },
+      "dark": {
+        "at": "2026-10-28T05:16:06.260Z",
+        "editorBackground": "rgb(37, 37, 38)",
+        "insertBackground": "rgba(155, 185, 85, 0.2)",
+        "tokenClassesShown": 5
+      }
+    }
+  },
+  "visibility": [
+    {
+      "phase": "start",
+      "at": "2026-10-28T05:14:42.948Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 59,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "after idle",
+      "at": "2026-10-28T05:15:15.211Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "after commits",
+      "at": "2026-10-28T05:15:24.802Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "Vanguard, three one-number edits light",
+      "at": "2026-10-28T05:15:32.853Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "Vanguard, three one-number edits dark",
+      "at": "2026-10-28T05:15:40.165Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 61,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "Menindee v2.3 to v2.5 light",
+      "at": "2026-10-28T05:15:48.091Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "Menindee v2.3 to v2.5 dark",
+      "at": "2026-10-28T05:15:55.429Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "phase": "Menindee v2.3 to v2.5, maximised light",
+      "at": "2026-10-28T05:16:04.936Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 1536,
+      "height": 816
+    },
+    {
+      "phase": "Menindee v2.3 to v2.5, maximised dark",
+      "at": "2026-10-28T05:16:12.267Z",
+      "state": "visible",
+      "focus": true,
+      "framesPerSecond": 62,
+      "width": 1536,
+      "height": 816
+    }
+  ],
+  "visibilityChanges": 0,
+  "finishedAt": "2026-10-28T05:16:13.274Z"
+}

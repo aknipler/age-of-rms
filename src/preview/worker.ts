@@ -22,6 +22,15 @@
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
+import { parseRms } from "../parser/parser";
+import type { ParseResult } from "../parser/types";
+import {
+  builtinConstantNames,
+  commentCloseAliases,
+  commentOpenAliases,
+  type GameConstantsForValidate,
+} from "../parser/validate";
+import { truncateAst } from "./generator/truncateAst";
 import { generatePreview, type PreviewReferenceData } from "./generator/index";
 import type { ObjectConstant } from "./generator/objects";
 import type { TerrainRestriction } from "./generator/forestTreeSuppression";
@@ -92,8 +101,38 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
   };
 }
 
+// The lexer options the editor's parser worker uses (parserWorker.ts), so both
+// read the script the same way. The comment words change where a comment
+// ends, which changes the tree. Include names and the other parse options
+// only change diagnostics, which the generator does not read apart from
+// RMS0110, and that one comes from the parse itself.
+const constantsForParse = (
+  gameConstantsRaw as unknown as GameConstantsForValidate
+).constants;
+const parseOptions = {
+  commentOpenAliases: commentOpenAliases(constantsForParse),
+  commentCloseAliases: commentCloseAliases(constantsForParse),
+  builtinConstants: builtinConstantNames(constantsForParse),
+};
+
+// The last script parsed. A re-roll, a settings change and a cursor move in
+// Current view all send the same text again, and parsing is the part of a
+// request that does not depend on any of them.
+let lastSource: string | null = null;
+let lastParse: ParseResult | null = null;
+
+function parseFor(source: string): ParseResult {
+  if (lastParse === null || lastSource !== source) {
+    lastParse = parseRms(source, languageData, parseOptions);
+    lastSource = source;
+  }
+  return lastParse;
+}
+
 self.onmessage = (event: MessageEvent<PreviewRequest>) => {
-  const { id, parse, settings, opts } = event.data;
+  const { id, source, cutOffset, settings, opts } = event.data;
+  const full = parseFor(source);
+  const parse = cutOffset === null ? full : truncateAst(full, cutOffset);
   const result = generatePreview(parse, refDb, settings, opts);
   const response: PreviewResponse = {
     id,

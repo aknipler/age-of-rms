@@ -1,0 +1,5219 @@
+/* Created by Captain Kniples the Fourth */
+/* assasnin@gmail.com */
+/* For funsies */
+/* Created 2024 08 14 */
+
+
+/* ******************************************************************************************************
+ * This map is based on a real life location, Palm Valley in Namatjira National Park Australia.         *
+ ****************************************************************************************************** */
+
+/* The hilltops could probably look better by adding some masking to the very top, adding some variation with masking or something. This is a final polish if time kind of thing */
+
+/* This script has only been tested for 1v1 and 3v3s, do not expect it to work in any other situation. */
+
+
+/* terrains */
+#const GRASS_CLIFFS 16
+#const CENTER_TERRAIN 100 /* 6 */ /* DLC_DRYGRASS */
+/*  */
+#const CENTER_TERRAIN_MASK 6 /* dirt mask */ 
+#const CENTER_TERRAIN_MASK2 42 /* dlc_dirt4 mask */ 
+#const CENTER_TERRAIN_MASK_INSIDE1 45 /* cracked mask */ 
+#const CENTER_TERRAIN_MASK_INSIDE2 41 /* dlc_savannah mask */ 
+/* DLC_SAVANNAH */
+#const HILLTOP_TERRAIN 102 /* desert gravel */ 
+#const HILLTOP_TERRAIN_MASK 14  /* desert */ 
+#const HILL_TERRAIN 3 /* this is a temp terrain, dirt3 */ 
+#const HILL_TERRAIN_FINAL 41 /* this is what the temp terrain gets turned into, dlc_savannah */ 
+#const HILL_TERRAIN_FINAL_MASK 42 /* dlc_dirt4 */ 
+#const RIVERBANK_TERRAIN_TEMP 77 /* TEMP_TERRAIN */  
+#const RIVERBANK_TERRAIN 11 /* DIRT2 */  
+#const RIVERBANK_TERRAIN_MASK 41 /* dlc_savannah */  
+#const RIVERBANK_TERRAIN_MASK2 12 /* grass2 */  
+#const HILL_TERRAIN_PLACEHOLDER 68 
+#const PLACEHOLDER_TERRAIN 8
+#const PLACEHOLDER_TERRAIN2 60
+#const BASE_LEVEL_TERRAIN 6 /* dirt */ 
+#const TEMP_TERRAIN 76
+#const REPLACE_A 84
+#const REPLACE_B 85
+#const REPLACE_C 86
+#const REPLACE_D 87
+#const REPLACE_E 33
+#const REPLACE_F 34
+#const REPLACE_TREES 14
+#const REPLACE_LUMBER 14
+/* #const REPLACE_LUMBER 62 */
+
+/* I set the lumber up, but didn't like it. */
+/* objects */
+#const LUMBER 1320
+#const FISH_PLACEHOLDER 647 
+#const cGoldMine 932
+#const cStoneMineClass 908
+#const ONGRID_PLACEHOLDER 1613
+#const TERRAIN_BLOCKER 1613 /* On-Grid Object - doesn't allow objects to generate on the same tile, must not be used as player object */
+
+
+
+/* Number of player starting forests */
+start_random
+  percent_chance 55 #define CONFIG_TWO_PLAYER_FORESTS
+  percent_chance 45 #define CONFIG_THREE_PLAYER_FORESTS
+end_random
+
+
+/* Number of players, for player starting forest generations */
+if 1_PLAYER_GAME
+  #define ONE_GENERATION
+elseif 2_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+elseif 3_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+  #define THREE_GENERATION
+elseif 4_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+  #define THREE_GENERATION
+  #define FOUR_GENERATION
+elseif 5_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+  #define THREE_GENERATION
+  #define FOUR_GENERATION
+  #define FIVE_GENERATION
+elseif 6_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+  #define THREE_GENERATION
+  #define FOUR_GENERATION
+  #define FIVE_GENERATION
+  #define SIX_GENERATION
+elseif 7_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+  #define THREE_GENERATION
+  #define FOUR_GENERATION
+  #define FIVE_GENERATION
+  #define SIX_GENERATION
+  #define SEVEN_GENERATION
+elseif 8_PLAYER_GAME
+  #define ONE_GENERATION
+  #define TWO_GENERATION
+  #define THREE_GENERATION
+  #define FOUR_GENERATION
+  #define FIVE_GENERATION
+  #define SIX_GENERATION
+  #define SEVEN_GENERATION
+  #define EIGHT_GENERATION
+endif
+
+
+
+/* ***************** Hill river generations ***************** */
+/* Allow rivers to form at (grid, letters for X dir, numbers for Y dir) A D F H J M, 1 4 6 8 10 13 but not at A1, A9, M1, M9 i.e. not the corners. */
+
+start_random
+  percent_chance 12 #define CONFIG_NO_RIVERS
+  percent_chance 88 #define CONFIG_TWO_RIVERS
+  /* percent_chance 25 #define CONFIG_FOUR_RIVERS */
+end_random
+
+if CONFIG_NO_RIVERS
+elseif CONFIG_TWO_RIVERS
+
+/* Find the first of the two rivers */
+  start_random
+    percent_chance 33 #define CONFIG_RIVER_A4
+    percent_chance 33 #define CONFIG_RIVER_A6
+    percent_chance 34 #define CONFIG_RIVER_A9
+  end_random
+  
+/* Choose the second river based off the first river (for fairness) */
+  if CONFIG_RIVER_A4
+    start_random
+      percent_chance 50 #define CONFIG_RIVER_M6
+      percent_chance 50 #define CONFIG_RIVER_M9
+    end_random
+
+  elseif CONFIG_RIVER_A6
+    start_random
+      percent_chance 33 #define CONFIG_RIVER_M4
+      percent_chance 34 #define CONFIG_RIVER_M6
+      percent_chance 33 #define CONFIG_RIVER_M9
+    end_random
+
+  elseif CONFIG_RIVER_A9
+    start_random
+      percent_chance 50 #define CONFIG_RIVER_M4
+      percent_chance 50 #define CONFIG_RIVER_M6
+    end_random
+
+  endif
+endif
+
+
+
+/* ************************************************************************************************ PLAYER SETUP ************************************************************************************************ */
+
+
+<PLAYER_SETUP>
+random_placement
+behavior_version 1
+
+/* Make it so that the trees have more wood (as there are not many on the map) */
+effect_amount SET_ATTRIBUTE PALMTREE ATTR_STORAGE_VALUE 200
+
+
+/* so that gold and stone can be placed on beach terrain */
+effect_amount SET_ATTRIBUTE cGoldMine ATTR_TERRAIN_ID 10
+effect_amount SET_ATTRIBUTE cStoneMineClass ATTR_TERRAIN_ID 10
+
+/* so that buildings can be built on beach terrain */
+effect_amount SET_ATTRIBUTE BUILDING_CLASS ATTR_TERRAIN_ID 10
+effect_amount SET_ATTRIBUTE FARM_CLASS ATTR_TERRAIN_ID 10
+effect_amount SET_ATTRIBUTE TOWER_CLASS ATTR_TERRAIN_ID 10
+
+/* fix the docks */
+#const HARBOR 1189
+effect_amount SET_ATTRIBUTE DOCK ATTR_TERRAIN_ID 6
+effect_amount SET_ATTRIBUTE DOCK_F ATTR_TERRAIN_ID 6
+effect_amount SET_ATTRIBUTE DOCK_C ATTR_TERRAIN_ID 6
+effect_amount SET_ATTRIBUTE DOCK_I ATTR_TERRAIN_ID 6
+effect_amount SET_ATTRIBUTE HARBOR ATTR_TERRAIN_ID 6
+
+/* Make it so emus (ostriches) have less food */
+effect_amount SET_ATTRIBUTE DLC_OSTRICH ATTR_STORAGE_VALUE 80
+
+/* ********************************************************************************************** LAND GENERATION ********************************************************************************************** */
+
+<LAND_GENERATION>
+
+
+
+base_terrain BASE_LEVEL_TERRAIN
+
+
+
+
+
+
+
+
+create_player_lands
+{
+  terrain_type                    PLACEHOLDER_TERRAIN 
+  if TINY_MAP
+    base_size                       9
+  else 
+    base_size                       12
+  endif 
+  if TINY_MAP
+    number_of_tiles                 855
+  else 
+    number_of_tiles                 920
+  endif 
+
+  clumping_factor 15
+  other_zone_avoidance_distance 5
+  
+  if TINY_MAP
+    circle_radius 20 1
+  elseif SMALL_MAP
+    circle_radius 22 1
+  elseif MEDIUM_MAP
+    circle_radius 22 1
+  elseif LARGE_MAP
+    circle_radius 26 2
+  elseif HUGE_MAP
+    circle_radius 28 2
+  elseif GIGANTIC_MAP
+    circle_radius 30 3
+  elseif LUDIKRIS_MAP
+    circle_radius 32 4
+  endif
+
+  zone 3
+  base_elevation 1
+}
+
+/* Center land  */
+
+if TINY_MAP
+create_land
+{
+  terrain_type                    TEMP_TERRAIN 
+  base_size                       8
+  land_percent                    66
+  land_position                   50 50
+  border_fuzziness                13
+  left_border                     18
+  right_border                    18
+  top_border                      18
+  bottom_border                   18
+
+  min_placement_distance          21
+
+  land_id                         4
+  zone                            3
+  other_zone_avoidance_distance   3
+  base_elevation 1
+}
+else
+create_land
+{
+  terrain_type                    TEMP_TERRAIN 
+  base_size                       20
+  land_percent                    66
+  land_position                   50 50
+  border_fuzziness                13
+  left_border                     18
+  right_border                    18
+  top_border                      18
+  bottom_border                   18
+
+  land_id                         4
+  zone                            3
+  other_zone_avoidance_distance   2
+  base_elevation 1
+}
+endif 
+
+
+
+/* River Placeholder */ 
+
+/* Generated with MadLands for ForeDaut.xlsm: I: 3.2 R: 37 XO: 0 YO: 0 OA: 0 XS: 1 YS: 1 A: 0 F: 0 SF: 0 */
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 87 50 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 87 52 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 87 54 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 86 56 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 86 58 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 86 60 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 85 62 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 84 64 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 83 66 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 82 68 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 81 70 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 80 71 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 79 73 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 78 75 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 76 76 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 75 77 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 73 79 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 72 80 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 70 81 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 68 82 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 66 83 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 64 84 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 62 85 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 60 85 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 58 86 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 56 86 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 54 87 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 52 87 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 50 87 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 48 87 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 46 87 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 44 87 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 42 86 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 40 86 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 38 85 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 36 84 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 34 83 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 32 83 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 31 82 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 29 80 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 27 79 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 26 78 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 24 76 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 23 75 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 21 73 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 20 72 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 19 70 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 18 68 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 17 66 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 16 65 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 15 63 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 15 61 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 14 59 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 14 57 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 13 55 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 13 53 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 13 51 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 13 48 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 13 46 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 13 44 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 14 42 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 14 40 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 15 38 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 16 36 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 16 34 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 17 33 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 18 31 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 19 29 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 21 27 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 22 26 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 23 24 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 25 23 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 26 21 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 28 20 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 30 19 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 31 18 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 33 17 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 35 16 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 37 15 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 39 15 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 41 14 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 43 14 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 45 13 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 47 13 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 49 13 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 51 13 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 53 13 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 55 13 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 57 14 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 59 14 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 61 15 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 63 16 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 65 16 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 67 17 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 69 18 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 71 19 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 72 21 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 74 22 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 76 23 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 77 25 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 78 26 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 80 28 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 81 30 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 82 31 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 83 33 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 84 35 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 85 37 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 85 39 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 86 41 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 86 43 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 87 45 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 87 47 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+create_land { if TINY_MAP base_size 2 else base_size 3 endif land_position 87 49 terrain_type  BEACH number_of_tiles 1  land_id 1  zone  9 }
+
+
+
+
+
+
+/* Hills */
+
+if TINY_MAP
+
+
+
+    /* Left side */
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    180
+      land_position                   4  11
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      land_id                         2
+      zone                            20
+
+      if CONFIG_RIVER_A4
+        start_random 
+          percent_chance 37 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 11 other_zone_avoidance_distance   5
+        end_random 
+      else
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+      endif
+      
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    if CONFIG_RIVER_A4
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(21,23)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(22,23)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(22,24)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(23,24)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(24,25)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(25,26)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(26,27)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   4  22
+        border_fuzziness                45
+        left_border                     -15
+      
+        zone                            21
+        clumping_factor                 -10
+
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      }
+    endif
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    400
+      land_position                   4  33
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            22
+      if CONFIG_RIVER_A4
+        start_random 
+          percent_chance 37 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 11 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_A6
+        start_random 
+          percent_chance 37 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 11 other_zone_avoidance_distance   5
+        end_random 
+      else
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+      base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    if CONFIG_RIVER_A6
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(42,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(43,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(43,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(44,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(45,46)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(46,47)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(47,49)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   4  44
+        border_fuzziness                12
+        /* right_border                    92 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            23
+      
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif 
+
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   4  56
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            24
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    if CONFIG_RIVER_A9
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(63,64)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(64,66)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(66,67)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(67,68)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(68,69)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(69,70)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(70,72)
+      
+        zone                            9
+      }
+
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+        base_size                       1
+        number_of_tiles                    130
+        land_position                   4  67
+        border_fuzziness                12
+        /* right_border                    91 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            25
+        
+          start_random 
+            percent_chance 21 other_zone_avoidance_distance   7
+            percent_chance 36 other_zone_avoidance_distance   6
+            percent_chance 30 other_zone_avoidance_distance   5
+            percent_chance 13 other_zone_avoidance_distance   4
+          end_random
+          
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   4  78
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            26
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    120
+      land_position                   4  89
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            27
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+
+
+
+    /* ****** RIGHT SIDE ****** */
+    
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    180
+      land_position                   96  11
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            21
+
+      if CONFIG_RIVER_M4
+        start_random 
+          percent_chance 34 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 14 other_zone_avoidance_distance   5
+        end_random 
+      else
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+      endif
+      
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    if CONFIG_RIVER_M4
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   98  rnd(26,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   96  rnd(27,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   94  rnd(27,29)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   92  rnd(28,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   90  rnd(29,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   88  rnd(30,31)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   86  rnd(31,32)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   96  22
+        border_fuzziness                45
+        left_border                     -15
+      
+        zone                            22
+        clumping_factor                 -10
+
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      }
+    endif
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    400
+      land_position                   96  33
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            23
+      if CONFIG_RIVER_M4
+        start_random 
+          percent_chance 34 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 14 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_M6
+        start_random 
+          percent_chance 34 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 14 other_zone_avoidance_distance   5
+        end_random 
+      else
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+      base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    if CONFIG_RIVER_M6
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   98  rnd(42,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   96  rnd(43,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   94  rnd(43,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   92  rnd(44,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   90  rnd(45,46)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   88  rnd(46,47)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   86  rnd(47,49)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   96  44
+        border_fuzziness                12
+        /* right_border                    92 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            24
+      
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif 
+
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   96  56
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            25
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    
+    if CONFIG_RIVER_M9
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   98  rnd(63,64)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   96  rnd(64,66)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   94  rnd(66,67)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   92  rnd(67,68)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   90  rnd(68,69)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   88  rnd(69,70)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   86  rnd(70,72)
+      
+        zone                            9
+      }
+
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+        base_size                       1
+        number_of_tiles                    130
+        land_position                   96  67
+        border_fuzziness                12
+        /* right_border                    91 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            26
+        
+          start_random 
+            percent_chance 21 other_zone_avoidance_distance   7
+            percent_chance 36 other_zone_avoidance_distance   6
+            percent_chance 30 other_zone_avoidance_distance   5
+            percent_chance 13 other_zone_avoidance_distance   4
+          end_random
+          
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+      
+    endif
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   96  78
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            27
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    120
+      land_position                   96  89
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            28
+
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+
+    /* ****** BOTTOM SIDE ****** */
+
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    180
+      land_position                   11 96
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            31
+
+      if CONFIG_RIVER_A4
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+      endif
+      
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    if CONFIG_RIVER_D10
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(26,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(27,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(27,29)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(28,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(29,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(30,31)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(31,32)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   22 96
+        border_fuzziness                45
+        left_border                     -15
+      
+        zone                            32
+        clumping_factor                 -10
+
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      }
+    endif
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    400
+      land_position                   33 96
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            33
+      if CONFIG_RIVER_D10
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_F10
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+      base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    if CONFIG_RIVER_F10
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(42,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(43,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(43,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(44,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(45,46)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(46,47)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(47,49)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   44 96
+        border_fuzziness                12
+        /* right_border                    92 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            34
+      
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif 
+
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   56 96
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            35
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   67 96
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            36
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   78 96
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            37
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    120
+      land_position                   89 96
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            38
+
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+    /* ****** TOP SIDE ****** */
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    180
+      land_position                   11 4
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            31
+
+      if CONFIG_RIVER_D1
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+      endif
+      
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    if CONFIG_RIVER_D1
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(26,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(27,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(27,29)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(28,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(29,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(30,31)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(31,32)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   22 4
+        border_fuzziness                45
+        left_border                     -15
+      
+        zone                            32
+        clumping_factor                 -10
+
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      }
+    endif
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    400
+      land_position                   33 4
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            33
+      if CONFIG_RIVER_D1
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_F1
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+      base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    if CONFIG_RIVER_F1
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(42,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(43,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(43,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(44,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(45,46)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(46,47)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(47,49)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    130
+        land_position                   44 4
+        border_fuzziness                12
+        /* right_border                    92 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            34
+      
+          
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif 
+
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   56 4
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            35
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   67 4
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            36
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    130
+      land_position                   78 4
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            37
+      
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    120
+      land_position                   89 4
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            38
+
+        start_random 
+          percent_chance 21 other_zone_avoidance_distance   7
+          percent_chance 36 other_zone_avoidance_distance   6
+          percent_chance 30 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+
+
+
+
+else
+
+
+
+
+
+
+
+    /* Left side */
+    /* PLUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   4  13
+      border_fuzziness                12
+      /* right_border                    89 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+      land_id                         2
+      zone                            1
+      
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    670
+      land_position                   4  20
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            2
+
+      if CONFIG_RIVER_A4
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+      endif
+      
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    if CONFIG_RIVER_A4
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(26,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(27,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(27,29)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(28,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(29,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(30,31)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(31,32)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+
+        base_size                       1
+      number_of_tiles                    500
+        land_position                   4  27
+        border_fuzziness                45
+        left_border                     -15
+      
+        zone                            1
+        clumping_factor                 -10
+
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      }
+    endif
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    400
+      land_position                   4  36
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            2
+      if CONFIG_RIVER_A4
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_A6
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+          
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+      base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    if CONFIG_RIVER_A6
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(42,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(43,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(43,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(44,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(45,46)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(46,47)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(47,49)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    500
+        land_position                   4  43
+        border_fuzziness                12
+        /* right_border                    92 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            1
+      
+          
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif 
+
+    /* CENTRAL */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   4  50
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            2
+      if CONFIG_RIVER_A6
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_A8
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else  
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   4  57
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            1
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    if CONFIG_RIVER_A9
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   2  rnd(62,63)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   4  rnd(63,65)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   6  rnd(65,66)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   8  rnd(66,67)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   10  rnd(67,68)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   12  rnd(68,69)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   14  rnd(69,71)
+      
+        zone                            9
+      }
+
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+        base_size                       1
+        number_of_tiles                    500
+        land_position                   4  63
+        border_fuzziness                12
+        /* right_border                    91 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            2
+        
+          start_random 
+            percent_chance 15 other_zone_avoidance_distance   8
+            percent_chance 25 other_zone_avoidance_distance   7
+            percent_chance 28 other_zone_avoidance_distance   6
+            percent_chance 19 other_zone_avoidance_distance   5
+            percent_chance 13 other_zone_avoidance_distance   4
+          end_random
+          
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   4  70
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            1
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    470
+      land_position                   4  77
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            2
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   4 84
+      border_fuzziness                12
+      /* right_border                    85 */
+      /* top_border                      84
+      bottom_border                   16 */
+      left_border                     -15
+    
+      zone                            1
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+
+    /* ****** RIGHT SIDE ****** */
+    /* PLUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   96  13
+      border_fuzziness                12
+      /* right_border                    89 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            1
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    670
+      land_position                   96  20
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            2
+      if CONFIG_RIVER_M4
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+      endif
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    if CONFIG_RIVER_M4
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   98  rnd(26,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   96  rnd(27,28)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   94  rnd(27,29)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   92  rnd(28,29)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   90  rnd(28,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   88  rnd(29,30)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   86  rnd(29,31)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    500
+        land_position                   96  27
+        border_fuzziness                12
+        /* right_border                    89 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            1
+          
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   96  36
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            2
+      if CONFIG_RIVER_M4
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_M6
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else  
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    if CONFIG_RIVER_M6
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   98  rnd(42,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   96  rnd(43,44)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   94  rnd(43,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   92  rnd(44,45)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   90  rnd(44,46)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   88  rnd(45,47)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   86  rnd(47,49)
+      
+        zone                            9
+      }
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN 
+        base_size                       1
+      number_of_tiles                    500
+        land_position                   96  43
+        border_fuzziness                12
+        /* right_border                    92 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            1
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif 
+
+    /* CENTRAL */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   96  50
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            2
+      if CONFIG_RIVER_M6
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      elseif CONFIG_RIVER_M8
+        start_random 
+          percent_chance 14 other_zone_avoidance_distance   7
+          percent_chance 52 other_zone_avoidance_distance   6
+          percent_chance 34 other_zone_avoidance_distance   5
+        end_random 
+      else  
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+      endif
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   96  57
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            1
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    
+    
+    if CONFIG_RIVER_M9
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   98  rnd(62,63)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   96  rnd(63,65)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   94  rnd(65,66)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   92  rnd(66,67)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   90  rnd(67,68)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   88  rnd(68,69)
+      
+        zone                            9
+      }
+      create_land
+      {
+        terrain_type                    BEACH 
+
+        base_size                       1
+        number_of_tiles                    10
+        land_position                   86  rnd(69,71)
+      
+        zone                            9
+      }
+
+    else
+      create_land
+      {
+        terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+        base_size                       1
+        number_of_tiles                    500
+        land_position                   96  63
+        border_fuzziness                12
+        /* right_border                    91 */
+        /* top_border                      69
+        bottom_border                   29 */
+        left_border                     -15
+      
+        zone                            2
+        
+          start_random 
+            percent_chance 15 other_zone_avoidance_distance   8
+            percent_chance 25 other_zone_avoidance_distance   7
+            percent_chance 28 other_zone_avoidance_distance   6
+            percent_chance 19 other_zone_avoidance_distance   5
+            percent_chance 13 other_zone_avoidance_distance   4
+          end_random
+          
+          base_elevation                  2
+        clumping_factor                 -10
+      }
+    endif
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   96  70
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            1
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    470
+      land_position                   96  77
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            2
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   96 84
+      border_fuzziness                12
+      /* right_border                    85 */
+      /* top_border                      84
+      bottom_border                   16 */
+      left_border                     -15
+    
+      zone                            1
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+
+
+    /* ****** BOTTOM SIDE ****** */
+    /* PLUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   13 96 
+      border_fuzziness                12
+      /* right_border                    89 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    670
+      land_position                   20 96 
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   27 96  
+      border_fuzziness                12
+      /* right_border                    89 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   36 96  
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   43 96 
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* CENTRAL */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   50 96 
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   57 96 
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   63 96 
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   70 96 
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    470
+      land_position                   77 96 
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            5
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   84  96
+      border_fuzziness                12
+      /* right_border                    85 */
+      /* top_border                      84
+      bottom_border                   16 */
+      left_border                     -15
+    
+      zone                            4
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+
+
+    /* ****** TOP SIDE ****** */
+    /* PLUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   13 4 
+      border_fuzziness                12
+      /* right_border                    89 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    670
+      land_position                   20 4 
+      /* border_fuzziness                8 */
+      /* right_border                    85 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   27 4  
+      border_fuzziness                12
+      /* right_border                    89 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+        
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   36 4  
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* PLUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   43 4 
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* CENTRAL */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   50 4 
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS ONE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   57 4 
+      border_fuzziness                12
+      /* right_border                    92 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS TWO */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   63 4 
+      border_fuzziness                12
+      /* right_border                    91 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            5
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS THREE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER 
+      base_size                       1
+      number_of_tiles                    500
+      land_position                   70 4 
+      border_fuzziness                12
+      /* right_border                    90 */
+      /* top_border                      69
+      bottom_border                   29 */
+      left_border                     -15
+    
+      zone                            4
+      
+        start_random 
+          percent_chance 15 other_zone_avoidance_distance   8
+          percent_chance 25 other_zone_avoidance_distance   7
+          percent_chance 28 other_zone_avoidance_distance   6
+          percent_chance 19 other_zone_avoidance_distance   5
+          percent_chance 13 other_zone_avoidance_distance   4
+        end_random
+        
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+
+    /* MINUS FOUR */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN
+      base_size                       1
+      number_of_tiles                    470
+      land_position                   77 4 
+      border_fuzziness                12
+      /* right_border                    87 */
+      /* top_border                      77
+      bottom_border                   23 */
+      left_border                     -15
+    
+      zone                            5
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+    /* MINUS FIVE */
+    create_land
+    {
+      terrain_type                    HILL_TERRAIN_PLACEHOLDER
+      base_size                       1
+      number_of_tiles                    740
+      land_position                   84  4
+      border_fuzziness                12
+      /* right_border                    85 */
+      /* top_border                      84
+      bottom_border                   16 */
+      left_border                     -15
+    
+      zone                            4
+
+        start_random 
+          percent_chance 12 other_zone_avoidance_distance   9
+          percent_chance 17 other_zone_avoidance_distance   8
+          percent_chance 22 other_zone_avoidance_distance   7
+          percent_chance 22 other_zone_avoidance_distance   6
+          percent_chance 17 other_zone_avoidance_distance   5
+          percent_chance 10 other_zone_avoidance_distance   4
+        end_random
+        base_elevation                  2
+      clumping_factor                 -10
+    }
+endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ******************************************************************************************** ELEVATION GENERATION ******************************************************************************************** */
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 7
+{
+  base_terrain          HILL_TERRAIN
+  number_of_tiles       4100     
+  number_of_clumps      1550        
+  set_scale_by_groups             
+  spacing               0         
+  enable_balanced_elevation
+}
+
+create_elevation 7
+{
+  base_terrain          HILL_TERRAIN_PLACEHOLDER
+  number_of_tiles       4100     
+  number_of_clumps      1550        
+  set_scale_by_groups             
+  spacing               0        
+  enable_balanced_elevation
+}
+
+
+
+
+/* Center terrain small elevation */
+create_elevation 2
+{
+  base_terrain          TEMP_TERRAIN
+  number_of_tiles       160      
+  number_of_clumps      4        
+  set_scale_by_groups             
+  spacing               0         
+  enable_balanced_elevation
+}
+
+
+
+
+
+
+
+
+
+/* <CLIFF_GENERATION> */
+
+
+
+
+
+
+
+
+
+/* ******************************************************************************************** TERRAIN GENERATION ******************************************************************************************** */
+<TERRAIN_GENERATION>
+
+
+
+/* Revert placeholder Hills */
+create_terrain HILL_TERRAIN { base_terrain HILL_TERRAIN_PLACEHOLDER land_percent 100 number_of_clumps 9999 } 
+create_terrain HILL_TERRAIN { base_terrain HILL_TERRAIN_PLACEHOLDER land_percent 100 number_of_clumps 9999 } 
+create_terrain HILL_TERRAIN { base_terrain HILL_TERRAIN_PLACEHOLDER land_percent 100 number_of_clumps 9999 } 
+
+
+/* Make the entire river area beach */
+create_terrain BEACH { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 1 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 1 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 1 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 1 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 1 set_flat_terrain_only } 
+
+/* Change the valleys between hills */
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999  spacing_to_other_terrain_types 1 height_limits 1 6 } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999  spacing_to_other_terrain_types 1 height_limits 1 6 } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999  spacing_to_other_terrain_types 1 height_limits 1 6 } 
+
+
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100 number_of_clumps 99999  } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100 number_of_clumps 99999  } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100 number_of_clumps 99999  } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100 number_of_clumps 99999  } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100 number_of_clumps 99999  } 
+
+
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 0 height_limits 0 1 set_flat_terrain_only } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 0 height_limits 0 1 set_flat_terrain_only } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 0 height_limits 0 1 set_flat_terrain_only } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 0 height_limits 0 1 set_flat_terrain_only } 
+create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BASE_LEVEL_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 0 height_limits 0 1 set_flat_terrain_only } 
+
+
+create_terrain BEACH { base_terrain RIVERBANK_TERRAIN_TEMP land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 0 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain RIVERBANK_TERRAIN_TEMP land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 0 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain RIVERBANK_TERRAIN_TEMP land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 0 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain RIVERBANK_TERRAIN_TEMP land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 0 set_flat_terrain_only } 
+create_terrain BEACH { base_terrain RIVERBANK_TERRAIN_TEMP land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 1 height_limits 0 0 set_flat_terrain_only } 
+
+
+create_terrain DLC_MANGROVESHALLOW { base_terrain BEACH land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 2 } 
+create_terrain DLC_MANGROVESHALLOW { base_terrain BEACH land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 2 } 
+
+
+
+/* *********** Create designated player forest area *********** */
+
+/* Create the max distance */
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 } 
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 } 
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 } 
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain REPLACE_F { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 9999 set_avoid_player_start_areas 21 }
+create_terrain TEMP_TERRAIN { base_terrain REPLACE_F land_percent 100 number_of_clumps 9999 } 
+create_terrain TEMP_TERRAIN { base_terrain REPLACE_F land_percent 100 number_of_clumps 9999 } 
+create_terrain TEMP_TERRAIN { base_terrain REPLACE_F land_percent 100 number_of_clumps 9999 } 
+create_terrain TEMP_TERRAIN { base_terrain REPLACE_F land_percent 100 number_of_clumps 9999 } 
+create_terrain TEMP_TERRAIN { base_terrain REPLACE_F land_percent 100 number_of_clumps 9999 } 
+
+
+
+create_terrain PLACEHOLDER_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 2  } 
+create_terrain TEMP_TERRAIN { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 99999 } 
+create_terrain TEMP_TERRAIN { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 99999 } 
+create_terrain TEMP_TERRAIN { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 99999 } 
+create_terrain TEMP_TERRAIN { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 99999 } 
+
+
+
+
+/* Create ring */
+create_terrain PLACEHOLDER_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 2  } 
+create_terrain PLACEHOLDER_TERRAIN2 { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 99999 spacing_to_other_terrain_types 5  } 
+
+
+/* Remove placeholder terrains */
+create_terrain TEMP_TERRAIN { base_terrain PLACEHOLDER_TERRAIN2 land_percent 100 number_of_clumps 99999  } 
+create_terrain TEMP_TERRAIN { base_terrain PLACEHOLDER_TERRAIN2 land_percent 100 number_of_clumps 99999  } 
+
+
+
+
+/* Create a forest for each player */
+if ONE_GENERATION
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if TWO_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if THREE_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if FOUR_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if FIVE_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if SIX_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if SEVEN_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+if EIGHT_GENERATION
+
+  create_terrain REPLACE_A { base_terrain PLACEHOLDER_TERRAIN land_percent 100 number_of_clumps 1  } 
+  create_terrain REPLACE_TREES 
+
+  { 
+    base_terrain REPLACE_A 
+    
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_tiles 48 
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_tiles 66 
+    endif
+
+    if CONFIG_TWO_PLAYER_FORESTS
+      number_of_clumps 2  
+    elseif CONFIG_THREE_PLAYER_FORESTS
+      number_of_clumps 3
+    endif
+
+    set_avoid_player_start_areas 14
+  } 
+
+  create_terrain REPLACE_LUMBER { base_terrain REPLACE_TREES land_percent 100 number_of_clumps 1  } 
+
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+  create_terrain TEMP_TERRAIN { base_terrain REPLACE_A land_percent 100 number_of_clumps 9999  } 
+endif
+
+
+/* Make player areas same as everywhere else */
+create_terrain CENTER_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 9999 } 
+create_terrain CENTER_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 9999 } 
+create_terrain CENTER_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 9999 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Make wood on river and between hills */
+create_terrain PALM_DESERT { base_terrain BEACH number_of_tiles 225 number_of_clumps 60 set_scale_by_groups } 
+create_terrain PALM_DESERT { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 350 number_of_clumps 45 spacing_to_other_terrain_types 0 height_limits 0 0 set_flat_terrain_only set_scale_by_groups } 
+
+
+/* Make additional wood in the center area */
+/* create_terrain DESERT { base_terrain CENTER_TERRAIN number_of_tiles 65 number_of_clumps 3 set_avoid_player_start_areas 20 set_scale_by_groups }  */
+
+
+/* COSMETICS */
+/* Center land masking */
+create_terrain PLACEHOLDER_TERRAIN { base_terrain CENTER_TERRAIN number_of_tiles 900 number_of_clumps 14 spacing_to_other_terrain_types 0 terrain_mask 1 set_scale_by_groups } 
+create_terrain PLACEHOLDER_TERRAIN { base_terrain CENTER_TERRAIN number_of_tiles 630 number_of_clumps 19 spacing_to_other_terrain_types 0 terrain_mask 1 set_scale_by_groups } 
+create_terrain PLACEHOLDER_TERRAIN { base_terrain CENTER_TERRAIN number_of_tiles 420 number_of_clumps 24 spacing_to_other_terrain_types 0 terrain_mask 1 set_scale_by_groups } 
+create_terrain CENTER_TERRAIN_MASK2 { base_terrain CENTER_TERRAIN number_of_tiles 660 number_of_clumps 255 terrain_mask 1 set_scale_by_groups } 
+/* Inside that mask */
+create_terrain CENTER_TERRAIN_MASK_INSIDE1 { base_layer PLACEHOLDER_TERRAIN number_of_tiles 44 number_of_clumps 30 spacing_to_other_terrain_types 1 terrain_mask 1 set_scale_by_groups } 
+create_terrain CENTER_TERRAIN_MASK_INSIDE2 { base_layer PLACEHOLDER_TERRAIN number_of_tiles 100 number_of_clumps 80 terrain_mask 1 set_scale_by_groups } 
+create_terrain CENTER_TERRAIN_MASK2 { base_terrain PLACEHOLDER_TERRAIN number_of_tiles 120 number_of_clumps 80 terrain_mask 1 set_scale_by_groups } 
+
+/* Make centerland dirt, holy cow had to do so many repeats to ensure consistency */
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+create_terrain CENTER_TERRAIN_MASK { base_layer PLACEHOLDER_TERRAIN number_of_tiles 99999 number_of_clumps 99999 terrain_mask 1 } 
+
+
+
+/* Centre DESERT TREE MASKING */
+create_terrain CENTER_TERRAIN_MASK_INSIDE2 { base_terrain REPLACE_TREES number_of_tiles 100 number_of_clumps 80 terrain_mask 1 set_scale_by_groups } 
+create_terrain CENTER_TERRAIN_MASK2 { base_terrain REPLACE_TREES number_of_tiles 120 number_of_clumps 80 terrain_mask 1 set_scale_by_groups } 
+
+
+/* ***** HILLS ***** */
+
+/* change the  hill terrain temp to its final form */
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+create_terrain HILL_TERRAIN_FINAL { base_terrain HILL_TERRAIN number_of_tiles 99999 number_of_clumps 99999   } 
+
+
+/* Make top of hill a different terrain */
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+create_terrain HILLTOP_TERRAIN_MASK { base_terrain HILLTOP_TERRAIN number_of_tiles 99999 number_of_clumps 9999 spacing_to_other_terrain_types 1 terrain_mask 2 } 
+
+
+
+
+
+
+/* Mask the hill terrain  */
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain HILL_TERRAIN_FINAL_MASK { base_terrain HILL_TERRAIN_FINAL number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+
+
+
+/* Turn riverbank temp into its final form */
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+create_terrain RIVERBANK_TERRAIN { base_terrain RIVERBANK_TERRAIN_TEMP number_of_tiles 99999 number_of_clumps 9999 } 
+
+
+/* Mask the riverbank terrain */
+/* create_terrain RIVERBANK_TERRAIN_MASK2 { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 spacing_to_other_terrain_types 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK2 { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 spacing_to_other_terrain_types 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK2 { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 spacing_to_other_terrain_types 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK2 { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 spacing_to_other_terrain_types 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK2 { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 spacing_to_other_terrain_types 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK2 { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 spacing_to_other_terrain_types 1 }  */
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+create_terrain RIVERBANK_TERRAIN_MASK { base_terrain RIVERBANK_TERRAIN number_of_tiles 99999 number_of_clumps 99999  terrain_mask 1 } 
+
+
+
+/* ****************************************************************************************** CONNECTION GENERATION ****************************************************************************************** */
+
+
+/* <CONNECTION_GENERATION> */
+
+
+
+/* ******************************************************************************************** OBJECT GENERATION ******************************************************************************************** */
+
+<OBJECTS_GENERATION>
+/* 
+List of attributes (can also be found on the guide, but its more detailed):
+  number_of_objects
+  number_of_groups
+  set_place_for_every_player
+  set_scaling_by_map_size
+  set_scaling_to_player_number
+  min_distance_to_players
+  max_distance_to_players
+  set_tight_grouping
+  set_loose_grouping
+  group_placement_radius
+  group_variance
+  set_gaia_object_only
+  min_distance_group_placement
+  temp_min_distance_group_placement
+  max_distance_to_other_zones
+  terrain_to_place_on
+  resource_delta                  increase or decrease the amount of res that an object has. +100 to deer will m ake deer have an extra 100 food, -11 will make it have 100 less food
+  place_on_specific_land_id       only works if there is separation bw the player and the land_id
+*/
+
+
+/* COSMETICS MORE AT END */
+create_object DLC_VULTURE {
+	number_of_objects 7
+	set_scaling_to_map_size
+}
+
+create_object DLC_WILD_CAMEL {
+  terrain_to_place_on               DESERT
+	number_of_objects                 3
+	group_variance                    1
+	number_of_groups                  9320
+  if TINY_MAP
+    temp_min_distance_group_placement 74
+  else
+    temp_min_distance_group_placement 110
+  endif
+  min_distance_to_players           23
+  avoid_forest_zone                 1
+  actor_area                        9800
+  if TINY_MAP
+    actor_area_radius                 50
+  else
+    actor_area_radius                 67
+  endif
+}
+create_object HORSE {
+  terrain_to_place_on               DESERT
+	number_of_objects                 4
+	group_variance                    1
+	number_of_groups                  9320
+	temp_min_distance_group_placement 65
+  min_distance_to_players           23
+  avoid_forest_zone                 2
+  avoid_actor_area                  9800
+}
+
+
+
+/* ******************** Put Forests Back ******************** */
+create_object PALMTREE
+{
+  terrain_to_place_on               REPLACE_TREES
+  number_of_objects                 1
+  number_of_groups                  9320
+  place_on_specific_land_id         4
+  set_tight_grouping
+  set_gaia_object_only
+}
+/* create_object LUMBER
+{
+  terrain_to_place_on               REPLACE_LUMBER
+  number_of_objects                 1
+  number_of_groups                  9320
+  temp_min_distance_group_placement 1
+  set_tight_grouping
+  set_gaia_object_only
+} */
+
+
+
+/* ******************** Player Resources ******************** */
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players     0
+  actor_area                  1899
+  actor_area_radius           0
+}
+create_object ONGRID_PLACEHOLDER
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  actor_area_to_place_in            1899
+
+	set_gaia_object_only
+  ignore_terrain_restrictions
+
+  actor_area                        1885
+  actor_area_radius                 5
+}
+create_object ONGRID_PLACEHOLDER
+{
+  set_place_for_every_player
+  number_of_objects                 2
+  temp_min_distance_group_placement rnd(5,6) 
+  /* second_object                     FLAG_B */
+  
+	set_gaia_object_only
+  ignore_terrain_restrictions
+  find_closest
+
+  avoid_actor_area                  1885
+  actor_area                        1880
+  actor_area_radius                 1
+}
+create_object VILLAGER 
+{
+  set_place_for_every_player
+  number_of_objects             3
+  min_distance_group_placement  1
+
+  find_closest
+
+  actor_area_to_place_in      1880
+  avoid_actor_area            1885
+
+  actor_area                  1510
+  actor_area_radius           5
+}
+create_object HORSE
+{
+  set_place_for_every_player
+  min_distance_to_players     7
+  max_distance_to_players     8
+  min_distance_group_placement  1
+
+  find_closest
+
+  avoid_actor_area                  1510
+}
+
+
+
+
+
+
+
+create_object SHEEP 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 3
+  min_distance_group_placement      1
+  max_distance_to_other_zones       3
+  min_distance_to_players           6
+  max_distance_to_players           7
+  set_tight_grouping
+  set_gaia_object_only
+  set_place_for_every_player
+  set_circular_placement
+  avoid_actor_area                  1885
+  actor_area                        6103
+  actor_area_radius                 1
+}
+create_object SHEEP 
+{
+  set_place_for_every_player
+  terrain_to_place_on               CENTER_TERRAIN 
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  find_closest
+  actor_area_to_place_in            6103
+  actor_area                        6112
+  actor_area_radius                 9
+}
+create_object SHEEP 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 2
+  number_of_groups                  2
+  min_distance_group_placement      1
+  temp_min_distance_group_placement 9
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       1
+  min_distance_to_players           14
+  max_distance_to_players           19
+  set_tight_grouping
+  set_gaia_object_only
+  set_place_for_every_player
+  set_circular_placement
+  find_closest
+  avoid_actor_area                  6112 /* avoid the main sheep */
+}
+create_object BOAR 
+{
+  set_place_for_every_player
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 7
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       3
+  min_distance_to_players           16
+  max_distance_to_players           20
+  find_closest
+  set_gaia_object_only
+  set_circular_placement
+}
+create_object DLC_OSTRICH 
+{
+  set_place_for_every_player
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 rnd(6,7)
+  number_of_groups                  1
+  min_distance_group_placement      2
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  min_distance_to_players           13
+  max_distance_to_players           20
+  set_gaia_object_only
+  set_circular_placement
+}
+create_object FORAGE 
+{
+  set_place_for_every_player
+  number_of_objects                 6
+  min_distance_group_placement      4
+  group_placement_radius            1
+  avoid_forest_zone                 2
+  min_distance_to_players           10
+  max_distance_to_players           14
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6112 /* avoid the main sheep */
+}
+/* Large gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 7
+  number_of_groups                  1
+  min_distance_group_placement      4
+  max_distance_to_other_zones       5
+  avoid_forest_zone                 3
+  group_placement_radius            1
+  min_distance_to_players           10
+  max_distance_to_players           19
+  group_placement_radius            1
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+  actor_area                        9999
+  actor_area_radius                 9
+}
+/* Small gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  1
+  min_distance_group_placement      4
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  min_distance_to_players           17
+  max_distance_to_players           22
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+  avoid_actor_area                  9999
+} 
+/* Small gold near river */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               BEACH
+  number_of_objects                 4
+  number_of_groups                  1
+  min_distance_group_placement      2
+  /* avoid_forest_zone                 1 */
+  /* min_distance_to_players           17 */
+  max_distance_to_players           23
+  find_closest_to_map_edge
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+} 
+/* Large stone */
+create_object STONE 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 4
+  min_distance_group_placement      4
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  min_distance_to_players           12
+  max_distance_to_players           20
+  group_placement_radius            1
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_place_for_every_player
+  set_circular_placement
+  ignore_terrain_restrictions
+  avoid_actor_area                  9999
+  actor_area                        9998
+  actor_area_radius                 10
+}
+/* Small stone */
+create_object STONE 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 3
+  min_distance_group_placement      4
+  /* max_distance_to_other_zones       2 */
+  avoid_forest_zone                 2
+  min_distance_to_players           16
+  max_distance_to_players           22
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_place_for_every_player
+  set_circular_placement
+  ignore_terrain_restrictions
+  avoid_actor_area                  9998
+}
+create_object PALMTREE 
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  number_of_groups                  5
+  temp_min_distance_group_placement 4
+  set_gaia_object_only
+  find_closest
+  set_circular_placement
+  min_distance_to_players           4
+  max_distance_to_players           7
+}
+
+
+
+/* ******* Map Resources ******* */
+/* Hill golds and stones */
+create_object ONGRID_PLACEHOLDER
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  actor_area_to_place_in            1899
+  
+	set_gaia_object_only
+  ignore_terrain_restrictions
+
+  actor_area                        1900
+  if TINY_MAP
+    actor_area_radius                 20
+  else
+    actor_area_radius                 26
+  endif
+}
+create_object GOLD 
+{
+  terrain_to_place_on               RIVERBANK_TERRAIN
+  number_of_objects                 3
+  number_of_groups                  7
+  min_distance_group_placement      4
+  temp_min_distance_group_placement 18
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       2
+  place_on_specific_land_id         2
+
+  set_tight_grouping
+  set_gaia_object_only
+  set_scaling_to_map_size
+  set_circular_placement
+
+  avoid_actor_area                  1900
+}
+create_object GOLD 
+{
+  terrain_to_place_on               RIVERBANK_TERRAIN
+  number_of_objects                 2
+  number_of_groups                  7
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 18
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       2
+  place_on_specific_land_id         2
+
+  set_tight_grouping
+  set_gaia_object_only
+  set_scaling_to_map_size
+  set_circular_placement
+
+  avoid_actor_area                  1900
+}
+create_object GOLD 
+{
+  terrain_to_place_on               RIVERBANK_TERRAIN
+  number_of_objects                 2
+  number_of_groups                  7
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 18
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       2
+  place_on_specific_land_id         2
+
+  set_tight_grouping
+  set_gaia_object_only
+  set_scaling_to_map_size
+  set_circular_placement
+
+  avoid_actor_area                  1900
+}
+create_object STONE 
+{
+  terrain_to_place_on               HILLTOP_TERRAIN_MASK
+  number_of_objects                 3
+  number_of_groups                  99999
+  min_distance_group_placement      4
+  temp_min_distance_group_placement 21
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       5
+  set_tight_grouping
+  set_gaia_object_only
+  /* set_scaling_to_map_size */
+} 
+/* Center gold and stone */
+create_object GOLD 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 5
+  number_of_groups                  2
+  temp_min_distance_group_placement 20
+  min_distance_group_placement      3
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       22
+  if TINY_MAP
+  min_distance_to_players           27
+  else
+  min_distance_to_players           30
+  endif
+
+  if TINY_MAP
+    min_distance_to_map_edge           36
+  endif
+
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest_to_map_edge
+  set_circular_placement
+  
+  actor_area                        1110
+  if TINY_MAP
+    actor_area_radius                 10
+  else
+    actor_area_radius                 12
+  endif
+}
+create_object STONE 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  2
+  temp_min_distance_group_placement 20
+  min_distance_group_placement      3
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       22
+  min_distance_to_players           30
+
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest_to_map_edge
+  set_circular_placement
+
+  avoid_actor_area                  1110
+  /* set_scaling_to_map_size */
+} 
+/* Fish and other things */
+create_object SHORE_FISH 
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_objects                 9999
+  temp_min_distance_group_placement 6
+  set_gaia_object_only
+  ignore_terrain_restrictions
+}
+create_object FISH_PLACEHOLDER
+{
+  terrain_to_place_on               DLC_MANGROVESHALLOW
+  number_of_groups                  99999
+  temp_min_distance_group_placement 5
+  /* min_distance_group_placement      4 */
+  max_distance_to_other_zones       4 /* this odoesnt work because fish_placeholder doesnt have any terrain restricitons */
+  min_connected_tiles               17
+  second_object                     FISH
+  set_gaia_object_only
+}
+create_object RELIC {
+  terrain_to_place_on               HILLTOP_TERRAIN_MASK
+  if TINY_MAP
+    number_of_objects                 5
+  elseif MEDIUM_MAP
+    number_of_objects                 6
+  elseif LARGE_MAP
+    number_of_objects                 7
+  elseif HUGE_MAP
+    number_of_objects                 9
+  else
+    number_of_objects                 6
+    set_scaling_to_map_size
+  endif
+  temp_min_distance_group_placement 61
+  max_distance_to_other_zones       2
+  set_gaia_object_only
+} 
+
+
+if CONFIG_NO_RIVERS
+else
+  /* River gold */
+  
+  create_object ONGRID_PLACEHOLDER
+  {
+    terrain_to_place_on               DLC_MANGROVESHALLOW
+    number_of_objects                 1
+    number_of_groups                  999999
+    temp_min_distance_group_placement 3
+    if TINY_MAP
+      min_distance_to_map_edge          7
+    else
+      min_distance_to_map_edge          19
+    endif 
+    /* second_object                     FLAG_C */
+
+    actor_area                        1499
+    actor_area_radius                 3
+  }
+  create_object ONGRID_PLACEHOLDER
+  {
+    terrain_to_place_on               DLC_MANGROVESHALLOW
+    number_of_objects                 1
+    number_of_groups                  999999
+    /* min_distance_to_map_edge          15 */
+    if TINY_MAP
+      temp_min_distance_group_placement 85
+    else
+      /* temp_min_distance_group_placement 170 */
+    endif
+    temp_min_distance_group_placement 2
+    /* second_object                     FLAG_D */
+
+    find_closest_to_map_center
+    set_circular_placement
+
+    avoid_actor_area  1499
+
+    actor_area                        1500
+    actor_area_radius                 7
+  }
+  create_object ONGRID_PLACEHOLDER
+  {
+    terrain_to_place_on               DLC_MANGROVESHALLOW
+    number_of_objects                 1
+    number_of_groups                  999999
+    /* second_object                     FLAG_D */
+
+    find_closest_to_map_center
+
+    actor_area_to_place_in            1500
+
+    actor_area                        1501
+    actor_area_radius                 5
+  }
+  create_object TERRAIN_BLOCKER 
+  {
+    terrain_to_place_on               DLC_MANGROVESHALLOW
+    number_of_objects                 1
+    number_of_groups                  1600
+    /* second_object                     FLAG_B */
+
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  create_object GOLD 
+  {
+    /* terrain_to_place_on               BEACH */
+    number_of_objects                 rnd(1,3)
+    number_of_groups                  20
+    min_distance_group_placement      2
+    temp_min_distance_group_placement 40
+    min_distance_to_players           35
+    /* avoid_forest_zone                 1 */
+    /* second_object     FLAG_C */
+
+    set_tight_grouping
+    set_gaia_object_only
+
+    actor_area_to_place_in            1501
+
+  }
+  if TINY_MAP
+  else
+    create_object GOLD 
+    {
+      /* terrain_to_place_on               BEACH */
+      number_of_objects                 rnd(1,3)
+      number_of_groups                  20
+      min_distance_group_placement      2
+      temp_min_distance_group_placement 40
+      min_distance_to_players           35
+      /* avoid_forest_zone                 1 */
+      /* second_object     FLAG_C */
+
+      set_tight_grouping
+      set_gaia_object_only
+
+      actor_area_to_place_in            1501
+
+    }
+    create_object GOLD 
+    {
+      /* terrain_to_place_on               BEACH */
+      number_of_objects                 rnd(1,3)
+      number_of_groups                  20
+      min_distance_group_placement      2
+      temp_min_distance_group_placement 40
+      min_distance_to_players           35
+      /* avoid_forest_zone                 1 */
+      /* second_object     FLAG_C */
+
+      set_tight_grouping
+      set_gaia_object_only
+
+      actor_area_to_place_in            1501
+
+    }
+    create_object GOLD 
+    {
+      /* terrain_to_place_on               BEACH */
+      number_of_objects                 rnd(1,3)
+      number_of_groups                  20
+      min_distance_group_placement      2
+      temp_min_distance_group_placement 40
+      min_distance_to_players           35
+      /* avoid_forest_zone                 1 */
+      /* second_object     FLAG_C */
+
+      set_tight_grouping
+      set_gaia_object_only
+
+      actor_area_to_place_in            1501
+
+    }
+    create_object GOLD 
+    {
+      /* terrain_to_place_on               BEACH */
+      number_of_objects                 rnd(1,3)
+      number_of_groups                  20
+      min_distance_group_placement      2
+      temp_min_distance_group_placement 40
+      min_distance_to_players           35
+      /* avoid_forest_zone                 1 */
+      /* second_object     FLAG_C */
+
+      set_tight_grouping
+      set_gaia_object_only
+
+      actor_area_to_place_in            1501
+
+    }
+  endif
+endif
+
+
+create_object PALMTREE 
+{
+  terrain_to_place_on               CENTER_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  20
+  temp_min_distance_group_placement 4
+  group_variance                    3
+  max_distance_to_other_zones       4
+  min_distance_to_players           16
+  set_gaia_object_only
+  set_scaling_to_map_size
+}   
+
+create_object PALMTREE 
+{
+  terrain_to_place_on               RIVERBANK_TERRAIN
+  number_of_objects                 3
+  number_of_groups                  35
+  temp_min_distance_group_placement 4
+  avoid_forest_zone                 2
+  group_variance                    3
+  max_distance_to_other_zones       4
+  set_gaia_object_only
+  set_scaling_to_map_size
+}    
+
+
+
+
+
+/* COSMETICS */
+/* create_object DLC_BOULDER_A
+{
+  terrain_to_place_on               HILLTOP_TERRAIN_MASK
+  number_of_objects                 1
+  number_of_groups                  5
+  temp_min_distance_group_placement 7
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       5
+  set_tight_grouping
+  set_gaia_object_only
+  set_scaling_to_map_size
+}
+create_object DLC_BOULDER_B
+{
+  terrain_to_place_on               HILLTOP_TERRAIN_MASK
+  number_of_objects                 1
+  number_of_groups                  6
+  temp_min_distance_group_placement 6
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       5
+  set_tight_grouping
+  set_gaia_object_only
+  set_scaling_to_map_size
+} */
+

@@ -1,0 +1,9 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type GRASS land_position 50 50 number_of_tiles 2000 base_size 3 left_border 40 right_border 40 }
+create_land { terrain_type DIRT land_position 10 30 number_of_tiles 0 base_size 1 }
+create_land { terrain_type DIRT land_position 90 70 number_of_tiles 0 base_size 1 }
+<CONNECTION_GENERATION>
+create_connect_all_lands { replace_terrain DESERT ROAD replace_terrain GRASS ICE replace_terrain DIRT ROAD terrain_size DESERT 2 1 terrain_size GRASS 3 3 }

@@ -74,6 +74,8 @@ Which categories count for a slot type is read from `validate.ts`'s `CONSTANT_SL
 
 `unknown` is only ever a statement about our data. Sec.7 is shaped around that.
 
+Included names (2026-11-03, include resolution slice C, `docs/include-resolution-design.md` Sec.4.3). A resolution gains `{ kind: "included"; name: IncludedName }` for a name an `#include_drs` file defines above the use. The script index reads them from `parse.includeIndex`, which the parser worker sets. The first definition wins across the two sources, so a name both the script and an include define resolves to whichever comes first in the open file, the script's `#const` or the `#include_drs` that brings the include's in. A name only an include defines and only below the use stays `unknown`. Suggestions list included names after the script's own and before labels, from two typed letters. `includesUnread(script)` replaces the old test of any `#include_drs` in the two offers that write a `#const`, so they work once the files were read and stay off when no install was found.
+
 ## Sec.3 Ranking
 
 The tiers come from `src/breakdown/pickerRanking.ts`'s `matchRank` (exact, prefix, anywhere in the name), matched without case. The description tier is dropped for constants, since 2723 object descriptions would bury every real hit, and kept for commands and attributes. The inserted text always keeps the name's own case.
@@ -213,7 +215,7 @@ Both are one insertion and one undo step, since the name is already in the use. 
 ### Sec.7.4 Refusals
 
 - A name that is a built-in constant is never offered, since `resolveName` already found it. A name already defined in the script is not offered either, even when the definition sits below (Sec.9).
-- A value of 69 gets a warning beside the Create button. A word valued 69 opens a nested comment wherever it later appears inside a comment (RMS0111). The wording comes from that diagnostic.
+- A value of 69 gets a warning beside the Create button. A word valued 69 opens a nested comment wherever it later appears inside a comment (RMS0111). A value of 70 gets one too, since a word valued 70 closes a comment (RMS0112, token-alias slice B). The wording comes from those diagnostics.
 
 ## Sec.8 Default value
 

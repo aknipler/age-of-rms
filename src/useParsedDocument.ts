@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import ParserWorker from "./editor/parserWorker?worker";
 import type {
+  IncludesMessage,
   ParseRequestMessage,
   ParseResponseMessage,
 } from "./editor/parserWorker";
+import { useIncludeLoad } from "./useIncludeFiles";
 import type { Diagnostic, ParseResult } from "./parser/types";
 import { PERF_TRACE, perfLog } from "./perfTrace";
 import {
@@ -92,21 +100,72 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
   // out of order.
   const latestRequestIdRef = useRef(0);
   const sourceByRequestIdRef = useRef(new Map<number, string>());
+  // The requests reparseNow sent, which the reply handler applies even when
+  // `content` has not caught up with their text yet (see isCurrent below).
+  const exactRequestIdsRef = useRef(new Set<number>());
   // The text the newest request was sent for. The debounce below compares
   // against it, so text reparseNow already sent is not sent a second time.
   // A ref rather than state because nothing renders from it and the timer
   // callback has to read the value as it is when the timer fires.
   const lastSentSourceRef = useRef<string | null>(null);
+  // The text the document holds right now, for the include effect below and
+  // for the reply handler's "is this reply for the current text" test. The
+  // effect must not depend on `content` itself, or it would resend the files
+  // on every keystroke, so it reads the text through a ref instead.
+  const contentRef = useRef(content);
+  // Counts the workers this hook has created. The include effect below lists
+  // it as a dependency so a fresh worker is sent the files again. A ref could
+  // not do that job: changing a ref does not re-render, so no effect would
+  // notice a new worker, and the files would stay with the old one.
+  const [workerGeneration, setWorkerGeneration] = useState(0);
+  // The script's #include_drs files, read from the user's install
+  // (docs/include-resolution-design.md Sec.4.1).
+  const includeLoad = useIncludeLoad(content);
 
   useEffect(() => {
     const worker = new ParserWorker();
     workerRef.current = worker;
+    setWorkerGeneration((generation) => generation + 1);
     // A new worker has been sent nothing, so the debounce must not skip.
     lastSentSourceRef.current = null;
     const sourceByRequestId = sourceByRequestIdRef.current;
+    // The same Set for the hook's whole life, read once so the cleanup below
+    // clears the one this effect used.
+    const exactRequestIds = exactRequestIdsRef.current;
 
+    // A reply is worth reading only if it is for the newest request AND for
+    // the text the document holds now. The second half is new (2026-11-04).
+    // While the user types, the newest request is usually for text they have
+    // already typed past, since the next request waits for the debounce.
+    // Reading that reply anyway cost Stranded.rms about 125 ms of frozen UI
+    // thread to unpack a 48,000 token tree, plus a React commit, for a tree
+    // that was out of date before it landed. Its diagnostics were no use
+    // either, since CodePane's marker guard skips diagnostics for text the
+    // editor has moved past. So a big document's reply is now dropped unread,
+    // the same way a superseded one is (parseResponses.ts), and the debounce
+    // that the newer text armed asks for a fresh parse.
+    //
+    // reparseNow's requests skip the text check. A card action calls it with
+    // the text it is about to produce, and the new content can reach this
+    // hook a moment after the reply does. Dropping that reply would cost
+    // BUG-001's fast path a second round trip.
     const isCurrent = (requestId: number) =>
-      requestId === latestRequestIdRef.current;
+      requestId === latestRequestIdRef.current &&
+      (exactRequestIds.has(requestId) ||
+        sourceByRequestId.get(requestId) === contentRef.current);
+    // Called when a reply is thrown away. If it was the newest request's, the
+    // text it was for no longer counts as sent, so the debounce's "same text
+    // as last time" test cannot skip it. Without this, typing a character
+    // and undoing it inside one round trip would leave the screen on the
+    // older parse until the next edit, since the undo brings back exactly
+    // the text whose reply was just dropped.
+    const forgetDropped = (requestId: number) => {
+      sourceByRequestId.delete(requestId);
+      exactRequestIds.delete(requestId);
+      if (requestId === latestRequestIdRef.current) {
+        lastSentSourceRef.current = null;
+      }
+    };
     const route = createParseResponseRouter({
       isCurrent,
       // A big document's diagnostics, ahead of its tree. Only the diagnostic
@@ -132,8 +191,13 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
           );
         }
         const source = sourceByRequestId.get(requestId);
+        // Checked before the entry is deleted, since isCurrent reads it.
+        if (source === undefined || !isCurrent(requestId)) {
+          forgetDropped(requestId);
+          return;
+        }
         sourceByRequestId.delete(requestId);
-        if (source === undefined || !isCurrent(requestId)) return;
+        exactRequestIds.delete(requestId);
         setState({
           source,
           diagnostics,
@@ -142,8 +206,8 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
         });
       },
       onSkippedResult: (requestId) => {
-        sourceByRequestId.delete(requestId);
-        perfLog(`parse #${requestId} tree superseded, dropped unread`);
+        forgetDropped(requestId);
+        perfLog(`parse #${requestId} tree out of date, dropped unread`);
       },
     });
 
@@ -167,17 +231,20 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
       worker.terminate();
       workerRef.current = null;
       sourceByRequestId.clear();
+      exactRequestIds.clear();
     };
   }, []);
 
   // Shared by both the debounced typing path and reparseNow, so "send a
-  // parse request" has exactly one implementation.
-  const sendParseRequest = useCallback((source: string) => {
+  // parse request" has exactly one implementation. `exact` is reparseNow's
+  // promise that `source` is the text the document is about to hold.
+  const sendParseRequest = useCallback((source: string, exact: boolean) => {
     const worker = workerRef.current;
     if (!worker) return;
     const requestId = latestRequestIdRef.current + 1;
     latestRequestIdRef.current = requestId;
     sourceByRequestIdRef.current.set(requestId, source);
+    if (exact) exactRequestIdsRef.current.add(requestId);
     lastSentSourceRef.current = source;
     const message: ParseRequestMessage = { requestId, source };
     perfLog(`parse #${requestId} sent`, `${source.length} chars`);
@@ -194,14 +261,41 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
       // newest request's text, not the applied text, is what makes this safe
       // while that request is still in flight.
       if (content === lastSentSourceRef.current) return;
-      sendParseRequest(content);
+      sendParseRequest(content, false);
     }, debounceMsFor(content.length));
     return () => window.clearTimeout(timeoutId);
   }, [content, sendParseRequest]);
 
+  // A layout effect, not a plain one. React runs layout effects inside the
+  // commit itself, so no worker message can be handled between the new text
+  // reaching the screen and this ref learning it. A plain effect runs a
+  // moment later, in a task of its own, and a reply handled in that gap
+  // would be compared with the text from one keystroke earlier.
+  useLayoutEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
+  useEffect(() => {
+    const worker = workerRef.current;
+    // Nothing to send while no include has loaded, and a worker not yet made
+    // has nowhere to put it (the generation bump re-runs this once it exists).
+    if (includeLoad === undefined || worker === null) return;
+    const message: IncludesMessage = {
+      kind: "includes",
+      files: includeLoad === null ? null : includeLoad.files,
+      requested: includeLoad === null ? [] : includeLoad.requested,
+    };
+    worker.postMessage(message);
+    // The files changed what the checks can say about the text already
+    // parsed, so parse it again now rather than waiting for a keystroke. This
+    // goes through sendParseRequest, which skips the debounce's "same text as
+    // last time" test on purpose.
+    sendParseRequest(contentRef.current, false);
+  }, [includeLoad, workerGeneration, sendParseRequest]);
+
   const reparseNow = useCallback(
     (source: string) => {
-      sendParseRequest(source);
+      sendParseRequest(source, true);
     },
     [sendParseRequest],
   );

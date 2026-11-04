@@ -28,6 +28,7 @@
 
 import type { LanguageIndex } from "../../parser/language";
 import type { ParseResult } from "../../parser/types";
+import { parseOptionsFor } from "./parseOptions";
 import type {
   CommandReport,
   FailureMark,
@@ -43,17 +44,24 @@ import type {
   TileGrid,
 } from "./types";
 import { instantiateScript } from "./instantiate";
-import { createTileGrid, resolveTerrainId } from "./grid";
+import { NO_LAYER, createTileGrid, resolveTerrainId } from "./grid";
 import {
   placeLandOrigins,
   growLands,
   finishLandStage,
   baseElevationNotes,
   countOwnedTiles,
+  cleanTerrainAgainst,
 } from "./lands";
 import { applyElevation } from "./elevation";
 import { applyCliffs, finishTerrainStage } from "./cliffs";
-import { applyAutomaticBeach, applyTerrains } from "./terrains";
+import {
+  applyAutomaticBeach,
+  applyTerrains,
+  clearBeachLayers,
+  paintedView,
+  resolveComposites,
+} from "./terrains";
 import { applyConnections } from "./connections";
 import { applyObjects, type ObjectConstant } from "./objects";
 import { computeForestWood } from "./forestTrees";
@@ -181,12 +189,18 @@ function resolveBaseFill(
   constants: readonly ObjectConstant[],
 ): { terrainId: number; layerId?: number; note?: SimulationNote } {
   const commands = instantiated.sections.get("LAND_GENERATION") ?? [];
+  // The game behaves as if the map started as GRASS under a GRASS layer,
+  // `base_terrain` cleared the layer and `base_layer` set it, in script
+  // order (Sec.6.1, rev 11). So a `base_layer` written before `base_terrain`
+  // is lost (ly2), and a script with no `base_terrain` line leaves every
+  // unpainted tile with a GRASS layer (ly3). `null` is "no layer".
   let terrainRef: InstantiatedValue;
-  let layerRef: InstantiatedValue;
+  let layerRef: InstantiatedValue | null = "GRASS";
   for (const cmd of commands) {
-    if (cmd.name === "base_terrain" && cmd.args[0] !== undefined)
+    if (cmd.name === "base_terrain" && cmd.args[0] !== undefined) {
       terrainRef = cmd.args[0].value;
-    else if (cmd.name === "base_layer" && cmd.args[0] !== undefined)
+      layerRef = null;
+    } else if (cmd.name === "base_layer" && cmd.args[0] !== undefined)
       layerRef = cmd.args[0].value;
   }
 
@@ -197,12 +211,15 @@ function resolveBaseFill(
     instantiated.symbols,
     instantiated.aliases,
   );
-  const layerId = resolveTerrainId(
-    constants,
-    layerRef,
-    instantiated.symbols,
-    instantiated.aliases,
-  );
+  const layerId =
+    layerRef === null
+      ? undefined
+      : resolveTerrainId(
+          constants,
+          layerRef,
+          instantiated.symbols,
+          instantiated.aliases,
+        );
 
   const note: SimulationNote | undefined =
     terrainRef !== undefined && resolvedTerrainId === undefined
@@ -265,7 +282,14 @@ export function generatePreview(
   opts: PreviewOptions,
 ): PreviewResult {
   const { language, constants } = refDb;
-  const instantiated = instantiateScript(parse, language, settings, opts.seed);
+  const instantiated = instantiateScript(
+    parse,
+    language,
+    settings,
+    opts.seed,
+    opts.includeFiles,
+    parseOptionsFor(constants),
+  );
 
   const {
     terrainId: baseTerrainId,
@@ -341,25 +365,19 @@ export function generatePreview(
   );
   snapshot("S3");
 
-  // A beach before <TERRAIN_GENERATION>, so that `base_terrain BEACH`, an
-  // ordinary idiom (67 uses across the tracked corpus), has a beach to match
-  // when S4 starts. It used to run at the end of the land stage, and DE says
-  // that is too early. lh1 grows hills on the DESERT around a WATER land and
-  // matches DE only if that DESERT is not beached first. Here, after the
-  // cliffs, it is an assumption no DE map has tested, and on a script with no
-  // create_terrain it changes nothing the end of the stage would not redo.
-  const beachedBeforeTerrains = applyAutomaticBeach(grid, constants);
   const terrainsResult = applyTerrains(
     instantiated,
     grid,
     constants,
     landResult.origins,
-    opts.seed,
+    cliffsResult.stream,
   );
-  // The end of the terrain stage, in the game's order (Sec.6.4, rev 10).
-  // Cliff lines get their earlier terrain back, then the cleanup runs
-  // against WATER, then the beach pass. So hills and cliffs both saw the
-  // coast before the cleanup, and wc1 matches DE only this way.
+  // The end of the terrain stage, in the game's order (Sec.6.4, rev 11).
+  // Composite terrains resolve first, keeping what each tile was painted as
+  // for the connections and the objects. Then cliff lines get their earlier
+  // terrain back and the cleanup runs against WATER, then the beach pass,
+  // which reads each tile's beach_terrain mark.
+  const composites = resolveComposites(grid);
   finishTerrainStage(
     grid,
     cliffsResult.lineTiles,
@@ -369,7 +387,9 @@ export function generatePreview(
       : (_tile, formerTerrain, formerLand) =>
           recordCleanup(cleanup, "S4", waterId, formerTerrain, formerLand),
   );
-  const beachedAtTerrainEnd = applyAutomaticBeach(grid, constants);
+  const beachedAtTerrainEnd = applyAutomaticBeach(grid, constants, {
+    beachMark: terrainsResult.beachMark,
+  });
   snapshot("S4");
 
   const connectionsResult = applyConnections(
@@ -377,20 +397,24 @@ export function generatePreview(
     grid,
     constants,
     landResult.origins,
-    opts.seed,
+    terrainsResult.stream,
+    composites,
   );
-  // MEASURED 2026-09-02, RMSTEST_70 (Sec.15 item 31): a beach pass DOES run
-  // after connection painting. Three runs, two islands joined by one
-  // create_connect_all_players_land { replace_terrain WATER DIRT } carving a
-  // causeway through open water with no other land/water boundary nearby —
-  // total beach came back 840-961 tiles against ~250-300 expected from the
-  // two islands' own coastlines alone (perimeter 310+328), and the excess
-  // sat right along the causeway's own route rather than clustered at the
-  // islands, including around isolated single-tile DIRT dabs the path left
-  // in open water. This replaces a single late pass that shipped for years
-  // (see the beach-timing history at Sec.6.4) and was withdrawn for the same
-  // reason it is added back here: measure, don't guess a third moment.
-  const beachedAfterConnections = applyAutomaticBeach(grid, constants);
+  // The end of the connection stage, only when the script has one: the
+  // WATER cleanup again, then the beach rule again with no beach_terrain
+  // marks (Sec.6.5, rev 11, cn8a and cn8c). RMSTEST_70 first showed the
+  // second beach, along a causeway carved through open water.
+  let beachedAfterConnections = 0;
+  if (instantiated.sections.has("CONNECTION_GENERATION")) {
+    if (waterId !== undefined)
+      cleanTerrainAgainst(grid, waterId, (i) => {
+        grid.layer[i] = NO_LAYER;
+      });
+    beachedAfterConnections = applyAutomaticBeach(grid, constants);
+  }
+  // A beach tile has no layer, read after the connections, with or without
+  // a connection section (Sec.6.4, rev 11).
+  clearBeachLayers(grid, constants);
   snapshot("S5");
 
   // Terrain painting is final by this point (S4/S5 are both behind us), so
@@ -404,21 +428,39 @@ export function generatePreview(
     constants,
     refDb.terrainRestrictions ?? [],
   );
-  const forestWood = computeForestWood(
-    grid,
-    constants,
-    constants,
-    suppression.suppressed,
-    suppression.yieldOverrides,
-  );
 
-  const objectsResult = applyObjects(
-    instantiated,
-    grid,
-    constants,
-    landResult.origins,
-    opts.seed,
-  );
+  // The object stage and the forest count read the map as painted, so a
+  // tile still holding a composite reads as the composite, as the study
+  // found DE's object stage doing (Sec.6.4's end, step 1). The grid goes back
+  // to its resolved terrain afterwards, which is what is drawn. A swap of
+  // the two arrays rather than a parameter, since S6 reads `grid.terrain` in
+  // dozens of places, and `finally` so a throw cannot leave the drawn map
+  // showing the painted one.
+  const resolved = { terrain: grid.terrain, layer: grid.layer };
+  const painted = paintedView(grid, composites);
+  grid.terrain = painted.terrain;
+  grid.layer = painted.layer;
+  let forestWood: number;
+  let objectsResult: ReturnType<typeof applyObjects>;
+  try {
+    forestWood = computeForestWood(
+      grid,
+      constants,
+      constants,
+      suppression.suppressed,
+      suppression.yieldOverrides,
+    );
+    objectsResult = applyObjects(
+      instantiated,
+      grid,
+      constants,
+      landResult.origins,
+      opts.seed,
+    );
+  } finally {
+    grid.terrain = resolved.terrain;
+    grid.layer = resolved.layer;
+  }
   snapshot("S6");
 
   const resourceTotals = computeResourceSummary(
@@ -443,11 +485,7 @@ export function generatePreview(
   // Worth saying out loud in the drawer: this sand is the only terrain on the
   // map that no line of the script asked for, so an author looking for the
   // command that put it there will not find one.
-  const beached =
-    beachedBeforeTerrains +
-    terrainsResult.beached +
-    beachedAtTerrainEnd +
-    beachedAfterConnections;
+  const beached = beachedAtTerrainEnd + beachedAfterConnections;
   const beachNote: SimulationNote | undefined =
     beached > 0
       ? {

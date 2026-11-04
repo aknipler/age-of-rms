@@ -1,0 +1,15 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DIRT
+create_player_lands { terrain_type GRASS base_size 9 land_percent 30 }
+<OBJECTS_GENERATION>
+create_object TURKEY { set_place_for_every_player number_of_objects 3 min_distance_to_players 2 max_distance_to_players 5 }
+create_object GOLD { set_place_for_every_player number_of_objects 3 min_distance_to_players 6 max_distance_to_players 10 }
+create_object DEER { set_place_for_every_player number_of_objects 2 min_distance_to_players 8 max_distance_to_players 14 }
+create_object STONE { set_place_for_every_player number_of_groups 1 number_of_objects 4 set_tight_grouping min_distance_to_players 6 max_distance_to_players 12 }
+create_object FORAGE { set_place_for_every_player number_of_objects 3 find_closest }
+create_object SHEEP { set_place_for_every_player number_of_objects 4 min_distance_to_players 3 max_distance_to_players 6 }
+create_object GOLD { set_place_for_every_player set_gaia_object_only number_of_objects 2 min_distance_to_players 10 max_distance_to_players 14 }
+create_object BOAR { set_place_for_every_player number_of_objects 1 min_distance_to_players 12 max_distance_to_players 16 }
+create_object DEER { number_of_objects 12 }

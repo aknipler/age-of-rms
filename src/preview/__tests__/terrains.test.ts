@@ -1,3 +1,9 @@
+// S4, the terrain stage (preview-design Sec.6.4, rev 11). The exact model is
+// held to DE by `deWholeScriptMaps.test.ts`, tile for tile on every terrain
+// map of the study. The tests here pin the rules one at a time, each on a
+// script small enough to reason about, so a failure names the rule rather
+// than a map.
+
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,9 +12,8 @@ import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
 import {
+  NO_LAYER,
   createTileGrid,
-  scaleToMapArea,
-  tileIndex,
   type TerrainConstantForMasks,
 } from "../generator/grid";
 import {
@@ -19,21 +24,17 @@ import {
 import { applyElevation } from "../generator/elevation";
 import { applyCliffs } from "../generator/cliffs";
 import {
+  NO_BEACH_MARK,
   applyAutomaticBeach,
   applyTerrains,
-  eligibleTerrainCandidates,
-  growTerrainClump,
-  resolveClumpCount,
-  resolveTerrainTileBudget,
-  terrainBucketWeights,
-  type EligibilityContext,
+  clearBeachLayers,
+  resolveComposites,
+  paintedView,
+  COMPOSITE_AS_TERRAIN,
+  COMPOSITE_AS_LAYER,
+  terrainAmount,
 } from "../generator/terrains";
-import { mulberry32 } from "../generator/rng";
-import type {
-  InstantiatedScript,
-  LandOrigin,
-  TileGrid,
-} from "../generator/types";
+import type { InstantiatedScript, TileGrid } from "../generator/types";
 import {
   DEFAULT_TEAMS,
   type MapSize,
@@ -49,9 +50,13 @@ const rawConstants = JSON.parse(
   ),
 ) as { constants: TerrainConstantForMasks[] };
 const constants: TerrainConstantForMasks[] = rawConstants.constants;
-const GRASS = constants.find((c) => c.rmsConstant === "GRASS")!.constId!;
-const WATER = constants.find((c) => c.rmsConstant === "WATER")!.constId!;
-const DIRT = constants.find((c) => c.rmsConstant === "DIRT")!.constId!;
+const id = (name: string): number =>
+  constants.find((c) => c.rmsConstant === name)!.constId!;
+const GRASS = id("GRASS");
+const WATER = id("WATER");
+const DIRT = id("DIRT");
+const DESERT = id("DESERT");
+const SNOW = id("SNOW");
 
 function settings(
   overrides: {
@@ -61,13 +66,13 @@ function settings(
   } = {},
 ) {
   return {
-    playerCount: overrides.playerCount ?? 8,
-    mapSize: overrides.mapSize ?? "Normal",
+    playerCount: overrides.playerCount ?? 2,
+    mapSize: overrides.mapSize ?? "Tiny",
     teams: overrides.teams ?? DEFAULT_TEAMS,
   };
 }
 
-/** Full pipeline through S4. */
+/** S0 through S4, the terrain stage included and its end left out. */
 function place(
   source: string,
   seed = 1,
@@ -95,7 +100,7 @@ function place(
     landResult.origins,
     grown,
   );
-  applyCliffs(
+  const cliffed = applyCliffs(
     instantiated,
     grid,
     constants,
@@ -107,553 +112,250 @@ function place(
     grid,
     constants,
     landResult.origins,
-    seed,
+    cliffed.stream,
   );
   return {
     grid,
     dim: instantiated.dim,
     origins: landResult.origins,
+    before: cliffed.stream,
     ...terrainsResult,
   };
 }
 
-/** Instantiate a bare script and hand back a fresh flat grid, without running S1-S3, for tests that call applyTerrains directly. */
-function bareGrid(
-  source: string,
-  seed = 1,
-  overrides?: Parameters<typeof settings>[0],
-) {
+function firstTerrainCommand(source: string) {
   const instantiated = instantiateScript(
     parseRms(source, lang),
     refDb,
-    settings(overrides),
-    seed,
-  );
-  const grid = createTileGrid(instantiated.dim, GRASS);
-  return { instantiated, grid };
-}
-
-function terrainCommands(
-  source: string,
-  overrides?: Parameters<typeof settings>[0],
-) {
-  const instantiated = instantiateScript(
-    parseRms(source, lang),
-    refDb,
-    settings(overrides),
+    settings(),
     1,
   );
   const cmd = instantiated.sections
     .get("TERRAIN_GENERATION")
     ?.find((c) => c.name === "create_terrain");
   if (!cmd) throw new Error("fixture has no create_terrain command");
-  return { cmd, dim: instantiated.dim };
+  return cmd;
 }
 
-const ZERO_SPAN = { start: 0, end: 0 };
+const amountOf = (attributes: string, dim = 120) =>
+  terrainAmount(
+    firstTerrainCommand(
+      `<TERRAIN_GENERATION>\ncreate_terrain DIRT { ${attributes} }\n`,
+    ),
+    dim,
+  );
 
-function fabricateOrigin(
-  x: number,
-  y: number,
-  player: number | undefined,
-): LandOrigin {
-  return {
-    commandSpan: ZERO_SPAN,
-    x,
-    y,
-    zone: -10,
-    player,
-    baseSize: 3,
-    circularBase: false,
-    clumpingFactor: 8,
-    borderFuzziness: 20,
-    otherZoneAvoidanceDistance: 0,
-    minPlacementDistance: 0,
-    behaviorVersion: 0,
-    declaredTargetTiles: 0,
-    landConformity: 0,
-    target: 0,
-    fromOriginFallback: false,
-    borderTiles: { left: 0, right: x * 2, top: 0, bottom: y * 2 },
-    generateMode: 0,
-    height: 0,
-  };
-}
+const count = (grid: TileGrid, terrain: number): number =>
+  grid.terrain.filter((t) => t === terrain).length;
 
-function baseContext(
-  overrides: Partial<EligibilityContext> = {},
-): EligibilityContext {
-  return {
-    baseTerrainId: GRASS,
-    otherTerrainSpacing: 0,
-    specificSpacings: [],
-    flatOnly: false,
-    ...overrides,
-  };
-}
-
-describe("resolveTerrainTileBudget (Sec.6.4)", () => {
-  it("defaults to 122*dim/120, side-length scaled, when neither attribute is given", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\n}\n",
-      { mapSize: "Tiny" },
-    );
-    expect(resolveTerrainTileBudget(cmd, dim)).toBeCloseTo(
-      (122 * dim) / 120,
-      6,
-    );
+describe("terrainAmount (de-terrain-stage.md 2)", () => {
+  it("defaults to the map's side and one clump, not the guide's 122", () => {
+    expect(amountOf("")).toMatchObject({ tiles: 120, clumps: 1 });
   });
 
-  it("the default is NOT re-scaled even when a scale attribute is present (RMSTEST_14's policy, same as elevation.ts)", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nset_scale_by_size\n}\n",
-      { mapSize: "Tiny" },
-    );
-    expect(resolveTerrainTileBudget(cmd, dim)).toBeCloseTo(
-      (122 * dim) / 120,
-      6,
-    );
+  it("reads a negative number_of_tiles as a percentage of the map (t3)", () => {
+    expect(amountOf("number_of_tiles -5").tiles).toBe(720);
   });
 
-  it("an explicit number_of_tiles with no scale attribute is used exactly as written", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 77\n}\n",
-    );
-    expect(resolveTerrainTileBudget(cmd, dim)).toBe(77);
+  it("takes land_percent as a share of the whole map", () => {
+    expect(amountOf("land_percent 10").tiles).toBe(1440);
+    expect(amountOf("land_percent 0").tiles).toBe(0);
   });
 
-  it("set_scale_by_size scales an explicit number_of_tiles", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 100\nset_scale_by_size\n}\n",
-      {
-        mapSize: "Tiny",
-      },
-    );
-    expect(resolveTerrainTileBudget(cmd, dim)).toBe(scaleToMapArea(100, dim));
+  it("scales a count by either key, and the clumps only by groups (t3)", () => {
+    expect(amountOf("number_of_tiles 200 set_scale_by_size")).toMatchObject({
+      tiles: 288,
+      clumps: 1,
+    });
+    expect(
+      amountOf("number_of_tiles 200 number_of_clumps 3 set_scale_by_groups"),
+    ).toMatchObject({ tiles: 288, clumps: 4 });
   });
 
-  it("terrain-specific rule: set_scale_by_groups ALSO scales tiles, unlike elevation.ts", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 100\nset_scale_by_groups\n}\n",
-      {
-        mapSize: "Tiny",
-      },
-    );
-    expect(resolveTerrainTileBudget(cmd, dim)).toBe(scaleToMapArea(100, dim));
+  it("does not scale a percentage", () => {
+    expect(amountOf("land_percent 10 set_scale_by_size").tiles).toBe(1440);
   });
 
-  it("land_percent is a share of the WHOLE map, not divided by anything", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nland_percent 10\n}\n",
-      { mapSize: "Small" },
-    );
-    expect(resolveTerrainTileBudget(cmd, dim)).toBeCloseTo(0.1 * dim * dim, 6);
+  it("caps the clumps at 999 (gt7)", () => {
+    expect(amountOf("number_of_clumps 9999").clumps).toBe(999);
   });
 });
 
-describe("resolveClumpCount (Sec.6.4)", () => {
-  it("defaults to 1", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\n}\n",
-    );
-    expect(resolveClumpCount(cmd, dim)).toBe(1);
+describe("applyTerrains on the game's stream (de-terrain-stage.md 1, 3 and 8)", () => {
+  it("burns one draw with no <TERRAIN_GENERATION> section at all", () => {
+    const result = place("<LAND_GENERATION>\nbase_terrain GRASS\n");
+    expect(result.stream.count - result.before.count).toBe(1);
   });
 
-  it("set_scale_by_groups scales clumps", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_clumps 3\nset_scale_by_groups\n}\n",
-      {
-        mapSize: "Tiny",
-      },
+  it("spends the shuffle's 2 * floor(W * H / 8) draws on a pass with no clumps", () => {
+    const result = place(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT { number_of_clumps 0 }\n",
     );
-    expect(resolveClumpCount(cmd, dim)).toBe(
-      Math.max(1, scaleToMapArea(3, dim)),
+    expect(result.stream.count - result.before.count).toBe(
+      1 + 2 * Math.floor((120 * 120) / 8),
     );
+    expect(count(result.grid, DIRT)).toBe(0);
   });
 
-  it("set_scale_by_size does NOT scale clumps", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_clumps 3\nset_scale_by_size\n}\n",
-      {
-        mapSize: "Tiny",
-      },
+  it("paints a little more than its target, because of the drain (t1)", () => {
+    const { grid } = place(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT { number_of_tiles 600 number_of_clumps 4 }\n",
+      1000,
     );
-    expect(resolveClumpCount(cmd, dim)).toBe(3);
+    const painted = count(grid, DIRT);
+    expect(painted).toBeGreaterThanOrEqual(600);
+    expect(painted).toBeLessThan(660);
   });
 
-  it("only the LAST scale attribute applies when both are written", () => {
-    const { cmd, dim } = terrainCommands(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_clumps 3\nset_scale_by_groups\nset_scale_by_size\n}\n",
-      { mapSize: "Tiny" },
+  it("number_of_tiles 0 still paints one seed per clump (gt6)", () => {
+    const { grid } = place(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT { number_of_tiles 0 number_of_clumps 5 }\n",
     );
-    expect(resolveClumpCount(cmd, dim)).toBe(3); // unscaled -- set_scale_by_size won
+    expect(count(grid, DIRT)).toBe(5);
+  });
+
+  it("reports a pass that placed nothing, and stays quiet on the convert-everything idiom", () => {
+    const absent = place(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT { base_terrain SNOW number_of_tiles 50 }\n",
+    );
+    expect(absent.reports[0].failures.map((f) => f.bucket)).toEqual([
+      "terrainAbsent",
+    ]);
+    const convert = place(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT { land_percent 100 number_of_clumps 9320 }\n",
+    );
+    expect(convert.reports[0].failures).toEqual([]);
+  });
+
+  it("is the same map twice at one seed, and another at the next", () => {
+    const source =
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT { number_of_tiles 300 number_of_clumps 6 }\n";
+    const a = place(source, 1000).grid.terrain;
+    const b = place(source, 1000).grid.terrain;
+    const c = place(source, 1001).grid.terrain;
+    expect(a).toEqual(b);
+    expect(a).not.toEqual(c);
   });
 });
 
-describe("terrainBucketWeights (Sec.6.4, RMSTEST_20 — kept separate from lands.ts's own table)", () => {
-  it("is uniform (all 1) at cf 0", () => {
-    expect(terrainBucketWeights(0)).toEqual([1, 1, 1, 1]);
+describe("the base test and terrain_mask (de-terrain-stage.md 2, t8 and gt3)", () => {
+  const land =
+    "<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT land_position 50 50 base_size 12 number_of_tiles 0 }\n";
+
+  it("defaults base_terrain to GRASS", () => {
+    const { grid } = place(
+      `${land}<TERRAIN_GENERATION>\ncreate_terrain DIRT { land_percent 100 number_of_clumps 999 }\n`,
+    );
+    expect(count(grid, DESERT)).toBeGreaterThan(0);
+    expect(count(grid, GRASS)).toBe(0);
   });
 
-  it("rises with cf up to the saturation point", () => {
-    const at5 = terrainBucketWeights(5);
-    const at10 = terrainBucketWeights(10);
-    expect(at10[3]).toBeGreaterThan(at5[3]);
+  it("terrain_mask 1 leaves the terrain and paints the layer", () => {
+    const { grid } = place(
+      `${land}<TERRAIN_GENERATION>\ncreate_terrain SNOW { base_terrain DESERT land_percent 100 number_of_clumps 999 terrain_mask 1 }\n`,
+    );
+    const masked = grid.layer.filter((l) => l === SNOW).length;
+    expect(masked).toBeGreaterThan(0);
+    expect(count(grid, SNOW)).toBe(0);
   });
 
-  it("saturates at cf 15 -- cf 15, 20 and 40 all produce identical weights", () => {
-    expect(terrainBucketWeights(15)).toEqual(terrainBucketWeights(20));
-    expect(terrainBucketWeights(20)).toEqual(terrainBucketWeights(40));
+  it("terrain_mask 2 takes the tile and moves the old terrain under it", () => {
+    const { grid } = place(
+      `${land}<TERRAIN_GENERATION>\ncreate_terrain SNOW { base_terrain DESERT land_percent 100 number_of_clumps 999 terrain_mask 2 }\n`,
+    );
+    const i = grid.terrain.findIndex((t) => t === SNOW);
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(grid.layer[i]).toBe(DESERT);
   });
 
-  it("negative cf is a dramatically separate regime", () => {
-    const weights = terrainBucketWeights(-5);
-    expect(weights[0]).toBeGreaterThan(weights[1]);
-    expect(weights).not.toEqual(terrainBucketWeights(0));
+  it("needs both halves when base_terrain and base_layer are both written (gt3)", () => {
+    const { grid } = place(
+      `${land}<TERRAIN_GENERATION>\ncreate_terrain DIRT { base_terrain DESERT base_layer SNOW land_percent 100 number_of_clumps 999 }\n`,
+    );
+    // No DESERT tile carries a SNOW layer, so nothing qualifies.
+    expect(count(grid, DIRT)).toBe(0);
+  });
+
+  it("an unpainted terrain, the plain paint, clears the layer", () => {
+    const { grid } = place(
+      `${land}<TERRAIN_GENERATION>\ncreate_terrain SNOW { base_terrain DESERT land_percent 100 number_of_clumps 999 terrain_mask 1 }\ncreate_terrain DIRT { base_terrain DESERT base_layer SNOW land_percent 100 number_of_clumps 999 }\n`,
+    );
+    const i = grid.terrain.findIndex((t) => t === DIRT);
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(grid.layer[i]).toBe(NO_LAYER);
   });
 });
 
-describe("eligibleTerrainCandidates (Sec.7 attribution, predicate order matching Sec.6.4's own list)", () => {
-  const dim = 20;
+describe("beaches wait for the end of the stage (de-terrain-stage.md 1 and 7)", () => {
+  const coast =
+    "<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type WATER land_position 50 50 base_size 15 number_of_tiles 0 }\n";
 
-  it("succeeds with the full grid when nothing else constrains it", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext(),
-      new Uint8Array(dim * dim),
-      [],
+  it("leaves the coast unbeached while create_terrain runs (gt1)", () => {
+    const { grid } = place(
+      `${coast}<TERRAIN_GENERATION>\ncreate_terrain DIRT { base_terrain BEACH land_percent 100 number_of_clumps 999 }\n`,
     );
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.length).toBe(dim * dim);
+    expect(count(grid, DIRT)).toBe(0);
+    expect(count(grid, id("BEACH"))).toBe(0);
   });
 
-  it("reports terrainAbsent when base_terrain never appears on the grid", () => {
-    const grid = createTileGrid(dim, WATER); // no GRASS anywhere
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ baseTerrainId: GRASS }),
-      new Uint8Array(dim * dim),
-      [],
+  it("marks what a pass paints with its beach_terrain, and a later pass without one clears it (gt5)", () => {
+    const { grid, beachMark } = place(
+      `${coast}<TERRAIN_GENERATION>\ncreate_terrain DIRT { land_percent 100 number_of_clumps 999 beach_terrain DLC_BEACH2 }\n`,
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.failure.bucket).toBe("terrainAbsent");
+    const i = grid.terrain.findIndex((t) => t === DIRT);
+    expect(beachMark[i]).toBe(id("DLC_BEACH2"));
+    const again = place(
+      `${coast}<TERRAIN_GENERATION>\ncreate_terrain DIRT { land_percent 100 number_of_clumps 999 beach_terrain DLC_BEACH2 }\ncreate_terrain SNOW { base_terrain DIRT land_percent 100 number_of_clumps 999 }\n`,
+    );
+    const j = again.grid.terrain.findIndex((t) => t === SNOW);
+    expect(again.beachMark[j]).toBe(NO_BEACH_MARK);
   });
 
-  // guide:1471: "If used together with base_terrain, the new terrain will be
-  // placed only where BOTH the base and the layer apply." This test used to
-  // assert a disjunction, which made base_layer a widening clause: a command
-  // asking for "the DESERT layered over GRASS" also matched every bare GRASS
-  // tile on the map.
-  it("base_layer NARROWS base_terrain rather than offering an alternative match", () => {
-    const grid = createTileGrid(dim, GRASS); // terrain matches everywhere
-    grid.layer[tileIndex(grid, 5, 5)] = 7; // ...but only this tile carries the layer
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ baseTerrainId: GRASS, baseLayerId: 7 }),
-      new Uint8Array(dim * dim),
-      [],
+  it("the end-of-stage beach reads the mark (t7)", () => {
+    const { grid, beachMark } = place(
+      `${coast}<TERRAIN_GENERATION>\ncreate_terrain DIRT { land_percent 100 number_of_clumps 999 beach_terrain DLC_BEACH2 }\n`,
     );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.length).toBe(1);
-      expect(result.value[0]).toBe(tileIndex(grid, 5, 5));
-    }
-  });
-
-  it("a matching layer does not rescue a tile whose base_terrain is wrong", () => {
-    const grid = createTileGrid(dim, WATER); // terrain matches nowhere
-    grid.layer[tileIndex(grid, 5, 5)] = 7;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ baseTerrainId: GRASS, baseLayerId: 7 }),
-      new Uint8Array(dim * dim),
-      [],
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.failure.bucket).toBe("terrainAbsent");
-  });
-
-  it("height_limits filters by current elevation", () => {
-    const grid = createTileGrid(dim, GRASS);
-    grid.elevation[tileIndex(grid, 3, 3)] = 5;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ heightLimits: { min: 4, max: 6 } }),
-      new Uint8Array(dim * dim),
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.length).toBe(1);
-      expect(result.value[0]).toBe(tileIndex(grid, 3, 3));
-    }
-  });
-
-  it("reports spacingConflict when height_limits excludes everything", () => {
-    const grid = createTileGrid(dim, GRASS); // all elevation 0
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ heightLimits: { min: 5, max: 10 } }),
-      new Uint8Array(dim * dim),
-      [],
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.failure.bucket).toBe("spacingConflict");
-  });
-
-  it("otherTerrainSpacing rejects candidates too close to foreign terrain", () => {
-    const grid = createTileGrid(dim, GRASS);
-    grid.terrain[tileIndex(grid, 10, 10)] = WATER; // one foreign tile at the center
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ otherTerrainSpacing: 3 }),
-      new Uint8Array(dim * dim),
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      for (const tile of result.value) {
-        const x = tile % dim;
-        const y = (tile - x) / dim;
-        // 4-connected step distance from (10,10) must be >= 3.
-        expect(Math.abs(x - 10) + Math.abs(y - 10)).toBeGreaterThanOrEqual(3);
-      }
-    }
-  });
-
-  it("otherTerrainSpacing treats cliff tiles as foreign too (Sec.6.4's pinned approximation)", () => {
-    const grid = createTileGrid(dim, GRASS);
-    grid.cliff[tileIndex(grid, 10, 10)] = 1;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ otherTerrainSpacing: 3 }),
-      new Uint8Array(dim * dim),
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      for (const tile of result.value) {
-        const x = tile % dim;
-        const y = (tile - x) / dim;
-        expect(Math.abs(x - 10) + Math.abs(y - 10)).toBeGreaterThanOrEqual(3);
-      }
-    }
-  });
-
-  it("specificSpacings accumulates -- multiple entries all apply", () => {
-    const grid = createTileGrid(dim, GRASS);
-    grid.terrain[tileIndex(grid, 2, 2)] = WATER;
-    grid.terrain[tileIndex(grid, 17, 17)] = DIRT;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({
-        specificSpacings: [
-          { terrainId: WATER, distance: 2 },
-          { terrainId: DIRT, distance: 2 },
-        ],
-      }),
-      new Uint8Array(dim * dim),
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      for (const tile of result.value) {
-        const x = tile % dim;
-        const y = (tile - x) / dim;
-        expect(Math.abs(x - 2) + Math.abs(y - 2)).toBeGreaterThanOrEqual(2);
-        expect(Math.abs(x - 17) + Math.abs(y - 17)).toBeGreaterThanOrEqual(2);
-      }
-    }
-  });
-
-  it("flatOnly rejects every sloped candidate", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const slope = new Uint8Array(dim * dim);
-    slope[tileIndex(grid, 5, 5)] = 1;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ flatOnly: true }),
-      slope,
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value).not.toContain(tileIndex(grid, 5, 5));
-  });
-
-  it("reports spacingConflict when flatOnly rejects everything", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ flatOnly: true }),
-      new Uint8Array(dim * dim).fill(1),
-      [],
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.failure.bucket).toBe("spacingConflict");
-  });
-
-  it("flatOnly + otherTerrainSpacing together keep a BUFFER from slopes, not just off the slope tile itself (Sec.6.4: 'also >= spacing from sloped tiles, only when spacing >= 1')", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const slope = new Uint8Array(dim * dim);
-    slope[tileIndex(grid, 10, 10)] = 1;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ flatOnly: true, otherTerrainSpacing: 3 }),
-      slope,
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      for (const tile of result.value) {
-        const x = tile % dim;
-        const y = (tile - x) / dim;
-        // 4-connected step distance from the slope must clear the declared
-        // spacing -- a tile merely 1 or 2 away from the slope (which the
-        // OLD, unconditional-only implementation would have allowed) must
-        // now be excluded too.
-        expect(Math.abs(x - 10) + Math.abs(y - 10)).toBeGreaterThanOrEqual(3);
-      }
-    }
-  });
-
-  it("flatOnly WITHOUT otherTerrainSpacing still forbids painting ON a slope, but keeps no buffer around it", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const slope = new Uint8Array(dim * dim);
-    slope[tileIndex(grid, 10, 10)] = 1;
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ flatOnly: true }),
-      slope,
-      [],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).not.toContain(tileIndex(grid, 10, 10)); // the slope itself: excluded
-      expect(result.value).toContain(tileIndex(grid, 9, 10)); // its immediate neighbour: NOT excluded, no spacing attribute given
-    }
-  });
-
-  it("avoidPlayerDistance rejects candidates too close to a player origin", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const origin = fabricateOrigin(10, 10, 1);
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ avoidPlayerDistance: 5 }),
-      new Uint8Array(dim * dim),
-      [origin],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      for (const tile of result.value) {
-        const x = tile % dim;
-        const y = (tile - x) / dim;
-        expect(Math.hypot(x - 10, y - 10)).toBeGreaterThanOrEqual(5);
-      }
-    }
-  });
-
-  it("trusts the caller's origin list as-is -- filtering to player-only origins is the CALLER's job (applyTerrains does it), not this function's", () => {
-    const grid = createTileGrid(dim, GRASS);
-    const neutralOrigin = fabricateOrigin(10, 10, undefined);
-    // Passed here unfiltered on purpose: an origin with no `player` field
-    // still counts as a distance source, exactly like `elevation.ts`'s own
-    // eligibleSeedCandidates -- callers are expected to pre-filter to
-    // player-only origins (Sec.6.4: "avoid player START areas") before
-    // calling in, matching applyTerrains's `origins.filter(o => o.player
-    // !== undefined)`.
-    const result = eligibleTerrainCandidates(
-      grid,
-      baseContext({ avoidPlayerDistance: 5 }),
-      new Uint8Array(dim * dim),
-      [neutralOrigin],
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      for (const tile of result.value) {
-        const x = tile % dim;
-        const y = (tile - x) / dim;
-        expect(Math.hypot(x - 10, y - 10)).toBeGreaterThanOrEqual(5);
-      }
-    }
+    applyAutomaticBeach(grid, constants, { beachMark });
+    expect(count(grid, id("DLC_BEACH2"))).toBeGreaterThan(0);
+    expect(count(grid, id("BEACH"))).toBe(0);
   });
 });
 
-describe("growTerrainClump (restricted frontier growth)", () => {
-  it("grows to exactly the target when the eligible region is large enough", () => {
-    const dim = 30;
-    const eligible = new Uint8Array(dim * dim).fill(1);
-    const seed = 15 * dim + 15;
-    const clump = growTerrainClump(
-      dim,
-      seed,
-      40,
-      eligible,
-      new Uint8Array(dim * dim),
-      terrainBucketWeights(20),
-      mulberry32(3),
-    );
-    expect(clump.size).toBe(40);
+describe("composite terrains and layers at the end (de-findings-cg-cj.md 5)", () => {
+  it("shows a composite as its primary over its secondary, and remembers it as painted", () => {
+    const grid = createTileGrid(4, 62);
+    grid.terrain[1] = GRASS;
+    grid.layer[1] = 34;
+    const record = resolveComposites(grid);
+    expect([grid.terrain[0], grid.layer[0]]).toEqual([77, 60]);
+    expect(record.kind[0]).toBe(COMPOSITE_AS_TERRAIN);
+    // A composite as the layer resolves too, and is remembered as a layer.
+    expect([grid.terrain[1], grid.layer[1]]).toEqual([0, 32]);
+    expect(record.kind[1]).toBe(COMPOSITE_AS_LAYER);
+    // The painted view gives later stages both back as painted.
+    const view = paintedView(grid, record);
+    expect([view.terrain[0], view.terrain[1], view.layer[1]]).toEqual([
+      62,
+      GRASS,
+      34,
+    ]);
+    expect(grid.terrain[0]).toBe(77);
   });
 
-  it("never places a tile outside the eligible mask", () => {
-    const dim = 20;
-    const eligible = new Uint8Array(dim * dim);
-    // Only a 5x5 eligible box around the seed.
-    for (let y = 8; y <= 12; y++)
-      for (let x = 8; x <= 12; x++) eligible[y * dim + x] = 1;
-    const seed = 10 * dim + 10;
-    const clump = growTerrainClump(
-      dim,
-      seed,
-      100,
-      eligible,
-      new Uint8Array(dim * dim),
-      terrainBucketWeights(20),
-      mulberry32(4),
-    );
-    for (const tile of clump) expect(eligible[tile]).toBe(1);
+  it("a beach tile loses its layer, a shallows tile keeps its own", () => {
+    const grid = createTileGrid(2, id("BEACH"), SNOW);
+    grid.terrain[1] = id("SHALLOW");
+    clearBeachLayers(grid, constants);
+    expect(grid.layer[0]).toBe(NO_LAYER);
+    expect(grid.layer[1]).toBe(SNOW);
   });
 
-  it("stops short (growthShortfall territory) once the eligible region is exhausted", () => {
-    const dim = 20;
-    const eligible = new Uint8Array(dim * dim);
-    for (let y = 8; y <= 12; y++)
-      for (let x = 8; x <= 12; x++) eligible[y * dim + x] = 1; // 25 tiles total
-    const seed = 10 * dim + 10;
-    const clump = growTerrainClump(
-      dim,
-      seed,
-      100,
-      eligible,
-      new Uint8Array(dim * dim),
-      terrainBucketWeights(20),
-      mulberry32(5),
-    );
-    expect(clump.size).toBeLessThan(100);
-    expect(clump.size).toBeLessThanOrEqual(25);
-  });
-
-  it("never places a tile the claimed mask already marks, even though eligible allows it", () => {
-    const dim = 20;
-    const eligible = new Uint8Array(dim * dim).fill(1); // whole grid eligible
-    const claimed = new Uint8Array(dim * dim);
-    // Claim everything except a small box around the seed, forcing an early stop.
-    claimed.fill(1);
-    for (let y = 8; y <= 12; y++)
-      for (let x = 8; x <= 12; x++) claimed[y * dim + x] = 0; // 25 free tiles
-    const seed = 10 * dim + 10;
-    const clump = growTerrainClump(
-      dim,
-      seed,
-      100,
-      eligible,
-      claimed,
-      terrainBucketWeights(20),
-      mulberry32(6),
-    );
-    expect(clump.size).toBeLessThanOrEqual(25);
-    for (const tile of clump) expect(claimed[tile]).toBe(0);
+  it("the beach reads the resolved terrain, so a resolved 77 beside water becomes beach", () => {
+    const grid = createTileGrid(6, 62);
+    for (let y = 0; y < 6; y++) grid.terrain[y * 6] = WATER;
+    resolveComposites(grid);
+    applyAutomaticBeach(grid, constants);
+    expect(grid.terrain[1]).toBe(id("BEACH"));
   });
 });
 
@@ -884,386 +586,6 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
         expect(grid.terrain[y * dim + x], `tile ${x},${y}`).toBe(expected);
       }
     }
-  });
-});
-
-describe("applyTerrains (Sec.6.4 end to end)", () => {
-  it("no TERRAIN_GENERATION section -> no reports, no notes", () => {
-    const { instantiated, grid } = bareGrid("<LAND_GENERATION>\n", 1, {
-      mapSize: "Tiny",
-    });
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports).toEqual([]);
-    expect(result.notes).toEqual([]);
-  });
-
-  it("paints tiles with the declared terrain", () => {
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 60\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].placed).toBe(1);
-    let painted = 0;
-    for (const t of grid.terrain) if (t === DIRT) painted++;
-    expect(painted).toBeGreaterThan(0);
-  });
-
-  it("an unresolvable terrain name fails the command without throwing", () => {
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain NOT_A_REAL_TERRAIN_XYZ {\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Tiny" });
-    expect(() =>
-      applyTerrains(instantiated, grid, constants, [], 1),
-    ).not.toThrow();
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0]).toMatchObject({ placed: 0 });
-    expect(result.reports[0].failures[0].bucket).toBe("terrainAbsent");
-  });
-
-  // guide:1502-1509. The two layers differ in which terrain ends up OWNING
-  // the tile, which decides what every later base_terrain, habitat check and
-  // automatic-object rule sees, so these are two behaviours, not one.
-  it("terrain_mask 2 masks UNDER: the new terrain takes the tile and the base becomes the layer", () => {
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 40\nterrain_mask 2\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].placed).toBe(1);
-    let ownedByDirt = 0;
-    let layeredWithGrass = 0;
-    for (let i = 0; i < grid.terrain.length; i++) {
-      if (grid.terrain[i] !== DIRT) continue;
-      ownedByDirt++;
-      if (grid.layer[i] === GRASS) layeredWithGrass++;
-    }
-    expect(ownedByDirt).toBeGreaterThan(0);
-    expect(layeredWithGrass).toBe(ownedByDirt);
-  });
-
-  it("a mask-2 tile stops matching its old base_terrain, and a mask-1 tile keeps matching", () => {
-    // The distinguishing consequence, and the reason collapsing the two
-    // layers was a correctness bug rather than a rendering simplification:
-    // a later command's base_terrain sees whichever terrain owns the tile.
-    const SNOW = constants.find((c) => c.rmsConstant === "SNOW")!.constId!;
-    const under =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nland_percent 100\nnumber_of_clumps 400\nterrain_mask 2\n}\ncreate_terrain SNOW {\nbase_terrain GRASS\nland_percent 100\nnumber_of_clumps 400\n}\n";
-    const over = under.replace("terrain_mask 2", "terrain_mask 1");
-    const countSnow = (source: string) => {
-      const { instantiated, grid } = bareGrid(source, 3, { mapSize: "Tiny" });
-      applyTerrains(instantiated, grid, constants, [], 3);
-      let snow = 0;
-      for (const t of grid.terrain) if (t === SNOW) snow++;
-      return snow;
-    };
-    // Under: DIRT owns those tiles, so little GRASS is left for SNOW to take.
-    // Over: they are still GRASS underneath, so SNOW covers them freely.
-    expect(countSnow(over)).toBeGreaterThan(countSnow(under) * 5);
-  });
-
-  it("terrain_mask 1 masks OVER: the base keeps the tile, the new terrain is only a layer", () => {
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 40\nterrain_mask 1\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].placed).toBe(1);
-    let paintedLayer = 0;
-    let paintedTerrain = 0;
-    for (const l of grid.layer) if (l === DIRT) paintedLayer++;
-    for (const t of grid.terrain) if (t === DIRT) paintedTerrain++;
-    expect(paintedLayer).toBeGreaterThan(0);
-    expect(paintedTerrain).toBe(0);
-    expect(
-      result.notes.some((n) => n.key.startsWith("terrainMaskApproximated")),
-    ).toBe(true);
-  });
-
-  /**
-   * Confines the eligible base (GRASS, create_terrain's default) to a SINGLE
-   * column directly beside a water column, and makes every other tile a
-   * non-eligible terrain, the clump has nowhere else to grow, so every one of
-   * its tiles is guaranteed adjacent to water wherever the seed lands.
-   */
-  function coastlineFixture(source: string, seed = 2) {
-    const { instantiated, grid } = bareGrid(source, seed, { mapSize: "Tiny" });
-    const midX = Math.floor(grid.dim / 2);
-    grid.terrain.fill(DIRT);
-    for (let y = 0; y < grid.dim; y++) {
-      grid.terrain[tileIndex(grid, midX, y)] = WATER;
-      grid.terrain[tileIndex(grid, midX + 1, y)] = GRASS;
-    }
-    return { instantiated, grid, midX };
-  }
-
-  /** The coastline column, as terrain ids. */
-  function coast(grid: TileGrid, midX: number): number[] {
-    const out: number[] = [];
-    for (let y = 0; y < grid.dim; y++)
-      out.push(grid.terrain[tileIndex(grid, midX + 1, y)]);
-    return out;
-  }
-
-  it("beaches each create_terrain command's own tiles as that command finishes, using its beach_terrain", () => {
-    const DLC_BEACH2 = constants.find(
-      (c) => c.rmsConstant === "DLC_BEACH2",
-    )!.constId!;
-    const { instantiated, grid, midX } = coastlineFixture(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 30\nbeach_terrain DLC_BEACH2\n}\n",
-    );
-    const result = applyTerrains(instantiated, grid, constants, [], 2);
-    expect(result.reports[0].placed).toBe(1);
-    // No separate pass, no second call: applyTerrains has already beached.
-    expect(result.beached).toBeGreaterThan(0);
-    expect(
-      coast(grid, midX).filter((t) => t === DLC_BEACH2).length,
-    ).toBeGreaterThan(0);
-  });
-
-  it("scopes its beach_terrain to its own tiles, leaving the rest of the coast to its own default", () => {
-    // The clump is 30 tiles and the column is 120, so the command speaks for
-    // only a quarter of the coastline. The rest is still GRASS, and the step
-    // is grid-wide, so those tiles take GRASS's own default of BEACH rather
-    // than this command's DLC_BEACH2.
-    const DLC_BEACH2 = constants.find(
-      (c) => c.rmsConstant === "DLC_BEACH2",
-    )!.constId!;
-    const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
-    const { instantiated, grid, midX } = coastlineFixture(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 30\nbeach_terrain DLC_BEACH2\n}\n",
-    );
-    applyTerrains(instantiated, grid, constants, [], 2);
-    const column = coast(grid, midX);
-    expect(column.filter((t) => t === DLC_BEACH2).length).toBeGreaterThan(0); // this command's own
-    expect(column.filter((t) => t === BEACH).length).toBeGreaterThan(0); // everyone else's default
-  });
-
-  it("base_terrain BEACH converts a beach land's interior and the waterline reverts", () => {
-    // The whole point of running the beach step per command, and the case an
-    // earlier version broke while trying to protect it. `base_terrain BEACH`
-    // has 67 corpus uses (five consecutive in `AK_Namatjira.rms`), so it must
-    // find beach to convert; and the step then re-beaches only the strip that
-    // touches water, so the interior keeps the conversion.
-    const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
-    const JUNGLEGRASS = constants.find(
-      (c) => c.rmsConstant === "DLC_JUNGLEGRASS",
-    )!.constId!;
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DLC_JUNGLEGRASS {\nbase_terrain BEACH\nland_percent 100\nnumber_of_clumps 9320\n}\n";
-    const { instantiated, grid } = bareGrid(source, 2, { mapSize: "Tiny" });
-    // A land made ENTIRELY of beach: water on the left, then a four-column
-    // band of BEACH, then ordinary land. Only the first beach column touches
-    // water, so three of the four are interior.
-    const midX = Math.floor(grid.dim / 2);
-    grid.terrain.fill(DIRT);
-    for (let y = 0; y < grid.dim; y++) {
-      grid.terrain[tileIndex(grid, midX, y)] = WATER;
-      for (let c = 1; c <= 4; c++)
-        grid.terrain[tileIndex(grid, midX + c, y)] = BEACH;
-    }
-
-    const result = applyTerrains(instantiated, grid, constants, [], 2);
-    expect(result.reports[0].placed).toBeGreaterThan(0);
-
-    for (let y = 0; y < grid.dim; y++) {
-      expect(grid.terrain[tileIndex(grid, midX + 1, y)]).toBe(BEACH); // touches water, reverted
-      for (let c = 2; c <= 4; c++)
-        expect(grid.terrain[tileIndex(grid, midX + c, y)]).toBe(JUNGLEGRASS); // interior, converted
-    }
-  });
-
-  it("base_terrain BEACH is a no-op where the only beach is the waterline itself", () => {
-    // The other half of the same rule, and the observation that settles it:
-    // with nothing but a one-tile shore to work on, the command converts it
-    // and the step converts it straight back. Not a broken idiom. There was
-    // no interior for it to act on.
-    const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
-    const JUNGLEGRASS = constants.find(
-      (c) => c.rmsConstant === "DLC_JUNGLEGRASS",
-    )!.constId!;
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DLC_JUNGLEGRASS {\nbase_terrain BEACH\nland_percent 100\nnumber_of_clumps 9320\n}\n";
-    const { instantiated, grid, midX } = coastlineFixture(source);
-    applyAutomaticBeach(grid, constants); // end of land generation: the column becomes BEACH
-    expect(coast(grid, midX).every((t) => t === BEACH)).toBe(true);
-
-    applyTerrains(instantiated, grid, constants, [], 2);
-    expect(coast(grid, midX).every((t) => t === BEACH)).toBe(true);
-    expect(coast(grid, midX).some((t) => t === JUNGLEGRASS)).toBe(false);
-  });
-
-  it("honours a beach_terrain naming a NON-beach terrain instead of overwriting it with the default", () => {
-    // guide:1488: a non-beach terrain here is legal and load-bearing. It is
-    // how an author makes a coastline players cannot build docks on. The
-    // terrain's own row says it grows a BEACH, so a data-default-only pass
-    // would undo the author's instruction.
-    const JUNGLEGRASS = constants.find(
-      (c) => c.rmsConstant === "DLC_JUNGLEGRASS",
-    )!.constId!;
-    const { instantiated, grid, midX } = coastlineFixture(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 30\nbeach_terrain DLC_JUNGLEGRASS\n}\n",
-    );
-    applyTerrains(instantiated, grid, constants, [], 2);
-    expect(
-      coast(grid, midX).filter((t) => t === JUNGLEGRASS).length,
-    ).toBeGreaterThan(0);
-  });
-
-  it("a beach_terrain naming a water terrain replaces the whole clump, as the guide warns", () => {
-    // guide:1485: "it will fully replace the terrain specified in
-    // create_terrain, so this is NOT recommended". Reproduced rather than
-    // quietly fixed, same policy as the CONNECTION_GENERATION bug below.
-    const { instantiated, grid } = coastlineFixture(
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 30\nbeach_terrain WATER\n}\n",
-    );
-    const before = [...grid.terrain].filter((t) => t === WATER).length;
-    const result = applyTerrains(instantiated, grid, constants, [], 2);
-    const after = [...grid.terrain].filter((t) => t === WATER).length;
-    expect(after).toBeGreaterThan(before);
-    expect(
-      result.notes.some((n) => n.key.startsWith("beachTerrainIsWater")),
-    ).toBe(true);
-  });
-
-  it("beach_terrain is skipped, with a note, when a <CONNECTION_GENERATION> section exists (documented engine bug)", () => {
-    const DLC_BEACH2 = constants.find(
-      (c) => c.rmsConstant === "DLC_BEACH2",
-    )!.constId!;
-    const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
-    const source = [
-      "<TERRAIN_GENERATION>",
-      "create_terrain DIRT {\nnumber_of_tiles 30\nbeach_terrain DLC_BEACH2\n}",
-      "<CONNECTION_GENERATION>",
-    ].join("\n");
-    const { instantiated, grid, midX } = coastlineFixture(source);
-    applyAutomaticBeach(grid, constants); // end of land generation
-    const result = applyTerrains(instantiated, grid, constants, [], 2);
-    expect(
-      result.notes.some((n) => n.key.startsWith("beachTerrainSkipped")),
-    ).toBe(true);
-
-    // The coastline still has its beach, the engine default from land
-    // generation, which is what the ignored attribute would have overridden.
-    // "Skipped" is not "no beach".
-    const column = coast(grid, midX);
-    expect(column.some((t) => t === BEACH)).toBe(true);
-    expect(column.some((t) => t === DLC_BEACH2)).toBe(false);
-  });
-
-  it("height_limits restricts placement to the declared elevation band", () => {
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 30\nheight_limits 5 10\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    for (let i = 0; i < grid.elevation.length; i++)
-      grid.elevation[i] = i % 2 === 0 ? 7 : 0; // checkerboard elevation
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].placed).toBe(1);
-    for (let i = 0; i < grid.terrain.length; i++) {
-      if (grid.terrain[i] === DIRT)
-        expect(grid.elevation[i]).toBeGreaterThanOrEqual(5);
-    }
-  });
-
-  it("reports growthShortfall when the eligible region is too small for the tile budget", () => {
-    // The whole grid (dim*dim, ~14400 on Tiny) is the ceiling on how many
-    // tiles ANY single clump could ever reach -- ask for far more than that
-    // so the shortfall is inevitable regardless of map size or eligibility.
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 999999\nnumber_of_clumps 1\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Tiny" });
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].placed).toBe(1);
-    expect(
-      result.reports[0].failures.some((f) => f.bucket === "growthShortfall"),
-    ).toBe(true);
-  });
-
-  it("a pathological number_of_clumps (guide's own 9320 example, and the corpus goes far higher) is capped rather than hung, with an iterationCapped failure and a note", () => {
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 500000\nnumber_of_clumps 999999999\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Tiny" });
-    const start = Date.now();
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    // Not a strict wall-clock assertion (CLAUDE.md: a shared machine measures
-    // the machine) -- a generous ceiling just to prove this completes at
-    // all, which an uncapped loop attempting 999999999 clumps would not.
-    expect(Date.now() - start).toBeLessThan(10000);
-    const capFailure = result.reports[0].failures.find(
-      (f) => f.bucket === "iterationCapped",
-    );
-    expect(capFailure).toBeDefined();
-    expect(capFailure!.data).toMatchObject({ requested: 999999999 });
-    expect(result.reports[0].attempted).toBeLessThan(999999999);
-    expect(
-      result.notes.some((n) => n.key.startsWith("terrainIterationCapped")),
-    ).toBe(true);
-  });
-
-  it("runs the guide's own 9320-clump example in FULL, because 9320 clumps fit in the eligible pool", () => {
-    // The regression that matters more than the cap above. A `[tune]` cap of
-    // `4 * dim` attempts stopped every command at 800 clumps on a 200 map,
-    // so `create_terrain X { base_terrain Y land_percent 100 number_of_clumps
-    // 9320 }`, the standard way to convert ALL of one terrain into another,
-    // and the guide's own worked example, converted a twelfth of it. It
-    // showed up as a wrong-looking map, never as an error.
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nland_percent 100\nnumber_of_clumps 9320\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].attempted).toBe(9320);
-    expect(
-      result.reports[0].failures.some((f) => f.bucket === "iterationCapped"),
-    ).toBe(false);
-    // And it does what the script asked. Not literally every tile: the
-    // budget gives each clump 4 tiles and some exhaust their frontier against
-    // neighbours that are already claimed. The number to compare against is
-    // what the old cap produced, 800 clumps x 4 tiles is at most 3,200 of
-    // 40,000, under a tenth.
-    let dirt = 0;
-    for (const t of grid.terrain) if (t === DIRT) dirt++;
-    expect(dirt).toBeGreaterThan(grid.terrain.length * 0.8);
-  });
-
-  it("stops at the eligible pool rather than a constant when the pool is the smaller of the two", () => {
-    // 400 eligible tiles, 9320 clumps asked for: a clump needs at least one
-    // tile, so the bound is a fact about the work rather than a budget.
-    const source =
-      "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nbase_terrain SNOW\nland_percent 100\nnumber_of_clumps 9320\n}\n";
-    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    const SNOW = constants.find((c) => c.rmsConstant === "SNOW")!.constId!;
-    for (let i = 0; i < 400; i++) grid.terrain[i] = SNOW;
-    const result = applyTerrains(instantiated, grid, constants, [], 1);
-    expect(result.reports[0].attempted).toBe(400);
-    expect(
-      result.reports[0].failures.find((f) => f.bucket === "iterationCapped"),
-    ).toBeDefined();
-  });
-
-  it("sequential commands see each other's painted tiles: a second command's base_terrain no longer matches what the first one painted", () => {
-    const source = [
-      "<TERRAIN_GENERATION>",
-      "create_terrain DIRT {\nnumber_of_tiles 500\nnumber_of_clumps 1\n}",
-      "create_terrain WATER {\nbase_terrain DIRT\nnumber_of_tiles 5000\nnumber_of_clumps 1\n}",
-    ].join("\n");
-    const { instantiated, grid } = bareGrid(source, 5, { mapSize: "Normal" });
-    const result = applyTerrains(instantiated, grid, constants, [], 5);
-    expect(result.reports.length).toBe(2);
-    // The second command's eligible set is bounded by exactly what the first
-    // one painted -- so it cannot come close to its 5000-tile ask.
-    expect(
-      result.reports[1].failures.some((f) => f.bucket === "growthShortfall"),
-    ).toBe(true);
-  });
-
-  it("full pipeline (S1-S4) never throws on a plain script", () => {
-    const source = [
-      "<LAND_GENERATION>",
-      "create_player_lands { land_percent 8 }",
-      "<ELEVATION_GENERATION>",
-      "create_elevation 5 { number_of_tiles 100 }",
-      "<CLIFF_GENERATION>",
-      "<TERRAIN_GENERATION>",
-      "create_terrain DIRT { number_of_tiles 200 }",
-    ].join("\n");
-    expect(() => place(source, 42, { mapSize: "Normal" })).not.toThrow();
   });
 });
 

@@ -1,0 +1,11 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+if 8_PLAYER_GAME
+start_random
+percent_chance 50 #define DEAD_A
+percent_chance 50 #define DEAD_B
+end_random
+endif
+create_land { terrain_type DIRT land_position rnd(10,90) rnd(10,90) number_of_tiles 0 base_size 2 }
