@@ -19,7 +19,7 @@ The **DE RMS Guide** item in the same menu opens Zetnus's guide to the scripting
 
 Hover popups show on hover by default. **Settings > General** can make them show only while you hold Alt, or turn them off.
 
-## Features the tutorials skip
+## Features the tutorials don't cover
 
 ### Breakdown
 
@@ -54,20 +54,11 @@ The panel beside Breakdown and Code holds two tabs, **Preview** and **Reference*
 
 The status bar totals are read from the generation on screen, so they show what the map placed, which can differ from what the script asked for.
 
-## How far to trust the preview
+## How to use the preview
 
-The preview runs the script stage by stage, in the order the game does. Every stage draws the game's own random numbers in the game's own order, so the map comes out the same as the game's at the same seed.
+A script that uses `#include_drs` reads those files from your game install, the same folder the game reads them from. If the app cannot find your install, or a file is missing, a warning will show up.
 
-| Stage                                           | Compared with the game                                                  |
-| ----------------------------------------------- | ----------------------------------------------------------------------- |
-| Lands, Elevation, Cliffs, Terrains, Connections | Tile for tile at the same seed                                          |
-| Objects                                         | Object for object at the same seed, checked on Tiny maps with 2 players |
-
-These were checked against maps saved in the game's scenario editor. The editor and a game lobby define a few different labels (the lobby defines `RANDOM_MAP`, for one), and the preview uses the lobby's, so a script that branches on those labels can differ from the editor.
-
-A script that uses `#include_drs` reads those files from your game install, the same folder the game reads them from. If the app cannot find your install, or a file is missing, a note on the map names it.
-
-To compare with a real game, set Generation Settings to that game's map size, players, teams and Team Positions box, then type its seed into the seed chip. The game shows the seed on the Objectives screen.
+To compare with a real game, set Generation Settings to that game's map size, players, teams and Team Positions box, then type its seed into the seed box. DE shows the seed on the Objectives screen (Skirmish) or the bottom left corner (Scenario Editor).
 
 ## Advanced Tools
 
