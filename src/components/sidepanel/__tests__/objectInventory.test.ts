@@ -64,6 +64,29 @@ describe("buildObjectInventory", () => {
     ]);
   });
 
+  // The canvas draws terrain objects, and a drawn object with no row could
+  // never be hidden. A scripted object of the same name shares the row, since
+  // the hidden set is keyed on the name.
+  it("gives each terrain object kind a row, and adds it to a scripted row of the same name", () => {
+    const result = buildObjectInventory(
+      parse(`<OBJECTS_GENERATION>\ncreate_object OAK_FOREST_TREE { }`),
+      placed("OAK_FOREST_TREE", 2),
+      {
+        kind: new Uint16Array([0, 0, 0, 1]),
+        x: new Float32Array(4),
+        y: new Float32Array(4),
+        kinds: [
+          { id: 411, objectRef: "OAK_FOREST_TREE", category: "resource-wood" },
+          { id: 1351, objectRef: "object 1351", category: "decoration" },
+        ],
+      },
+    );
+    expect(result).toEqual([
+      { objectRef: "OAK_FOREST_TREE", spawned: 5 },
+      { objectRef: "object 1351", spawned: 1 },
+    ]);
+  });
+
   it("lists a second_object, which is usually the one that matters", () => {
     // guide:2211's placeholder idiom, the MAIN object is an invisible carrier
     // and the second object is the fish. Missing it would leave the object the

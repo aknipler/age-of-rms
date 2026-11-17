@@ -22,3 +22,10 @@
   color: var(--text-muted);
   font-size: 0.75rem;
 }
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}

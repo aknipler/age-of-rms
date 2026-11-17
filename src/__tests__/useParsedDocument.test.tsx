@@ -188,3 +188,82 @@ describe("useParsedDocument while typing past an in-flight parse", () => {
     expect(result.current.source).toBe("A");
   });
 });
+
+// The worker's liveness reply arrives on its own after the result
+// (docs/name-liveness-slice-b-brief.md item 5). It belongs to the request on
+// screen and to nothing else.
+describe("useParsedDocument and liveness replies", () => {
+  const mark = {
+    severity: "info" as const,
+    code: "RMS0321",
+    message: "constructed",
+    span: { start: 0, end: 1 },
+  };
+  const livenessReply = (requestId: number) =>
+    act(() => {
+      fake.worker!.onmessage!({
+        data: {
+          kind: "liveness",
+          requestId,
+          status: "complete",
+          diagnostics: [mark],
+          ms: 1,
+        },
+      });
+    });
+
+  it("lands a reply for the request on screen, tagged with that text", () => {
+    const { result } = settledOnA();
+    expect(result.current.liveness).toBeNull();
+    livenessReply(1);
+    expect(result.current.liveness).toEqual({
+      source: "A",
+      status: "complete",
+      diagnostics: [mark],
+    });
+  });
+
+  it("drops a reply for an earlier request", () => {
+    const { result, rerender } = settledOnA();
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    reply(2, "AB");
+    // Request 1's marks are for text that is gone.
+    livenessReply(1);
+    expect(result.current.liveness).toBeNull();
+    livenessReply(2);
+    expect(result.current.liveness?.source).toBe("AB");
+  });
+
+  it("drops a reply once a newer request has been sent", () => {
+    const { result, rerender } = settledOnA();
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    livenessReply(1);
+    expect(result.current.liveness).toBeNull();
+  });
+
+  it("drops a reply for the newest request when its result was never applied", () => {
+    const { result, rerender } = settledOnA();
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    // The user types on before request 2 is answered, so its result is dropped
+    // unread, while request 2 is still the newest one sent. Applying its
+    // marks would put marks for "AB" beside the screen's "A".
+    rerender({ content: "ABC" });
+    reply(2, "AB");
+    expect(result.current.source).toBe("A");
+    livenessReply(2);
+    expect(result.current.liveness).toBeNull();
+  });
+
+  it("clears the marks when a new result is applied", () => {
+    const { result, rerender } = settledOnA();
+    livenessReply(1);
+    expect(result.current.liveness).not.toBeNull();
+    rerender({ content: "AB" });
+    advance(DEBOUNCE);
+    reply(2, "AB");
+    expect(result.current.liveness).toBeNull();
+  });
+});

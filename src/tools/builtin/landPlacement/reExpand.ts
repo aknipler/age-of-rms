@@ -372,8 +372,16 @@ export function reExpand(
   }
 
   /** The departure rule for one key set (Sec.4.5's three release conditions), shared by both passes. */
-  function departKeys(oldKeyedIds: ReadonlyMap<string, string>): void {
-    for (const [kt, oldId] of oldKeyedIds) {
+  function departKeys(
+    oldKeyedIds: ReadonlyMap<string, string>,
+    childrenFirst: boolean,
+  ): void {
+    // A nested template's copies sit after their parent's in key order. Going
+    // backwards judges a copy before the parent it hangs off, so a parent
+    // whose only children are leaving is deletable too.
+    const entries = [...oldKeyedIds];
+    if (childrenFirst) entries.reverse();
+    for (const [kt, oldId] of entries) {
       if (newKeysSeen.has(kt)) continue;
       const oldPlacement = byId.get(oldId);
       if (oldPlacement === undefined) continue; // already gone from the document
@@ -420,6 +428,7 @@ export function reExpand(
   // at (i, j) as pass 1 actually named it, read off `nextMembers` by the
   // member's own positional index, never the deterministic id.
   const nextChainMembers: string[] = [];
+  const resolvedChain = new Map<string, string>();
   const oldChainKeyed = keyedChainIds(oldGroup);
   const oldChainBaseByKey = new Map<string, Placement>();
   for (let idx = 0; idx < oldFresh.chainPlacements.length; idx++) {
@@ -437,11 +446,27 @@ export function reExpand(
     const kt = chainKeyText(key);
     const slotIndex = newGroup.pattern.findIndex((s) => s.id === key.slotId);
     const memberIndex = key.repeatIndex * patternLength + slotIndex;
-    const parent = nextMembers[memberIndex];
+    let parent = nextMembers[memberIndex];
     if (parent === undefined)
       throw new Error(
         "reExpand: a chain child's member has no post-merge id, the two passes disagree about the pattern",
       );
+    // A nested template hangs off its parent template's copy for the same
+    // repeat, by that copy's post-merge id. The invariant that a parent
+    // precedes its children makes it already resolved.
+    const template = newGroup.pattern[slotIndex].chain?.find(
+      (t) => t.id === key.templateId,
+    );
+    if (template?.parent !== undefined) {
+      const parentCopy = resolvedChain.get(
+        chainKeyText({ ...key, templateId: template.parent }),
+      );
+      if (parentCopy === undefined)
+        throw new Error(
+          `reExpand: chain template "${template.id}" names parent "${template.parent}", which has no copy yet`,
+        );
+      parent = parentCopy;
+    }
     mergeKey(
       kt,
       freshChainById.get(fresh.chainMembers[k])!,
@@ -450,6 +475,7 @@ export function reExpand(
       parent,
       nextChainMembers,
     );
+    resolvedChain.set(kt, nextChainMembers[nextChainMembers.length - 1]);
   }
 
   // Departing keys: present in G_old, absent from G_new. Members and chain
@@ -458,8 +484,8 @@ export function reExpand(
   // escalation.md Sec.5.4: "releases or deletes the children first, by the
   // same rules"), so a departing member's own deletability is judged after
   // its templated children have gone.
-  departKeys(oldChainKeyed);
-  departKeys(oldKeyed);
+  departKeys(oldChainKeyed, true);
+  departKeys(oldKeyed, false);
 
   return {
     placements: [...nextPlacements.values()],

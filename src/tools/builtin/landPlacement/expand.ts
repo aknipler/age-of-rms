@@ -379,17 +379,29 @@ export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
   const chainPlacements: Placement[] = [];
   for (let i = 0; i < repeats; i++) {
     for (const slot of pattern) {
-      for (const t of slot.chain ?? []) {
+      const chain = slot.chain ?? [];
+      chain.forEach((t, ti) => {
+        // A nested template hangs off an earlier template of the same slot,
+        // whose copy for this repeat was pushed already.
+        if (
+          t.parent !== undefined &&
+          !chain.slice(0, ti).some((earlier) => earlier.id === t.parent)
+        ) {
+          throw new Error(
+            `expandShapeGroup: chain template "${t.id}" names parent "${t.parent}", which is not earlier in slot "${slot.id}"`,
+          );
+        }
+        const memberId = memberIdFor(group.id, i, slot.id);
         chainPlacements.push({
-          id: `${memberIdFor(group.id, i, slot.id)}#${t.id}`,
-          parent: memberIdFor(group.id, i, slot.id),
+          id: `${memberId}#${t.id}`,
+          parent: t.parent === undefined ? memberId : `${memberId}#${t.parent}`,
           frame: t.frame,
           offset: t.offset,
           label: `${group.id}_${i}_${slot.id}_${t.label}`,
           role: t.role,
           repeatIndex: i,
         });
-      }
+      });
     }
   }
 

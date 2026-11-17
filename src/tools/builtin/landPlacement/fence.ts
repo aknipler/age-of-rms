@@ -41,6 +41,7 @@ import {
   type AssignPolicy,
   type LandExtent,
   type LandRole,
+  type PanelConstant,
   type Placement,
   type RandomParam,
   type ShapeGroup,
@@ -54,6 +55,8 @@ export interface AlpModel {
   placements: Placement[];
   roles: LandRole[];
   randomParams: RandomParam[];
+  /** Panel owned `#const` lines, written first in the fence body. */
+  constants: PanelConstant[];
   groups: ShapeGroup[];
 }
 
@@ -215,7 +218,18 @@ export function readFenceModel(parse: ParseResult): AlpModel | null {
   ) {
     return null;
   }
-  return upgradeRoles(parsed as AlpModel);
+  return upgradeConstants(upgradeRoles(parsed as AlpModel));
+}
+
+/**
+ * A fence written before panel constants existed has no `constants` key. The
+ * fence version stays 1 for the same reason as `upgradeRoles`. A no-op on a
+ * current model, applied at the one place a fence enters the model.
+ */
+function upgradeConstants(model: AlpModel): AlpModel {
+  return Array.isArray((model as { constants?: unknown }).constants)
+    ? model
+    : { ...model, constants: [] };
 }
 
 /**

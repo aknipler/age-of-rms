@@ -1,5 +1,6 @@
 import * as monaco from "monaco-editor";
 import type { Diagnostic, DiagnosticSeverity } from "../parser/types";
+import { relatedInformationOf } from "./relatedInformation";
 
 const SEVERITY_MAP: Record<DiagnosticSeverity, monaco.MarkerSeverity> = {
   error: monaco.MarkerSeverity.Error,
@@ -22,6 +23,7 @@ export function diagnosticsToMarkers(
     const start = model.getPositionAt(diagnostic.span.start);
     const end = model.getPositionAt(diagnostic.span.end);
     return {
+      relatedInformation: relatedInformationOf(model, diagnostic),
       severity: SEVERITY_MAP[diagnostic.severity],
       code: diagnostic.code,
       message: diagnostic.message,

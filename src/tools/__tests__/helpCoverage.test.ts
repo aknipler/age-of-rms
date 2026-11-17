@@ -139,14 +139,15 @@ describe("Advanced Tools help coverage", () => {
     expect(empty).toEqual([]);
   });
 
-  // The hidden-warning controls (RMS0318), new files outside the pane, named
-  // here so the gate covers them.
+  // The hidden-warning controls (RMS0318) and the "Line N" buttons of a name
+  // liveness mark, new files outside the pane, named here so the gate covers them.
   it("every HelpTip on the warning buttons and the Diagnostics settings tab has one too", () => {
     const used = [
       ...helpTipIdsIn("src/components/DismissDiagnosticButtons.tsx"),
       ...helpTipIdsIn("src/components/settings/DiagnosticsSettings.tsx"),
+      ...helpTipIdsIn("src/breakdown/cards/ProblemBadge.tsx"),
     ];
-    expect(used.length).toBe(5);
+    expect(used.length).toBe(7);
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
 

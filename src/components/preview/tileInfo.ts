@@ -3,6 +3,7 @@ import type {
   FailureMark,
   PlacedObject,
   StageSnapshot,
+  TerrainObjectLayer,
 } from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
 
@@ -75,14 +76,29 @@ export function indexMarksByTile(
 export function indexObjectsByTile(
   objects: readonly PlacedObject[],
   dim: number,
+  terrain?: TerrainObjectLayer,
 ): ObjectsByTile {
   const index = new Map<number, PlacedObject[]>();
-  for (const object of objects) {
+  const add = (object: PlacedObject): void => {
     const key = object.y * dim + object.x;
     const bucket = index.get(key);
     if (bucket) bucket.push(object);
     else index.set(key, [object]);
-  }
+  };
+  // Terrain objects first, so a tile's scripted objects are listed after the
+  // tree or the grass the terrain put there.
+  if (terrain !== undefined)
+    for (let i = 0; i < terrain.kind.length; i++) {
+      const kind = terrain.kinds[terrain.kind[i]];
+      // Floored to the tile, as `PlacedObject` is in tile indices.
+      add({
+        objectRef: kind.objectRef,
+        x: Math.floor(terrain.x[i]),
+        y: Math.floor(terrain.y[i]),
+        category: kind.category,
+      });
+    }
+  for (const object of objects) add(object);
   return index;
 }
 

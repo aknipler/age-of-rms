@@ -17,10 +17,10 @@ export const DIAGNOSTIC_CODES: Record<
     severity: DiagnosticSeverity;
     summary: string;
     /**
-     * The user may hide this one, per file or for good, from the warning
-     * itself (DiagnosticDismissalContext.tsx). Only for a warning about
-     * something that is legal and often meant, where repeating it on a script
-     * whose author already knows becomes noise. Never for an error.
+     * The user may hide this one, per file or for good, from the diagnostic
+     * itself (DiagnosticDismissalContext.tsx). Only for a warning or an info
+     * about something that is legal and often meant, where repeating it on a
+     * script whose author already knows becomes noise. Never for an error.
      */
     dismissible?: true;
   }
@@ -328,6 +328,29 @@ export const DIAGNOSTIC_CODES: Record<
     severity: "warning",
     summary:
       "A <LAND_GENERATION> base_layer keeps hills off the base area for a create_elevation without one",
+    dismissible: true,
+  },
+  // Added 2026-11-04 (name-liveness-design.md, slice B). A name read on a line
+  // that can never see a definition of it (warning), or may run without one
+  // (info), and the two kinds of branch that can never run.
+  RMS0320: {
+    severity: "warning",
+    summary: "Name is read on a line that never runs where the name is defined",
+  },
+  RMS0321: {
+    severity: "info",
+    summary:
+      "Name is read on a line that can run where the name is not defined",
+  },
+  RMS0322: {
+    severity: "info",
+    summary: "Branch can never run, whatever the lobby settings and dice",
+  },
+  // Dismissible because a script that defines a flag at the top and tests it
+  // below is a legal switch, and the author who wrote it knows.
+  RMS0323: {
+    severity: "info",
+    summary: "Branch never runs because a flag is always defined above",
     dismissible: true,
   },
 };
@@ -1352,4 +1375,118 @@ export function missingRequiredSection(
     `"${token.text}" needs a <${requiredSection}> section, and this script has none. The map still generates, but nothing smooths the raised land into a slope, so it stands as a sheer step, and maps in this state have been reported to crash when actually played. The section can be completely empty, and adding the header is the whole fix.`,
     toSpan(token),
   );
+}
+
+// ---- Name liveness (docs/name-liveness-design.md, slice B) ----
+//
+// These take line numbers already worked out, never offsets, so a message can
+// say "line 12" and the editor still gets the exact span (CLAUDE.md's rule on
+// second locations).
+
+/** A definition of a name that a liveness message points at. */
+export interface DefinitionSite {
+  span: Span;
+  line: number;
+}
+
+function includeSentence(includeFiles: readonly string[]): string {
+  return includeFiles.map((file) => ` It is also defined in ${file}.`).join("");
+}
+
+function livenessUse(
+  code: "RMS0320" | "RMS0321",
+  span: Span,
+  name: string,
+  condition: string,
+  consequence: string,
+  definitions: readonly DefinitionSite[],
+  includeFiles: readonly string[],
+): Diagnostic {
+  // A name whose every definition above sits in code that never runs has no
+  // condition worth printing ("only defined when never").
+  const lead =
+    condition === "never"
+      ? `${name} is defined above only where the code never runs`
+      : `${name} is only defined when ${condition}`;
+  const diagnostic = makeDiagnostic(
+    code,
+    `${lead}, ${consequence}.${includeSentence(includeFiles)}`,
+    span,
+  );
+  if (definitions.length > 0)
+    diagnostic.related = definitions.map((d) => ({
+      span: d.span,
+      message: `Defined on line ${d.line}`,
+    }));
+  return diagnostic;
+}
+
+/** RMS0320. The use can never see the name defined. */
+export function nameNeverDefinedAtUse(
+  span: Span,
+  name: string,
+  condition: string,
+  definitions: readonly DefinitionSite[],
+  includeFiles: readonly string[],
+): Diagnostic {
+  return livenessUse(
+    "RMS0320",
+    span,
+    name,
+    condition,
+    "and this line never runs then",
+    definitions,
+    includeFiles,
+  );
+}
+
+/** RMS0321. The use may run without the name defined. */
+export function nameMaybeUndefinedAtUse(
+  span: Span,
+  name: string,
+  condition: string,
+  definitions: readonly DefinitionSite[],
+  includeFiles: readonly string[],
+): Diagnostic {
+  return livenessUse(
+    "RMS0321",
+    span,
+    name,
+    condition,
+    "so this line can run without it",
+    definitions,
+    includeFiles,
+  );
+}
+
+/** RMS0322. `because` finishes the sentence "This branch never runs, because ...". */
+export function branchNeverRuns(span: Span, because: string): Diagnostic {
+  return makeDiagnostic(
+    "RMS0322",
+    `This branch never runs, because ${because}.`,
+    span,
+  );
+}
+
+/**
+ * RMS0323. `site` is the unconditional definition of the flag that turns the
+ * branch off, when one of the branch's conditions is a flag the script always
+ * defines. Without it the message cannot name the flag.
+ */
+export function branchTurnedOffBySwitch(
+  span: Span,
+  site?: { name: string; line: number; span: Span },
+): Diagnostic {
+  const diagnostic = makeDiagnostic(
+    "RMS0323",
+    site === undefined
+      ? "This branch never runs, because of a flag the script always defines above."
+      : `This branch never runs, because ${site.name} is always defined above (line ${site.line}).`,
+    span,
+  );
+  if (site !== undefined)
+    diagnostic.related = [
+      { span: site.span, message: `Defined on line ${site.line}` },
+    ];
+  return diagnostic;
 }

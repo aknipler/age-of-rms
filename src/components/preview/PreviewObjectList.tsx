@@ -54,8 +54,13 @@ export function PreviewObjectList({
   // Rebuilt only when the script or the generation changes, not on every
   // checkbox click: the AST walk is O(script) and a tick is a re-render.
   const allRows = useMemo(
-    () => buildObjectInventory(parse, result?.objects ?? []),
-    [parse, result?.objects],
+    () =>
+      buildObjectInventory(
+        parse,
+        result?.objects ?? [],
+        result?.terrainObjects,
+      ),
+    [parse, result?.objects, result?.terrainObjects],
   );
 
   // Filtering and sorting are a separate memo from building, so typing in the

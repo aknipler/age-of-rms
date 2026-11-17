@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type GRASS number_of_tiles 0 base_size 6 }
+<TERRAIN_GENERATION>
+create_terrain DIRT { base_terrain GRASS number_of_tiles 1500 number_of_clumps 6 }
+create_terrain GRASS3 { base_terrain DIRT number_of_tiles 700 number_of_clumps 4 }
+<OBJECTS_GENERATION>
+create_object DEER { number_of_objects 3 number_of_groups 6 set_loose_grouping set_gaia_object_only min_distance_to_players 15 }
+create_object GOLD { number_of_objects 3 number_of_groups 4 set_tight_grouping set_gaia_object_only min_distance_to_players 15 temp_min_distance_group_placement 10 }
+create_object FORAGE { number_of_objects 1 number_of_groups 20 set_gaia_object_only min_distance_to_players 12 }

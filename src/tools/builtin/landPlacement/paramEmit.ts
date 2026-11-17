@@ -72,6 +72,12 @@ export interface ParamEmission {
 export function emitRandomParams(
   params: readonly RandomParam[],
   namer: NameAllocator,
+  /**
+   * A value this emitted name rolled at the previewed seed, or undefined to
+   * fall back to the midpoint. Absent for every caller but the panel's own
+   * preview (land-placement-seed-follow-brief.md item 1).
+   */
+  rolled?: (name: string, param: RandomParam) => number | undefined,
 ): ParamEmission {
   const cells: EmittedConst[] = [];
   const previewValues = new Map<string, number>();
@@ -81,11 +87,13 @@ export function emitRandomParams(
 
   for (const p of params) {
     const midpoint = (p.min + p.max) / 2;
-    previewById.set(p.id, midpoint);
+    const valueOf = (name: string): number => rolled?.(name, p) ?? midpoint;
     if (!p.perPlayer) {
       const name = namer.allocate("PARAM", p.label);
       cells.push(rndCell(name, p.min, p.max));
-      previewValues.set(name, midpoint);
+      const value = valueOf(name);
+      previewValues.set(name, value);
+      previewById.set(p.id, value);
       sharedNames.set(p.id, name);
       continue;
     }
@@ -99,9 +107,13 @@ export function emitRandomParams(
     for (let player = 1; player <= MAX_PLAYER_COUNT; player++) {
       const name = namer.allocate("PARAM", `${p.label}_P${player}`);
       cells.push(rndCell(name, p.min, p.max));
-      previewValues.set(name, midpoint);
+      previewValues.set(name, valueOf(name));
       names.push(name);
     }
+    // `previewById` holds one number per param id, and a per player param has
+    // one value per player. It takes player 1's, the value a field that names
+    // the param with no owner would see.
+    previewById.set(p.id, previewValues.get(names[0])!);
     perPlayerNames.set(p.id, names);
   }
 

@@ -21,6 +21,7 @@
 //     settles, per Sec.10), same split as parserWorker.ts/useParsedDocument.ts.
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
+import objectDataRaw from "../../reference/data/object-data.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
 import { parseRms } from "../parser/parser";
 import type { ParseResult } from "../parser/types";
@@ -34,6 +35,7 @@ import { truncateAst } from "./generator/truncateAst";
 import { generatePreview, type PreviewReferenceData } from "./generator/index";
 import type { ObjectConstant } from "./generator/objects";
 import type { TerrainRestriction } from "./generator/forestTreeSuppression";
+import type { ObjectDataFile } from "./generator/deObjectData";
 import type {
   PreviewRequest,
   PreviewResponse,
@@ -63,6 +65,9 @@ const refDb: PreviewReferenceData = {
   language: buildLanguageIndex(languageData),
   constants,
   terrainRestrictions: gameConstantsParsed.terrainRestrictions,
+  // The dat's object fields, which make the object stage DE's own (Sec.6.6,
+  // rev 12). Imported once with the worker, like the two files above.
+  objectData: objectDataRaw as unknown as ObjectDataFile,
 };
 
 /**
@@ -85,6 +90,7 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     landOrigins,
     resourceTotals,
     cliffPieces,
+    terrainObjects,
   } = result;
   return {
     dim,
@@ -98,6 +104,10 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     landOrigins,
     resourceTotals,
     cliffPieces,
+    // The canvas draws these. `deObjects` stays behind, since it repeats
+    // them with every scripted object and nothing on the main thread reads
+    // the saved map's own fields.
+    terrainObjects,
   };
 }
 

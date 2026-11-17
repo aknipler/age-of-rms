@@ -92,7 +92,14 @@ function bullsEyesModel(): AlpModel {
     aux("P2_A2", "P2", -135, "VAR_A2"),
     aux("P2_A3", "P2", 135, "VAR_A3"),
   ];
-  return { v: 1, placements, roles: [role()], randomParams: [], groups: [] };
+  return {
+    v: 1,
+    placements,
+    roles: [role()],
+    randomParams: [],
+    constants: [],
+    groups: [],
+  };
 }
 
 describe("buildOverlayShapes — Bulls_Eyes-shaped model", () => {
@@ -237,6 +244,7 @@ describe("buildOverlayShapes — degenerate inputs", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     expect(
@@ -264,6 +272,7 @@ describe("buildOverlayShapes — degenerate inputs", () => {
       ],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     expect(
@@ -275,5 +284,49 @@ describe("buildOverlayShapes — degenerate inputs", () => {
         mapDim: 200,
       }),
     ).toEqual([]);
+  });
+});
+
+describe("buildOverlayShapes, the land's footprint", () => {
+  function shapesWith(circular: boolean | undefined, override?: boolean) {
+    const base = bullsEyesModel();
+    const model: AlpModel = {
+      ...base,
+      roles: base.roles.map((r) => ({ ...r, circularBase: circular })),
+      placements: base.placements.map((p) =>
+        p.id === "P2" && override !== undefined
+          ? { ...p, roleOverrides: { circularBase: override } }
+          : p,
+      ),
+    };
+    const emission = emitAlpModel(
+      model,
+      new NameAllocator({ prefix: "" }),
+      SCRIPT_SYMBOLS,
+      2,
+    );
+    if (!emission.ok) throw new Error("fixture must emit cleanly");
+    return buildOverlayShapes({
+      model,
+      quantities: emission.quantities,
+      resolved: emission.resolved,
+      roleNamesByPlacement: emission.roleNamesByPlacement,
+      mapDim: 200,
+    }).filter((s) => s.kind === "circle");
+  }
+  const squareOf = (s: ReturnType<typeof shapesWith>[number] | undefined) =>
+    s?.kind === "circle" ? s.square === true : undefined;
+
+  it("a land without set_circular_base is a square and one with it is a circle", () => {
+    expect(squareOf(shapesWith(undefined).find((s) => s.id === "P1"))).toBe(
+      true,
+    );
+    expect(squareOf(shapesWith(true).find((s) => s.id === "P1"))).toBe(false);
+  });
+
+  it("a per land override wins over the role", () => {
+    const shapes = shapesWith(true, false);
+    expect(squareOf(shapes.find((s) => s.id === "P2"))).toBe(true);
+    expect(squareOf(shapes.find((s) => s.id === "P1"))).toBe(false);
   });
 });

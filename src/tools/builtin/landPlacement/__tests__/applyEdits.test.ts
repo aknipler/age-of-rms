@@ -21,6 +21,8 @@ import { createTileGrid } from "../../../../preview/generator/grid";
 import { placeLandOrigins } from "../../../../preview/generator/lands";
 import type { ObjectConstant } from "../../../../preview/generator/objects";
 import { computeApplyEdits } from "../applyEdits";
+import { tryEmitAlpModel } from "../emitModel";
+import { NameAllocator } from "../compiler/naming";
 import { addRing } from "../panel/modelOps";
 const NL = String.fromCharCode(10);
 import type { AlpModel } from "../fence";
@@ -81,7 +83,14 @@ function twoPlayerModel(): AlpModel {
       },
     },
   ];
-  return { v: 1, placements, roles: [role()], randomParams: [], groups: [] };
+  return {
+    v: 1,
+    placements,
+    roles: [role()],
+    randomParams: [],
+    constants: [],
+    groups: [],
+  };
 }
 
 describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
@@ -334,8 +343,9 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
   it("on emission disagreement, offers NOTHING and reports the offending node (Sec.5.5) — no edits, problems non-empty", async () => {
     const { vi } = await import("vitest");
     vi.resetModules();
+    // Apply calls `tryEmitAlpModel` (2026-11-14), the non-throwing entry point.
     vi.doMock("../emitModel", () => ({
-      emitAlpModel: () => ({
+      tryEmitAlpModel: () => ({
         ok: false,
         problems: [{ name: "ALP_X_P1", emittedValue: 1, directValue: 2 }],
       }),
@@ -367,6 +377,7 @@ describe("a default ring is random under reseed (2026-09-22)", () => {
       placements: [],
       roles: [role()],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model } = addRing(base, "player");
@@ -404,6 +415,7 @@ describe("an Applied ring places its lands on a circle in the map preview (BUG-0
       placements: [],
       roles: [role()],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model } = addRing(base, "player"); // radius 30, eight members
@@ -455,5 +467,152 @@ describe("an Applied ring places its lands on a circle in the map preview (BUG-0
       const distinct = new Set(origins.map((o) => `${o.x},${o.y}`));
       expect(distinct.size).toBe(8);
     }
+  });
+});
+
+// 2026-11-14, from Great_Bite. Renaming a role made Update leave every one of
+// that role's blocks behind, still naming constants the new fence no longer
+// defines, because a block was judged against the NEW names only.
+describe("computeApplyEdits after a rename", () => {
+  const source =
+    "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
+
+  /** Every ALP_ name the text uses that no #const or #define in it defines. */
+  function undefinedAlpNames(text: string): string[] {
+    const defined = new Set(
+      [...text.matchAll(/#(?:const|define)\s+(\w+)/g)].map((m) => m[1]),
+    );
+    return [
+      ...new Set([...text.matchAll(/\b(ALP_\w+)/g)].map((m) => m[1])),
+    ].filter((n) => !defined.has(n));
+  }
+
+  function renamed(model: AlpModel): AlpModel {
+    return {
+      ...model,
+      roles: model.roles.map((r) => ({ ...r, label: "Lake" })),
+    };
+  }
+
+  for (const eol of ["\n", "\r\n"]) {
+    it(`rewrites the role's blocks with the new names (${eol === "\n" ? "LF" : "CRLF"})`, () => {
+      const model = twoPlayerModel();
+      const first = computeApplyEdits(
+        parseRms(source, lang),
+        model,
+        lang,
+        new Map(),
+        2,
+      );
+      const applied = applyEdits(source, first.edits).replace(/\n/g, eol);
+
+      const second = computeApplyEdits(
+        parseRms(applied, lang),
+        renamed(model),
+        lang,
+        new Map(),
+        2,
+      );
+      expect(second.report).toEqual({
+        written: 0,
+        updated: 2,
+        unchanged: 0,
+        left: 0,
+      });
+      const after = applyEdits(applied, second.edits);
+      expect(after).toContain("ALP_ROLE_TERRAIN_LAKE");
+      expect(undefinedAlpNames(after)).toEqual([]);
+      expect((after.match(/create_land/g) ?? []).length).toBe(2);
+
+      const third = computeApplyEdits(
+        parseRms(after, lang),
+        renamed(model),
+        lang,
+        new Map(),
+        2,
+      );
+      expect(third.edits).toEqual([]);
+    });
+  }
+
+  it("still leaves a block the user edited by hand, even across a rename", () => {
+    const model = twoPlayerModel();
+    const first = computeApplyEdits(
+      parseRms(source, lang),
+      model,
+      lang,
+      new Map(),
+      2,
+    );
+    const applied = applyEdits(source, first.edits);
+    const handEdited = applied.replace(
+      "land_position ALP_X_P1 ALP_Y_P1",
+      "land_position ALP_X_P1 ALP_Y_P1\nborder_fuzziness 5",
+    );
+    expect(handEdited).not.toBe(applied);
+
+    const second = computeApplyEdits(
+      parseRms(handEdited, lang),
+      renamed(model),
+      lang,
+      new Map(),
+      2,
+    );
+    expect(second.report.left).toBe(1);
+    expect(second.report.updated).toBe(1);
+  });
+});
+
+// 2026-11-14, from Great_Bite. + Land with a per-player role made a land with
+// no repeat index, the emitter threw inside a React render, and the whole app
+// went blank.
+describe("a land outside any shape wearing a per-player role", () => {
+  it("emits as the first repeat, player 1", () => {
+    const model = twoPlayerModel();
+    const standalone: AlpModel = {
+      ...model,
+      placements: [
+        ...model.placements,
+        {
+          id: "land_9",
+          parent: "center",
+          frame: "radial",
+          label: "land_9",
+          role: "player",
+          offset: {
+            kind: "polar",
+            r: { k: "num", v: 20 },
+            theta: { k: "num", v: 90 },
+          },
+        },
+      ],
+    };
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n";
+    const result = computeApplyEdits(
+      parseRms(source, lang),
+      standalone,
+      lang,
+      new Map(),
+      2,
+    );
+    expect(result.emissionProblems).toEqual([]);
+    const after = applyEdits(source, result.edits);
+    expect((after.match(/create_land/g) ?? []).length).toBe(3);
+    expect(
+      computeApplyEdits(parseRms(after, lang), standalone, lang, new Map(), 2)
+        .edits,
+    ).toEqual([]);
+  });
+
+  it("an emitter error becomes a failed emission, not a throw", () => {
+    const model = twoPlayerModel();
+    const broken: AlpModel = {
+      ...model,
+      placements: model.placements.map((p) => ({ ...p, role: "missing" })),
+    };
+    const result = tryEmitAlpModel(broken, new NameAllocator(), new Map(), 2);
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toMatch(/missing/);
   });
 });

@@ -19,13 +19,18 @@ import { walkItems } from "../../walkItems";
 import type { LanguageData } from "../../../parser/language";
 import type { CommandNode, ParseResult } from "../../../parser/types";
 import type { TextEdit } from "../../../../tools-api/index";
-import { buildFenceEdits, locateFence, type AlpModel } from "./fence";
+import {
+  buildFenceEdits,
+  locateFence,
+  readFenceModel,
+  type AlpModel,
+} from "./fence";
 import {
   buildLandAttachmentExpectations,
   checkLandAttachment,
 } from "./landCommand";
-import { emitAlpModel } from "./emitModel";
-import { effectiveRole } from "./model";
+import { tryEmitAlpModel, type EmissionOk } from "./emitModel";
+import { effectiveRepeatIndex, effectiveRole } from "./model";
 import { NameAllocator } from "./compiler/naming";
 import { reservedNames } from "./preconditions";
 import { resolveLandGenerationCutOffset } from "./cutOffset";
@@ -133,6 +138,29 @@ function findCreateLandCommands(parse: ParseResult): CommandNode[] {
   return out;
 }
 
+/**
+ * The emission of the model the script's fence was last written from, or
+ * null when there is no fence, its banner does not read, or the old model no
+ * longer emits. Names are allocated the same way Apply allocates them, so a
+ * fence written by this tool and left alone reproduces the exact skeleton
+ * text it wrote. Null is the safe answer. Apply then behaves as it did before
+ * this existed, comparing against the new names only.
+ */
+function previousEmission(
+  parse: ParseResult,
+  lang: LanguageData,
+  scriptSymbols: ReadonlyMap<string, number>,
+  playerCount: number,
+): EmissionOk | null {
+  const old = readFenceModel(parse);
+  if (old === null) return null;
+  const namer = new NameAllocator({
+    reserved: reservedNamesForApply(parse, lang),
+  });
+  const result = tryEmitAlpModel(old, namer, scriptSymbols, playerCount);
+  return result.ok ? result : null;
+}
+
 /** What an Apply would do to the skeletons, for the panel to say so in words rather than as a bare edit count. */
 export interface ApplyReport {
   /** New `create_land` blocks this Apply writes. */
@@ -176,7 +204,7 @@ export function computeApplyEdits(
   const namer = new NameAllocator({
     reserved: reservedNamesForApply(parse, lang),
   });
-  const emission = emitAlpModel(model, namer, scriptSymbols, playerCount);
+  const emission = tryEmitAlpModel(model, namer, scriptSymbols, playerCount);
   if (!emission.ok) {
     // Sec.5.5: "the tool emits nothing and reports the offending node."
     return {
@@ -204,6 +232,12 @@ export function computeApplyEdits(
       : buildFenceEdits(parse, model, emission.body, fenceInsertionOffset);
 
   const existingLands = findCreateLandCommands(parse);
+  const previous = previousEmission(parse, lang, scriptSymbols, playerCount);
+  // Line endings normalised, since the tool writes LF and a script saved on
+  // Windows may hold CRLF (Great_Bite does). Only this comparison is
+  // normalised. The text Apply writes back is untouched.
+  const textOf = (land: CommandNode) =>
+    parse.source.slice(land.span.start, land.span.end).replace(/\r\n/g, "\n");
   const insertion = resolveSkeletonInsertion(parse, lang);
   const newSkeletonTexts: string[] = [];
   const updateEdits: TextEdit[] = [];
@@ -237,17 +271,29 @@ export function computeApplyEdits(
       roleNames: emission.roleNamesByPlacement.get(placement.id)!,
       xName: quantity.xName,
       yName: quantity.yName,
-      repeatIndex: placement.repeatIndex,
+      repeatIndex: effectiveRepeatIndex(placement),
     });
     const positionExpectation = expectations.filter(
       (e) => e.attribute === "land_position",
     );
 
-    const existing = existingLands.find(
-      (land) =>
-        checkLandAttachment(land, parse.tokens, positionExpectation)
-          .attributes[0]?.attached === true,
-    );
+    // What the previous Apply wrote for this same placement id, rebuilt from
+    // the model saved in the fence banner. A block whose text is exactly that
+    // is still the tool's, whatever the names are now. This is what lets a
+    // renamed role, land or shape carry its blocks along (2026-11-14). The
+    // checks below compare against the NEW names only, so a rename looked
+    // like a hand edit to them, and the blocks were left pointing at
+    // constants the new fence no longer defines.
+    const previousSkeleton = previous?.createLandSkeleton.get(placement.id);
+    const existing =
+      existingLands.find(
+        (land) =>
+          checkLandAttachment(land, parse.tokens, positionExpectation)
+            .attributes[0]?.attached === true,
+      ) ??
+      (previousSkeleton === undefined
+        ? undefined
+        : existingLands.find((land) => textOf(land) === previousSkeleton));
     if (existing === undefined) {
       newSkeletonTexts.push(skeletonText);
       report.written++;
@@ -287,11 +333,15 @@ export function computeApplyEdits(
     const onlyToolAttributes = [...actualNames].every((n) =>
       expectedNames.has(n),
     );
-    if (!presentAllAttached || !onlyToolAttributes) {
+    const current = textOf(existing);
+    const untouchedSinceLastApply = current === previousSkeleton;
+    if (
+      !untouchedSinceLastApply &&
+      (!presentAllAttached || !onlyToolAttributes)
+    ) {
       report.left++;
       continue;
     }
-    const current = parse.source.slice(existing.span.start, existing.span.end);
     if (current === fresh) {
       report.unchanged++;
       continue;

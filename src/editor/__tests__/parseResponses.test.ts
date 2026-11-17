@@ -11,6 +11,7 @@ import {
   debounceMsFor,
   type MessageLike,
   type ParseDiagnosticsMessage,
+  type ParseLivenessMessage,
 } from "../parseResponses";
 import type { ParseResultMessage } from "../parserWorker";
 import type { ParseResult } from "../../parser/types";
@@ -33,6 +34,16 @@ function resultMessage(requestId: number): ParseResultMessage {
   };
 }
 
+function livenessMessage(requestId: number): ParseLivenessMessage {
+  return {
+    kind: "liveness",
+    requestId,
+    status: "complete",
+    diagnostics: [],
+    ms: 0,
+  };
+}
+
 /** A MessageEvent stand-in whose `data` getter records every read. */
 function counted<T>(data: T): MessageLike<T> & { reads: number } {
   const event = {
@@ -52,6 +63,7 @@ function setup(latest: { id: number }) {
     onDiagnostics: (m) => calls.push(`diagnostics ${m.requestId}`),
     onResult: (m) => calls.push(`result ${m.requestId}`),
     onSkippedResult: (id) => calls.push(`skipped ${id}`),
+    onLiveness: (m) => calls.push(`liveness ${m.requestId}`),
   });
   return { route, calls };
 }
@@ -104,6 +116,37 @@ describe("createParseResponseRouter", () => {
     route(next);
     expect(next.reads).toBeGreaterThan(0);
     expect(calls).toEqual(["diagnostics 7", "skipped 7", "result 8"]);
+  });
+});
+
+describe("createParseResponseRouter, liveness replies", () => {
+  it("hands every liveness reply to onLiveness, current or not", () => {
+    const latest = { id: 9 };
+    const { route, calls } = setup(latest);
+    route(counted(livenessMessage(2)));
+    route(counted(livenessMessage(9)));
+    expect(calls).toEqual(["liveness 2", "liveness 9"]);
+  });
+
+  it("keeps a diagnostics, result, liveness sequence paired", () => {
+    const latest = { id: 5 };
+    const { route, calls } = setup(latest);
+    route(counted(diagnosticsMessage(5)));
+    route(counted(resultMessage(5)));
+    route(counted(livenessMessage(5)));
+    expect(calls).toEqual(["diagnostics 5", "result 5", "liveness 5"]);
+  });
+
+  it("still skips a superseded result unread when a liveness reply follows it", () => {
+    const latest = { id: 5 };
+    const { route, calls } = setup(latest);
+    route(counted(diagnosticsMessage(5)));
+    latest.id = 6;
+    const stale = counted(resultMessage(5));
+    route(stale);
+    route(counted(livenessMessage(5)));
+    expect(stale.reads).toBe(0);
+    expect(calls).toEqual(["diagnostics 5", "skipped 5", "liveness 5"]);
   });
 });
 

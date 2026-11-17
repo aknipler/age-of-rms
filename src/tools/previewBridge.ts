@@ -28,8 +28,13 @@ import type {
   PreviewResult,
   PreviewSettings,
 } from "../preview/generator/types";
+import gameConstantsRaw from "../../reference/data/game-constants.json";
+import objectDataRaw from "../../reference/data/object-data.json";
+import { buildLanguageIndex } from "../parser/language";
 import type { ObjectConstant } from "../preview/generator/objects";
 import type { IncludeFiles } from "../preview/generator/includes";
+import type { ObjectDataFile } from "../preview/generator/deObjectData";
+import type { TerrainRestriction } from "../preview/generator/forestTreeSuppression";
 import {
   isMapSize,
   isTeams,
@@ -38,6 +43,7 @@ import type { ParseResult } from "../parser/types";
 import type {
   PublishedGameConstants,
   ToolContext,
+  ToolReferenceData,
 } from "../../tools-api/index";
 
 export type PreviewBridgeFailure =
@@ -115,15 +121,46 @@ export function previewSettingsFromContext(
 export function objectConstantsFromPublished(
   constants: PublishedGameConstants,
 ): readonly ObjectConstant[] {
-  return constants.map((c) => ({
-    constId: c.constId ?? null,
-    rmsConstant: c.rmsConstant,
-    category: c.category,
-    resourceAmounts: c.resourceAmounts,
-    isWater: c.isWater,
-    isForest: c.isForest,
-    habitat: c.habitat,
-  }));
+  // Every field of the row, not a chosen few. This used to copy seven, and
+  // the generator reads more than `ObjectConstant` declares: the land and
+  // cliff stages spend each terrain's `decorations` draws, and the object
+  // stage reads `placementClass`. With those dropped, every tool generated a
+  // different map from the preview's at the same seed (found 2026-11-17).
+  // The spread keeps whatever the published row carries, so a field added
+  // to the schema later reaches the generator without an edit here.
+  return constants.map((c) => ({ ...c, constId: c.constId ?? null }));
+}
+
+const bundledConstants = gameConstantsRaw as unknown as {
+  terrainRestrictions?: TerrainRestriction[];
+};
+const bundledObjectData = objectDataRaw as unknown as ObjectDataFile;
+
+/**
+ * The reference data a built-in tool hands `generatePreview`, the same as the
+ * preview worker's (worker.ts), so a tool's map is the map the preview draws.
+ *
+ * Two parts are not on the published contract and come from the app's own
+ * bundled files instead. The object data (`object-data.json`, 0.8 MB) makes
+ * the object stage DE's own (preview-design Sec.6.6, rev 12), and
+ * `terrainRestrictions` is what the forest-tree suppression reads. Both are
+ * fixed data that never change during a session, which is why a built-in may
+ * import them like `buildLanguageIndex`, and the main bundle already holds
+ * `game-constants.json`.
+ *
+ * Call it once per run, before any loop. The language index and the
+ * constant rows are built here, and `objectEntry`'s WeakMap index keys on
+ * the array, so building per generation would rebuild both every run.
+ */
+export function toolPreviewReferenceData(
+  referenceData: ToolReferenceData,
+): PreviewReferenceData {
+  return {
+    language: buildLanguageIndex(referenceData.language),
+    constants: objectConstantsFromPublished(referenceData.gameConstants),
+    terrainRestrictions: bundledConstants.terrainRestrictions,
+    objectData: bundledObjectData,
+  };
 }
 
 /**

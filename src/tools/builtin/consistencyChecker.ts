@@ -5,7 +5,6 @@
  * aggregation and Sec.5's report builder into one `ToolImplementation`.
  */
 
-import { buildLanguageIndex } from "../../parser/language";
 import type { ParseResult } from "../../parser/types";
 import type { InstantiatedScript } from "../../preview/generator/types";
 import { instantiateScript } from "../../preview/generator/instantiate";
@@ -23,9 +22,9 @@ import {
 } from "../../../tools-api/index";
 import {
   includeFilesFromContext,
-  objectConstantsFromPublished,
   previewSettingsFromContext,
   runPreviewFromContext,
+  toolPreviewReferenceData,
 } from "../previewBridge";
 import { MonteCarloAggregate } from "./checker/aggregate";
 import {
@@ -225,15 +224,14 @@ async function runChecker(
   // read as the default rather than silently inverting it.
   const hideHealthy = ctx.params.hideHealthy !== false;
 
-  const languageIndex = buildLanguageIndex(ctx.referenceData.language);
-  const constants = ctx.referenceData.gameConstants;
   // Sec.4.1: this conversion happens ONCE, before any loop, never per
   // generation, or the WeakMap index objectEntry builds gets silently rebuilt
   // every single run.
-  const refDb: PreviewReferenceData = {
-    language: languageIndex,
-    constants: objectConstantsFromPublished(constants),
-  };
+  const refDb: PreviewReferenceData = toolPreviewReferenceData(
+    ctx.referenceData,
+  );
+  const languageIndex = refDb.language;
+  const constants = ctx.referenceData.gameConstants;
   // The second parse inside `instantiateScript` reads comments the way the
   // run's first parse did, so a word valued 69 or 70 behaves the same in both.
   const parseOptions = parseOptionsFor(refDb.constants);

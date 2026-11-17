@@ -72,6 +72,14 @@ export interface PreviewSettings {
    * reference maps come from the editor.
    */
   lobby?: "game" | "scenarioEditor";
+  /**
+   * Each player's civilization, by the dat's number (1 Britons), for the
+   * object stage (Sec.6.6, rev 12): it decides which objects a player has.
+   * Absent means Britons for everyone, the scenario editor's usual lobby. A
+   * number past the dat's last civilization, such as the editor's RANDOM
+   * (65537), stands for a real civilization DE picked.
+   */
+  civilizations?: readonly number[];
 }
 
 /** Structured-cloneable: plain data only, no functions (Sec.10). */
@@ -85,6 +93,8 @@ export interface PreviewOptions {
    * reads as empty with a note (includes.ts).
    */
   includeFiles?: IncludeFiles;
+  /** Diagnostics only: hears one line per frame of each `create_object` in DE's object stage. */
+  objectTrace?: (line: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -634,6 +644,56 @@ export interface PreviewResult {
   resourceTotals: ResourceTotals;
   /** Every cliff object the cliff stage built (Sec.6.3, rev 10), as the game places them. */
   cliffPieces: readonly CliffPiece[];
+  /**
+   * Every object of the saved map DE would write, terrain objects and cliff
+   * pieces included, in the file's own fields (Sec.6.6, rev 12). Present
+   * when the reference data carries the object data. `objects` holds the
+   * scripted ones in the renderer's terms.
+   */
+  deObjects?: readonly DeObjectRecord[];
+  /**
+   * The live terrain objects (forest trees and the decorations terrains
+   * spawn), for the canvas and the Obj. List. Present when the object data
+   * is loaded. Kept apart from `objects` because they are not what the
+   * script placed: the status bar already counts forest wood from the grid
+   * (forestTrees.ts), and the checker's figures are over scripted objects.
+   */
+  terrainObjects?: TerrainObjectLayer;
+}
+
+/**
+ * Terrain objects as parallel arrays, entry i being object i. A forested
+ * Giant map holds tens of thousands, and typed arrays cross the worker's
+ * `postMessage` as one block each rather than one object per tree.
+ */
+export interface TerrainObjectLayer {
+  /** Index into `kinds`. */
+  kind: Uint16Array;
+  /** Position in tiles. */
+  x: Float32Array;
+  y: Float32Array;
+  /** One entry per object type present, in first-seen order. */
+  kinds: readonly TerrainObjectKind[];
+}
+
+export interface TerrainObjectKind {
+  id: number;
+  /** The object's constant name, as the Obj. List and the hidden set name it. */
+  objectRef: string;
+  /** A `PlacedObject.category`, for the glyph colour. */
+  category: string;
+}
+
+/** One object as a DE scenario file stores it (Sec.6.6, rev 12). */
+export interface DeObjectRecord {
+  id: number;
+  owner: number;
+  x: number;
+  y: number;
+  rotation: number;
+  frame: number;
+  status: number;
+  kind: "terrain" | "cliff" | "script";
 }
 
 /**

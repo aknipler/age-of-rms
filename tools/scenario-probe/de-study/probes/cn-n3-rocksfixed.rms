@@ -1,0 +1,19 @@
+#const PANDA_ROCK 2082
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+create_land { terrain_type DIRT land_position 16 16 base_size 0 number_of_tiles 0 land_id 11 }
+create_land { terrain_type DIRT land_position 50 16 base_size 0 number_of_tiles 0 land_id 12 }
+create_land { terrain_type DIRT land_position 83 16 base_size 0 number_of_tiles 0 land_id 13 }
+create_land { terrain_type DIRT land_position 16 83 base_size 0 number_of_tiles 0 land_id 14 }
+create_land { terrain_type DIRT land_position 50 83 base_size 0 number_of_tiles 0 land_id 15 }
+create_land { terrain_type DIRT land_position 83 83 base_size 0 number_of_tiles 0 land_id 16 }
+<OBJECTS_GENERATION>
+create_object PANDA_ROCK { set_gaia_object_only place_on_specific_land_id 11 max_distance_to_players 0 }
+create_object PANDA_ROCK { set_gaia_object_only place_on_specific_land_id 12 max_distance_to_players 0 }
+create_object PANDA_ROCK { set_gaia_object_only place_on_specific_land_id 13 max_distance_to_players 0 }
+create_object PANDA_ROCK { set_gaia_object_only place_on_specific_land_id 14 max_distance_to_players 0 }
+create_object PANDA_ROCK { set_gaia_object_only place_on_specific_land_id 15 max_distance_to_players 0 }
+create_object PANDA_ROCK { set_gaia_object_only place_on_specific_land_id 16 max_distance_to_players 0 }

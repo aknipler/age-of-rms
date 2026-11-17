@@ -5,6 +5,12 @@ CLAUDE.md
 # (tools/scenario-probe/de-study/README.md). Reformatting would change the
 # record it exists to keep.
 tools/scenario-probe/de-study/evidence
+tools/scenario-probe/de-study/data
+
+# Written by tools/extract-constants --object-data with one row per object,
+# graphic and restriction, so a diff after a game patch names each object that
+# changed. Prettier would spread its 2,693 rows over about 60,000 lines.
+reference/data/object-data.json
 
 # Cargo's build output. Prettier reads only this file and the root .gitignore,
 # not src-tauri/.gitignore, so it walked into target/ and tried to read the

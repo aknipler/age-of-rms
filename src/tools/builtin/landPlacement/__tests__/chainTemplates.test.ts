@@ -122,6 +122,7 @@ function modelFor(group: ShapeGroup): AlpModel {
   const { placements, chainPlacements } = expandShapeGroup(group);
   return {
     v: 1,
+    constants: [],
     placements: [...placements, ...chainPlacements],
     roles: [playerRole(), auxRole()],
     randomParams: [

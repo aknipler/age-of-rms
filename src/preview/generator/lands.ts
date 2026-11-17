@@ -64,6 +64,7 @@ import {
   terrainClassTable,
 } from "./terrainClass";
 import { pushFailure } from "./placement";
+import type { TerrainObjectWorld } from "./terrainObjects";
 
 const DEFAULT_BASE_SIZE = 3;
 const DEFAULT_BORDER_FUZZINESS = 20;
@@ -305,7 +306,7 @@ function computeZone(
 }
 
 /** The game's one-byte zone, `(zone + 10) & 0xFF`. 0xFE is "free" and 0xFF is "dead", so zones -12 and -11 alias them (Sec.6.1, untested). */
-function zoneByte(zone: number): number {
+export function zoneByte(zone: number): number {
   return (((Math.trunc(zone) + 10) % 256) + 256) % 256;
 }
 
@@ -1303,6 +1304,7 @@ export function growLands(
   grid: TileGrid,
   reports: readonly CommandReport[],
   streamState: DeStreamState,
+  keepZones?: (zones: Uint8Array) => void,
 ): DeStreamState {
   const { dim } = grid;
   const tileCount = dim * dim;
@@ -1541,6 +1543,8 @@ export function growLands(
       grid.zone[tile] = origin.zone;
     }
   });
+  // The game's own zone grid, which the object stage reads (Sec.6.6, rev 12).
+  keepZones?.(zones);
   return stream.state();
 }
 
@@ -1663,14 +1667,24 @@ export function cleanTerrainAgainst(
 export function cleanLandTerrain(
   grid: TileGrid,
   baseTerrainId: number,
-  restore?: { stream: DeStream; draws: number },
+  restore?: { stream: DeStream; draws: number; world?: TerrainObjectWorld },
   onRevert?: CleanupListener,
 ): number {
   return cleanTerrainAgainst(grid, baseTerrainId, (i, formerTerrain) => {
     const formerLand = grid.landId[i];
     grid.landId[i] = -1;
     grid.zone[i] = 0;
-    if (restore) for (let d = 0; d < restore.draws; d++) restore.stream.raw();
+    // With a terrain object world the draws make real objects (Sec.6.6,
+    // rev 12), in the same number and order as the plain draws below.
+    if (restore?.world)
+      restore.world.landRestore(
+        restore.stream,
+        i,
+        baseTerrainId,
+        (j) => grid.terrain[j],
+      );
+    else if (restore)
+      for (let d = 0; d < restore.draws; d++) restore.stream.raw();
     onRevert?.(i, formerTerrain, formerLand);
   });
 }
@@ -1700,6 +1714,7 @@ export function finishLandStage(
   constants: readonly TerrainConstantForMasks[],
   streamState: DeStreamState,
   onRevert?: CleanupListener,
+  world?: TerrainObjectWorld,
 ): DeStreamState {
   paintLandTerrain(origins, grid);
   const stream = resumeDeStream(streamState);
@@ -1709,6 +1724,7 @@ export function finishLandStage(
     {
       stream,
       draws: decorationDrawsOf(terrainClassTable(constants), baseTerrainId),
+      world,
     },
     onRevert,
   );

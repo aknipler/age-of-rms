@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  createDeChainStream,
   createDeStream,
   jenkinsHash,
   mulHigh32,
@@ -73,6 +74,19 @@ describe("the game's stream (deRandom.ts)", () => {
     expect([a.raw(), a.raw()]).toEqual(next);
     expect([b.raw(), b.raw()]).toEqual(next);
     expect(saved.count).toBe(1);
+  });
+});
+
+describe("the seed's chain of generators (Sec.8, rev 12)", () => {
+  it("gives the script's stream as generator 2, and other generators that differ from it", () => {
+    for (const seed of [1004, -7]) {
+      const script = createDeStream(seed);
+      const second = createDeChainStream(seed, 2);
+      for (let k = 0; k < 20; k++) expect(second.raw()).toBe(script.raw());
+      const three = createDeChainStream(seed, 3).raw();
+      const six = createDeChainStream(seed, 6).raw();
+      expect(new Set([createDeStream(seed).raw(), three, six]).size).toBe(3);
+    }
   });
 });
 

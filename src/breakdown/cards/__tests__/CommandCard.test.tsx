@@ -92,6 +92,7 @@ function Harness({ initialSource }: { initialSource: string }) {
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     editInCode: () => {},
     // No-ops, this fixture's tests never move or duplicate a card.

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ageofrms.dev/schemas/object-data.schema.json",
+  "title": "Object data",
+  "description": "The object data the preview's object stage reads (docs/preview-design.md Sec.6.6, rev 12). Written by `python tools/extract-constants/extract_constants.py --object-data` from empires2_x2_p1.dat. Never edited by hand.",
+  "type": "object",
+  "required": [
+    "note",
+    "civilizationCount",
+    "objects",
+    "graphics",
+    "restrictions",
+    "townCentreAttribute",
+    "wallGates"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "pair": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "ids": { "type": "array", "items": { "type": "integer" } }
+  },
+  "properties": {
+    "note": { "type": "string" },
+    "civilizationCount": { "type": "integer", "minimum": 1 },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "cls", "type", "hp", "r", "c", "p", "z", "o"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "integer", "minimum": 0 },
+          "cls": { "type": "integer" },
+          "type": { "type": "integer" },
+          "g": { "type": "integer", "minimum": 0 },
+          "hp": { "type": "integer" },
+          "r": { "type": "integer" },
+          "c": { "$ref": "#/$defs/pair" },
+          "p": { "$ref": "#/$defs/pair" },
+          "z": { "type": "number" },
+          "o": { "$ref": "#/$defs/pair" },
+          "spd": { "type": "number" },
+          "cbo": { "const": 1 },
+          "slope": { "type": "integer" },
+          "act": { "type": "integer" },
+          "kind": { "type": "integer" },
+          "ctr": { "$ref": "#/$defs/ids" },
+          "side": { "$ref": "#/$defs/ids" },
+          "res": { "$ref": "#/$defs/pair" },
+          "fnd": { "type": "integer" },
+          "ann": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "civs": { "$ref": "#/$defs/ids" },
+          "hid": { "const": 1 }
+        }
+      }
+    },
+    "graphics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "integer" },
+        "minItems": 3,
+        "maxItems": 3
+      }
+    },
+    "restrictions": {
+      "type": "array",
+      "items": { "type": "array", "items": { "type": "number" } }
+    },
+    "townCentreAttribute": { "type": "array", "items": { "type": "number" } },
+    "wallGates": {
+      "type": "object",
+      "required": ["rows", "byWallObject"],
+      "additionalProperties": false,
+      "properties": {
+        "rows": { "type": "array", "items": { "type": "string" } },
+        "byWallObject": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/ids" }
+          }
+        },
+        "default": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/ids" }
+        }
+      }
+    }
+  }
+}

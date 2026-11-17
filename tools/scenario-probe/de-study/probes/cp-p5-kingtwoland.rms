@@ -1,0 +1,15 @@
+#const ONGRID_PLACEHOLDER 1613
+<PLAYER_SETUP>
+direct_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DIRT base_size 9 land_percent 0 land_position 25 50 assign_to_player 1 set_circular_base zone 3 }
+create_land { terrain_type DIRT base_size 9 land_percent 0 land_position 75 50 assign_to_player 2 set_circular_base zone 3 }
+create_land { terrain_type GRASS base_size 0 number_of_tiles 0 land_position 45 50 assign_to_player 1 }
+create_land { terrain_type GRASS base_size 0 number_of_tiles 0 land_position 55 50 assign_to_player 2 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player terrain_to_place_on DIRT max_distance_to_players 1 find_closest actor_area 2800 actor_area_radius 0 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2812 actor_area_radius 12 }
+create_object KING { set_place_for_every_player terrain_to_place_on DIRT min_distance_to_players 6 max_distance_to_players 12 actor_area_to_place_in 2812 }
+create_object GOLD { set_gaia_object_only number_of_objects 3 number_of_groups 4 set_tight_grouping min_distance_to_players 15 }
+create_object DEER { set_gaia_object_only number_of_objects 2 number_of_groups 4 set_loose_grouping min_distance_to_players 15 }

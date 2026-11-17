@@ -112,6 +112,19 @@ export function effectiveRole(
   return { ...role, ...defined };
 }
 
+/**
+ * A `#const` the panel owns. It lives in the model, so every Apply writes it
+ * out again at the top of the fence body and never loses it.
+ */
+export interface PanelConstant {
+  /** Stable, from freshId("const", takenIds(model)). */
+  id: string;
+  /** The emitted #const name, written as typed. */
+  name: string;
+  /** May use script #consts, RandomParams and EARLIER panel constants only. */
+  value: Expr;
+}
+
 export interface RandomParam {
   id: string;
   label: string; // becomes the emitted const name (Sec.5.6)
@@ -296,13 +309,31 @@ export function isPlayerAssigned(assign: AssignPolicy): boolean {
 }
 
 /**
+ * The repeat index every per-land attribute reads (2026-11-14, the Great_Bite
+ * crash). A shape member always has one. A land added with + Land never had
+ * one, and the panel has no control to give it one, so a role whose zone or
+ * player number counts per repeat made the emitter throw inside a React render
+ * and blank the whole app. Such a land counts as the first repeat, player 1
+ * and the zone's base number.
+ *
+ * One function rather than a `?? 0` at each reader, because the skeleton
+ * writer and the two attachment checks must agree on the number. If they read
+ * different values, Update would see its own block as hand-edited and leave it.
+ */
+export function effectiveRepeatIndex(
+  placement: Pick<Placement, "repeatIndex">,
+): number {
+  return placement.repeatIndex ?? 0;
+}
+
+/**
  * One chained child, authored once on a `PatternSlot` and expanded onto
  * every member that slot produces (composite-pattern-escalation.md Sec.5,
- * Q12). The offset is in the MEMBER's own frame, so `radial` means Sec.4.2's
- * angle ABC measured at that member. Depth 1 by measurement rather than
- * taste (Sec.5.3: the corpus's deepest chain is 1, in one map); a template
- * cannot carry templates, and a deeper chain stays reachable by parenting a
- * standalone `Placement` to an expanded chain child.
+ * Q12). The offset is in the PARENT's own frame, so `radial` means Sec.4.2's
+ * angle ABC measured at the parent. The parent is the slot's member, or
+ * another template in the same slot when `parent` is set, so chains nest to
+ * any depth and every level repeats on every copy. A standalone land parented
+ * to one expanded chain copy still gives a one-off child.
  */
 export interface ChainTemplate {
   /** Stable; with (repeatIndex, slotId) this is the merge key. */
@@ -312,6 +343,13 @@ export interface ChainTemplate {
   label: string;
   frame: FrameKind;
   offset: Placement["offset"];
+  /**
+   * The id of another template in the SAME slot's `chain` that this one hangs
+   * off. Absent means it hangs off the slot's member, which is every template
+   * written before nesting existed. Invariant, the parent appears EARLIER in
+   * `slot.chain`, so expansion pushes a parent before its children.
+   */
+  parent?: string;
 }
 
 export interface PatternSlot {

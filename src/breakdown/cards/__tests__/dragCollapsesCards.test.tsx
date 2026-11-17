@@ -76,6 +76,7 @@ function Harness({ open }: { open: (item: Item, index: number) => boolean }) {
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     moveItem: (...args: unknown[]) => moved.push(args),
     duplicateItem: () => {},

@@ -47,7 +47,7 @@ The panel beside Breakdown and Code holds two tabs, **Preview** and **Reference*
 - **Truncate at Cursor** draws only what the script builds up to your cursor, useful for testing. The pin button beside it holds that cut point while you edit elsewhere.
 - The seed chip shows the seed the preview used. Type a seed to reproduce a layout, or press Ctrl+R to roll a new one.
 - **Notes** lists every placement that failed.
-- **Obj. List** under the map counts what each object placed. A zero means no tile met that object's rules. Untick an object to hide it from the drawing while it stays placed and counted.
+- **Obj. List** under the map counts what each object placed, including the trees and grass that terrains spawn on their own. A zero means no tile met that object's rules. Untick an object to hide it from the drawing while it stays placed and counted.
 - **Export** saves the current view as a PNG.
 - The labels Left, Bottom, Right and Top on the map's sides match the RMS border names, so `left_border` is the side marked Left.
 - The **Reference** tab looks up terrains, objects, commands and the attributes each command accepts.
@@ -56,12 +56,12 @@ The status bar totals are read from the generation on screen, so they show what 
 
 ## How far to trust the preview
 
-The preview runs the script stage by stage, in the order the game does. Every stage up to the objects draws the game's own random numbers in the game's own order. Only the objects are an approximation.
+The preview runs the script stage by stage, in the order the game does. Every stage draws the game's own random numbers in the game's own order, so the map comes out the same as the game's at the same seed.
 
-| Stage       | Compared with the game                                     |
-| ----------------------------------------------- | ---------------------------------------------------------- |
-| Lands, Elevation, Cliffs, Terrains, Connections | Tile for tile at the same seed                             | 
-| Objects                                         | Close approximation |
+| Stage                                           | Compared with the game                                                  |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| Lands, Elevation, Cliffs, Terrains, Connections | Tile for tile at the same seed                                          |
+| Objects                                         | Object for object at the same seed, checked on Tiny maps with 2 players |
 
 These were checked against maps saved in the game's scenario editor. The editor and a game lobby define a few different labels (the lobby defines `RANDOM_MAP`, for one), and the preview uses the lobby's, so a script that branches on those labels can differ from the editor.
 
@@ -112,6 +112,7 @@ Use the bug button in the status bar, or [open an issue](https://github.com/akni
 
 ## Known limits
 
-- Objects in the preview are an approximation, see [How far to trust the preview](#how-far-to-trust-the-preview).
+- Objects were checked against the game on Tiny maps with 2 players. Larger maps, more players and other civilizations have not been compared yet, see [How far to trust the preview](#how-far-to-trust-the-preview).
+- A large map with many players can take 10 seconds or more to generate.
 - The preview reads files pulled in with `#include_drs` from your game install, but the Code tab's warnings do not, so they cannot see constants or commands defined in those files. It holds back warnings it cannot be sure of in such a script.
 - There is no macOS build yet. The README explains how to build one yourself.

@@ -1649,6 +1649,62 @@ Two rules keep false warnings quiet now that the include files are read. `npm ru
 
 ---
 
+## 57. Name liveness marks, 2026-11-04 (`src/parser/liveness/report.ts`, `src/editor/livenessPass.ts`, `src/editor/parserWorker.ts`)
+
+Section 56 is held for the token alias run sheet, so this one takes 57. Run on DE's `Stranded.rms`, `Arabia.rms` and `24hr_Blind Valley.rms` from the install, in `npm run tauri dev`. The marks come from a second pass that starts about 300 ms after the worker goes idle, so each check waits for a pause.
+
+1. In `Arabia.rms`, wait after typing stops. Confirm a blue RMS0321 underline appears on a name read where it may not be defined, about a third of a second later. Hover it and confirm the message names a condition, then click the "Defined on line N" link under the message and confirm the caret moves to that line.
+2. In `Stranded.rms`, the slowest script of the three, type a character in the middle of the file and keep typing for a few seconds. Confirm the editor does not freeze while you type, then stop and note how long the marks take to return. If a key pressed during an analysis feels held up, say how long.
+3. Type a character in `Arabia.rms` and confirm the marks clear at once while you type, then come back after the pause. Confirm no mark sits on the wrong line in between.
+4. Open Settings, Diagnostics. Confirm "Report branches a switch turns off" is ticked. Open `24hr_Blind Valley.rms` or any script with a flag defined at the top and tested below, and confirm an RMS0323 note shows on the `else` or `elseif`. Untick the box and confirm every RMS0323 note goes and the status bar count drops. Tick it again and confirm they return. Then hover an RMS0323, click "Don't show me this again", and confirm the Settings box is now unticked.
+5. Open a script with an RMS0321 in Breakdown. Hover the card's info badge and confirm it shows the same message and one "Line N" button. Click the button and confirm the card that defines the name is selected and scrolled into view, even when its section was not showing.
+6. Open `MountainRange.rms`. Confirm the status bar shows "Name checks skipped" beside the problem count, hover it for the explanation, and confirm no RMS0320 to RMS0323 mark appears in that script while the other warnings still do.
+
+## 58. Land Placement Constants section, nested chains and chain drag (`docs/land-placement-constants-chains-drag-brief.md`)
+
+Built 2026-11-14 and never run in the app. The Constants section lists CONST_NUM_PLAYERS first, a built in constant that is written as an if ladder the first time a formula names it.
+
+1. Type `ISLAND_SIZE` into a role's Base size where the script defines no such name. Confirm the warning offers Create constant, give it 300, and confirm the warning goes, the Constants section above Roles lists `ISLAND_SIZE 300`, and Apply writes `#const ISLAND_SIZE 300` at the top of the fence.
+2. Apply a second time and confirm nothing in the document changes. Rename the constant in the Constants section and confirm every box that used it shows the new name.
+3. With `#const ISLAND_SIZE 300` written by hand on its own line above the fence and used in a box, confirm it lists as a script constant with its line. Change it to 350 and confirm only that number changed in Code, and that Ctrl+Z puts it back. Confirm a `#define`, a const inside an `if`, and a const defined twice each show read-only with their reason.
+4. On an 8-player ring with a chained gold land, add a chained stone under the gold with + chained land. Confirm eight stones appear, each beside its own gold, and that the tree nests them under the gold. Remove the gold template and confirm the stones go with it.
+5. Drag one gold copy and confirm all eight golds move together. Ctrl+drag one and confirm only that one moves. Hold Shift while dragging and confirm the drop snaps to a whole percent.
+6. Ctrl+drag a gold copy, then drag the same copy without Ctrl. Confirm it rejoins the others at the new spot.
+
+## 59. Land Placement crash on + Land and Update after a rename, 2026-11-14 (`applyEdits.ts`, `emitModel.ts`, `PanelErrorBoundary.tsx`)
+
+Open `test-maps/Great_Bite_check_ARMS_matches_DE.rms` in Advanced Tools, Land Placement.
+
+1. With "with role" on ROLE_PLAYER, press + Land. Confirm the app stays up, the new land shows on the canvas, and Update writes a `create_land` with `assign_to AT_PLAYER 1 0 0`.
+2. Rename ROLE_POND to ROLE_LAKE and press Update. Confirm the report says 16 updated and none left, every pond `create_land` in Code now says `ALP_ROLE_TERRAIN_ROLE_LAKE`, and the Code tab shows no undefined name warnings for the old names. Press Update again and confirm it says up to date.
+3. Add `border_fuzziness 5` by hand to one pond `create_land`, rename the role back, and press Update. Confirm that one block is left as it is and the other 15 take the new name.
+4. Rename a shape or a land label and press Update. Confirm its blocks move to the new position names with no second copy written. This case has no automated test.
+
+---
+
+## 60. Land Placement shapes follow the seed, 2026-11-14 (`docs/land-placement-seed-follow-brief.md`)
+
+Built and never run in the app.
+
+1. Open Great_Bite in Land Placement. Press Re-roll five times and confirm each time the ponds, players and far lands drawn on the canvas sit on their lands in the map below.
+2. Uncheck Shapes follow seed and Re-roll. Confirm the shapes stay put while the map moves.
+3. Check it again and confirm the shapes jump back onto the lands.
+4. Change a param's range in the panel without applying. Confirm the line about random values not in the script appears and that shape draws at the middle of its new range. Apply and confirm the line goes.
+5. With following on, drag a pond member and Re-roll. Confirm the drag kept its edit and the member did not jump on release. If it jumps, stop and tell the owner.
+6. Type a seed in the Seed box and press Enter. Confirm the map regenerates at that seed and that Esc puts the old number back.
+
+## 61. Land Placement panel round, 2026-11-14
+
+Built and never run in the app.
+
+1. Open a role. Confirm set_circular_base and Conformity sit with the other attributes, with a gap between them, and that no disclosure folds them away.
+2. Confirm the labels read Border Fuzziness and Other Zone Avoidance Distance in the role editor and in the override picker.
+3. Give one role set_circular_base and another none. Confirm the first draws a circle on the canvas and the second a square (a diamond in the map's projection), and that a click in the square's corner selects it.
+4. Type CONST_NUM_PLAYERS into a Base size, Apply, and confirm an if 1_PLAYER_GAME ladder is written at the top of the fence. Change the player count and confirm the value follows.
+5. File > New. Confirm the Save dialog opens, that cancelling it leaves the current script as it was, and that choosing a name makes an empty script saved at that path.
+6. Trigger a What's New announcement with one step only and confirm it shows Finish and nothing else.
+7. In the Code tab, click inside a command in a script with uneven indentation and press Ctrl+Alt+F and use Edit > Toggle Command Layout. Confirm only that command changes shape each time, and that Ctrl+Z puts it back.
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

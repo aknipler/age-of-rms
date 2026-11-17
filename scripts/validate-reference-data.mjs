@@ -19,6 +19,7 @@ const FILES = [
   { schema: "doc-strings.schema.json", data: "doc-strings.json" },
   { schema: "ui-help.schema.json", data: "ui-help.json" },
   { schema: "block-skeletons.schema.json", data: "block-skeletons.json" },
+  { schema: "object-data.schema.json", data: "object-data.json" },
 ];
 
 function readJson(relativePath) {

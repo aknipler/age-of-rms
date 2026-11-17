@@ -26,6 +26,8 @@ interface StatusBarProps {
   pending?: boolean;
   /** D3: "Pinned line N" / "Current line N" when Current view is drawing less than the whole script. Absent draws nothing. */
   cutLabel?: string;
+  /** The name checks (RMS0320 to RMS0323) gave up on this script because it was too complex. Draws a short label. */
+  livenessSkipped?: boolean;
   /** Opens a prefilled GitHub issue in the user's browser (src/bugReport.ts). */
   onReportBug?: () => void;
   /** Opens a new discussion in the ideas category in the user's browser (src/bugReport.ts). */
@@ -415,6 +417,7 @@ export function StatusBar({
   neutral = ZERO_RANGE,
   pending = false,
   cutLabel,
+  livenessSkipped = false,
   onReportBug,
   onSuggestFeature,
 }: StatusBarProps) {
@@ -455,6 +458,11 @@ export function StatusBar({
         />
       </div>
       <div className={styles.pinned}>
+        {livenessSkipped && (
+          <HelpTip id="statusBar.livenessSkipped">
+            <span className={styles.cutLabel}>Name checks skipped</span>
+          </HelpTip>
+        )}
         {/* The breakdown stays written out ("4 warnings, 2 info") rather than
             collapsing to a total. The triangle replaces the word "Problems:",
             a label that never told the user anything the row's position

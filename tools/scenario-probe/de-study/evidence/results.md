@@ -1167,3 +1167,879 @@ line is GP's refuted reading; its confirmed `+ignored` is identical.
 **Terrain check after both fixes** (`terrain_all.py`, `terrain_all2.txt`): **178 of 178 CG-CJ maps exact in terrain,
 elevation and layer.** Regression: CH 18 of 18, CO 56 of 61, GP unchanged, Part 0 95 of 95, and CF with u2 1002 and
 1003 now identical (the fresh maps).
+
+## 2026-11-01, object analysis started (`obj_analysis.py`, `obj_tilt.py`, `obj_report.txt`, `obj_detail.txt`)
+
+- `obj_analysis.py cache|report|detail` gives each corpus/slice map's first diverging command (OBJ_PKL picks the cache;
+  `obj_analysis.pkl` is the baseline, `obj_analysis_new.pkl` the one with the rule below).
+- `obj_tilt.py <stem> <cmd> [T]`: reruns the object stage with the stream moved by -T..T draws just before the
+  command. A peak at t != 0 means an earlier command spent the wrong number of draws; no peak means the command's rule is wrong.
+- Herdable owners (gaia/player counts) agree on every corpus map except Ra 1004 (4 owned predicted, 3 saved).
+- **New default `builder_deletes "scripted"`** (control "off"). An object that cannot be built on deletes the scripted
+  can-be-built-on objects at its own position or within the two collision sizes, as it already did decorations.
+  Evidence: Bulls_Eyes 1004/1005. Every hidden 346 that a later 647 or a sheep stands on is missing in DE, and every
+  other 346 and every 647 matches. Bulls_Eyes' first divergence moves from cmd 25 to cmd 60 on both seeds.
+  NOT yet regressed on other rounds.
+- Bulls_Eyes cmd 60 (3 VILLAGER, actor_area_to_place_in 11 radius 1 around a straggler tree, place_on_forest_zone):
+  no tilt peak (t -6..6), so the rule is wrong, not the stream. DE leaves the decoration 1365 on a tile the model
+  puts a villager on.
+- Heart 1004 cmd 31 (VILLAGER at min = max distance 6, every player): no tilt peak (t -6..6; best 2/6 at t -1), so
+  it is the rule, not the stream. Round CH's H slice matched Heart's villagers, so whatever is different must come
+  from the full map, e.g. earlier objects on the ring tiles. (20 min per tilt run on Heart.)
+- **New default `filter_resolve "draw"`** (control "none"). With a forest or cliff zone filter, every actor-area
+  candidate re-resolves the object it tests. That spends the group roll and the replacement roll (VILLAGER -> female),
+  as AoE2RMSIDE does (restated). Bulls_Eyes 1005: every object through cmd 69 now matches (only 4 STONE unexplained);
+  1004 now first parts at cmd 61 HOUSE (3 of 4). Applies to actor-area routes only; the queue path is not changed.
+- Regression (2026-11-02): CH 18/18 and CO 56/61 with builder_deletes; CF (both rules) every modelled map identical.
+  u4-force, u6 walls and u7 require_path differ, as before. CH/CO not yet rerun with filter_resolve.
+- 2026-11-02, age-of-rms's 14 `known` whole-script maps explained in `notes/amendment-2026-11-02-drain-includes.md`
+  (copied to de-study/evidence). Menindee: the drain writes the whole target, so under terrain_mask 1 a drained tile
+  gets the base terrain (11 tiles, all with the target on both sides). Bazi (12): `#include_drs` files.
+
+## 2026-11-08, object analysis continued
+
+- Regression with `builder_deletes` and `filter_resolve`: CH 18/18, CO 56/61 (unchanged). `obj_analysis_fr.pkl` is
+  being refilled with both rules for every corpus map and slice (`obj_cache_fr.log`).
+- **Comeer HUT_VARS (open).** DE saves no African hut at either seed. The group has seven huts of weight 14-15, one
+  per player, find_closest, min 8. The huts' restriction 4 allows the SNOW under the model's spots. Reading
+  `group_empty "none"` (a roll no entry reaches places nothing): fixes 1004, but at 1005 the model still places
+  1083 where the roll kept every entry, and DE placed none there either. So it is a control, not the default. The
+  cause is unknown; a probe would need huts singly and as a group, player-owned and gaia, on SNOW and GRASS.
+- **Second-object fish (FISH 53 on Pag and Namatjira) are downstream.** Each fish stands on its carrier (1546 on
+  Pag, 647 on Namatjira), and the carriers come from commands that already differ.
+- **Heart's GAIA_UPGRADE_UNIT is not the decoration cause.** DE's saved maps hold no UNDERBUSH_PLANT_6 (1366), so
+  the upgrade does not show in the editor's file. Heart's decorations differ through the terrain stage, like Bazi's
+  and Rekawa's: 81 of 629 at DE's position, with saved decorations near both starts that the model lacks.
+- Heart's villagers (cmd 31, min = max 6): DE and the model both keep the ring around the land origin; the town
+  centre stands one tile off it (find_closest). CH's slice had the town centre on the origin. Testing whether the
+  candidate window centres elsewhere (`obj_variant.py ... window`).
+- **Battle Lines cmd 5 (GROUP_IDLE_VILLAGER: 1810 male 50, 293 female 50; find_closest, 2 per player) lands on
+  DE's tiles; only the type differs.** At 1004, player 2's first villager is 293 in DE and 1810 in the model. The
+  model's rolls per player are: initial pick (plus 293's replacement roll), then per group a discarded pick, the
+  pick placed, and the pick for invalidation. Player 1: 82 | 45 72 -> 1810 | 56 | 42 32 -> 1810 | 6. Player 2:
+  17 (49) | 33 78 -> 1810 (DE 293) | 26 | 55 73 -> 1810 | 14. find_closest makes positions insensitive to the draw
+  count, so cmd 6 (actor_area_to_place_in, random) shows the drift: both its villagers are off. Which picks DE
+  makes, and which of them spend 293's replacement roll, is the question. Readings tried by hand (the discarded pick
+  replaced too) are not conclusive. `obj_picks.py <stem> [cmd]` logs the rolls.
+- **New default `group_initial "raw-none"`: an object picked from a group is never replaced** (no replacement roll).
+  The male/female swap of VILLAGER and 293 applies only to an object a command names directly. Battle Lines then
+  matches through cmd 6 at both seeds (first divergence cmd 7 GROUP_HERDABLE_A). Before, cmd 5 had one wrong type
+  at 1004 and positions off at 1005. Tested on the way: "raw" (only the first pick unreplaced) fixed 1004 but not
+  1005; "raw-all" (the first and the invalidation picks) was no better. Every group pick now goes through
+  `pick_object`. The class-filter resolve (`filter_resolve`) still replaces, as AoE2RMSIDE does; untested for groups.
+- Heart's villager window (`obj_variant.py ... window`, centre shifted -1..1): no shift helps (at most 1 of 6), so
+  the window centre is not the cause.
+- Regression with `group_initial "raw-none"` (and builder_deletes, filter_resolve): CH 18/18, CO 56/61, CF 45
+  identical with the same three scripts differing as before (u4-force, u6 walls, u7 require_path). Unchanged.
+- Full re-prediction with builder_deletes, filter_resolve and raw-none (`obj_analysis_v3.pkl`, `obj_report_v3.txt`):
+  corpus objects at DE's position 263,841 -> 263,989 of 281,697 (Bulls_Eyes +172; Caverns 1005 -35, Bazi -1).
+  Venn's first divergence is now cmd 49/45 (O278 with WALL second object, walls unmodelled), was cmd 5.
+- **New default `expand_route "route"`:** a starting-villager command (VILLAGER, number_of_objects 1, expanded to
+  the civ's count) with `actor_area_to_place_in` takes the area's weighted draws, one group per villager, instead of
+  the plain queue. Caverns cmd 22 (in the town centre's area, avoid_forest_zone 2): 0/6 -> 6/6, and cmds 23-25 then
+  exact (463, 1,313, 30). **Caverns 1004 and 1005: every script object at DE's position** (`obj_analysis_v4.pkl`);
+  only facings differ.
+- **Caverns' facings:** all 20 FORAGE facets of cmd 18 match with stream 6 moved 4 draws on, so DE spends 2 more
+  draws per player in cmd 17. Cmd 17 is TC_PLACEHOLDER 1870 (a building the script sets to HP 0) with second_object
+  TOWN_CENTER. The model spends 7 draws per player: 1870, 109, 618, 619 (+ its child 1649), 620, 890. Not HP 0 by
+  itself: Bulls_Eyes' flags 851/1285 are HP 0 and placed, and its later facings match. Open: 1870's own draws (the
+  content pack lists no attachments for it), or the TC arriving as a second object. Needs a probe.
+- `obj_facets.py <stem> ...`: the first object whose random facet differs from DE's, the objects built just before
+  it, and the stream-6 shift that best explains the next 40.
+- Regression with `expand_route "route"`: CH 18/18, CO 56/61, CF unchanged (u4, u6, u7 differ as before).
+- `obj_facets.py` fixed: random-angle objects store an angle in radians, now compared as such. Second run:
+  Bulls_Eyes, Immersion and Pag first go wrong in facing where positions are already off; Blind Valley's GOLD is
+  best at shift 0 (local); Venn's first is cmd 5's walls (unmodelled); Heart's first object (cmd 14 storks) is
+  already off, so Heart's stream 6 is off before the object stage (its decorations); Ra 1005's GOLD (cmd 39) fits
+  shift +5, 26 of 40.
+- **New default `second_group "pick"` (control "drop"):** `second_object` may name an object group. DE then picks
+  from the group by the group rule, unreplaced. Ra 1005 cmd 35 (`MAKE_FOREST_TERRAIN 1650 { second_object
+  PATCHY_FOREST }`): DE saved a CENTER_FOREST_OBJS 414 on each of the four 1650s, and the model had dropped the
+  attribute (the front end refused a name that is not an object). With the pick, Ra 1005's first divergence moves
+  from cmd 39 to cmd 50 (JUNGLETREE, 8 of 13). Regression and the full corpus re-prediction (`obj_analysis_v6.pkl`,
+  `obj_report_v6.txt`) are running.
+- **All of today's rules together** (`obj_analysis_v6.pkl`, `obj_report_v6.txt`): regression unchanged (CH 18/18,
+  CO 56/61, CF: u4, u6, u7 differ as before). Corpus objects at DE's position 263,841 -> 265,738 of 281,697;
+  identical (facing too) 242,474 -> 243,041. Caverns 1004 and 1005 every object at DE's position; Ra 1004
+  +163 (first divergence cmd 42 -> 57), Ra 1005 +30 (39 -> 50), Bulls_Eyes 1005 2,343 of 2,347.
+
+## 2026-11-08, round CK set up (`probe_ck.py`, `run-sheet-ck.md`, driver `tools/editor-automation/batch_ck.ps1`)
+
+- **Rekawa (before setting up):** `composite_stale "drop"` (rms_front; control "keep"). A composite tile that a
+  later pass repainted is no longer the composite for the object stage. Rekawa 1004's 197 extra MAKE_DIRT3_TERRAIN
+  all stood on tiles DE saved as BEACH: composite layers over 60, resolved, then beached. Its first divergence moves
+  from cmd 2 to cmd 9 (OYSTERS). Not yet regressed.
+- **AoE2RMSIDE consulted** (HEAD, via a fetch agent, behaviour summarised):
+  - `require_path N`: a route from the anchor to the land origin must exist, at most N tiles longer than the
+    straight line. Stored as N+1; no draws.
+  - Walls: square bands between min and max distance, routed by least cost; gates on spans of 4 or more; 2 stream-6
+    draws per wall tile, 3 per gate.
+  - A building created with HP below 1 is a construction site: no foundation, no completion.
+  - Appearances (decorations) are made in the object stage from the final terrain, which is not our model's
+    structure (ours grows them during painting; confirmed on many maps).
+  - Group picks pass through replacement there, against Battle Lines' evidence.
+- **CK:** 15 scripts at seeds 1009/1010, Tiny, n2-brit, 30 maps.
+  - Confirmations with controls (`check`: every control differs at both seeds): A group picks unreplaced,
+    B villager route plus forest-zone re-resolve, D group as second object, E builder deletes.
+  - Measurements: F Comeer's huts on GRASS and SNOW; G the town-centre marker's stream-6 draws (g1 Caverns' form,
+    g2 marker alone at HP 0, g3 at full HP, g4 TC on a 647); H villagers at min = max 6 with the TC off the origin;
+    P require_path 1 and 10 behind a lake; L decorations after a repaint (l1), mask 1 (l2), mask 2 (l3).
+  - Predictions frozen 2026-11-08 17:36:43 (`ck_predictions.pkl`). Compare with `compare_ck.py`, then
+    `obj_analysis.py` on "ck-" maps.
+- Regression with composite_stale "drop": CH {'IDENTICAL': 18}, CO 56 identical, 5 different, CF unchanged (u4, u6, u7 differ as before).
+
+## 2026-11-08, round CK compared (`compare_ck.py`, `ck_run.txt`; 23 of 30 saved, the last 7 being re-run)
+
+- **Frozen main reading: 15 of 23 identical.**
+  - Identical: B (villager route and forest re-resolve, both controls differ), F1 and F2 (huts on GRASS and on SNOW,
+    placed exactly as the model, directly, as gaia and as the HUT_VARS group), G1-G3 (the town-centre marker at
+    HP 0, alone, at full HP: the model is right), H1 (villagers at min = max 6 with the town centre off the origin:
+    right), P1 1009 (require_path refused nothing at this seed).
+  - Different: A, D, E, G4.
+- **New rule, `numeric_object "reject"` (rms_front; control "accept"): DE takes no bare number as the object of
+  `create_object` or `add_object`.** My CK scripts wrote 293, 346, 647 and 1613 as numbers. With the rule, all
+  eight differing maps are identical, so **all 23 saved CK maps match**:
+  - an `add_object` with a number is ignored (A: the group keeps only VILLAGER, and DE saved only males, every one
+    on the model's tile);
+  - a `create_object` with a number loses its command word, and its attribute block joins the previous
+    `create_object`, later values winning (E: the town centre became gaia, 5 objects, find_closest at min = max 3,
+    and DE saved 3 gaia town centres per player there and no player town centre; D: min 12 on top of max 0 placed
+    nothing);
+  - with no earlier `create_object` the block is dropped (G4).
+  No earlier probe or corpus script writes a bare number there, so older rounds are unaffected.
+- **What this means for the confirmations:**
+  - A still confirms `group_initial "raw-none"`. Its one-entry group of VILLAGER (which has a replacement rule)
+    places only males, with no replacement roll; the "replaced" control differs.
+  - D (second_object group), E (builder deletes) and G4 tested nothing of what they were for. A round CK2 should
+    repeat them with constants.
+- **What it means for the open causes:**
+  - Comeer's huts are not the terrain, and not the hut. The model places them right on GRASS and SNOW alike, so the
+    cause is in Comeer's own hut command (`max_distance_to_other_zones 4`, `avoid_forest_zone 2`,
+    `avoid_actor_area 1113`, `min_distance_group_placement 2`) or the map around it.
+  - Caverns' +2 stream-6 draws per player are not from TC_PLACEHOLDER 1870 at HP 0 with second_object TOWN_CENTER:
+    G1-G3 match. Caverns' command adds `place_on_forest_zone`, `min_distance_group_placement 4` and Caverns'
+    effects.
+  - Heart's villagers are not about the town centre standing off the origin: H1 matches.
+- **The last 7 CK maps** (saved 19:50-20:02 after the driver's generation wait for p1 rose to 90 s; p1 at 1010 takes
+  about 2 minutes to generate, and the earlier Save As failures were clicks made while it was still generating):
+  - **L1 repaint, L2 terrain_mask 1, L3 terrain_mask 2: identical at both seeds** (decorations included). Simple
+    repaints and masks do not cause Heart's, Rekawa's and Bazi's decoration drift; something more specific does.
+  - **P1 1010 differs by one STONE** (`require_path 1`): the model (ignoring require_path) puts it at
+    (88.5, 69.5); DE at (77.5, 71.5), so DE refused the first spot behind the lake from player 1's origin
+    (73, 100). One later GOLD follows from it. P1 1009: no refusal.
+- **Round CK totals:** 29 of 30 identical with `numeric_object "reject"`; the 30th needs `require_path`.
+
+## 2026-11-08, require_path (`object_model.path_ok`, `path_eval.py`; data: CK p1 1009/1010, CF u7 1002-1005)
+
+- **AoE2RMSIDE (behaviour restated):** a search from the anchor's tile centre to the player's land-origin tile.
+  4-connected, with corner shortcuts, the length being the sum of straight segments. Only terrain blocks (zero cost
+  for the path reference object's restriction); whether placed objects block was not confirmed. Accepted when a
+  route exists, and for N > 0 when trunc(route) <= trunc(straight) + N. No draws.
+- **Implemented as readings** (`require_path "on"`): `path_diag` "theta" (any-angle) / "sqrt2" / "one",
+  `path_objects` "ignore" / "block", `path_slack` 0 / 1, `path_origin_free` 3.
+- **None beats ignoring require_path** (2 of 6 identical; the best readings also 2 of 6, on other maps):
+  - p1 1009: DE refused nothing, though several of the STONEs it kept (`require_path 1`) need routes 2.5 to 8
+    tiles longer than the straight line round the lake (e.g. (95,41) to (73,100)... (107,45): 33.6 against 31.1).
+  - p1 1010: DE refused a STONE at (88,69) for the origin (73,100) with open land straight between them: no water,
+    no objects. So DE's refusal is not a detour test as restated.
+- **Default back to "off"** (attribute reported unmodelled, as before). Open: what DE's require_path measures.
+  A probe should use open land, then single barriers of known shape, with N = 0, 1, 5, 20, and objects placed one at
+  a time (find_closest) so each refusal is visible.
+
+## 2026-11-08, Venn's wall chain (`venn_eval.py`; data: Venn 1004)
+
+- **How the script builds walls:** each player has its town-centre land and a one-tile gravel land on its inner wall
+  line (`assign_to_player`), so every per-player command runs twice per player.
+  - A placeholder next to the gravel land opens actor area 9033 (r 14).
+  - A 22-placeholder group (find_closest in 9033) starts the chain.
+  - 44 single PLACEHOLDER_WALL commands (each in area 9034 r 1, `max_distance_to_players 29`) crawl along the gravel.
+  - 5 commands of 80 back walls (area 9035) follow.
+  - 14 gaia walls are placed at the end (`place_on_specific_land_id 5`, find_closest).
+  - Every wall is a `second_object WALL`, which deletes its 278 placeholder (builder_deletes; DE keeps only 2 278s).
+- **Model now:** a wall on all 458 gravel tiles, as DE, but 472 walls, because the 14 gaia walls stack on players'
+  walls in the middle of the inner lines. DE puts them on free gravel where the circles cross; 393 of 458 have the
+  right owner.
+- **Readings tried:**
+  - `area_ctx "land"` (actor-area records per land, not per player): 402 walls, 358 right. Refuted.
+  - `occupied_tiles "taken"` (an obstructing object makes its tile unavailable): refuted. Actor-area picks that land
+    on unavailable tiles restore their weight and add one, as AoE2RMSIDE does, so on Venn the weights balloon past
+    3 million draws. DE cannot be doing that.
+  - `gaia_occupancy "all"`: the cause of the stacking is the obstruction exemption for a gaia occupancy object
+    (278 has no height) against player-owned objects. With the exemption off, the gaia walls no longer stack:
+    417 of 458 right, owners 218/215/14 against DE's 222/222/14. But 11 tiles get no wall: the inner-line ends
+    (x 54, y 35-39; x 68, y 80-85) go to gaia, and the crossing tiles DE gives to gaia stay empty. All objects at
+    DE's position 8,341 -> 8,340. Kept as a candidate, not the default. The race between the two frames' crawls,
+    at the inner-line ends, still differs.
+- **The RMS guide on require_path (owner, 2026-11-08):** a path to the origin of the object's associated land. Its
+  purpose is to keep resources from being trapped in or behind forests, and walls and gates obstruct, so placed
+  objects do block. 0 or no argument only excludes inaccessible spots; 1 asks for a "mostly direct" path; larger
+  values allow less direct ones, and the "maximum effective value depends on how constricted the path is" (a
+  budget-limited search?); for groups only the first object is checked.
+  - Fits p1 1009 (routes up to 8 tiles longer than the straight line accepted at N = 1).
+  - Does not explain p1 1010's refused (88,69): open grass straight to (73,100), the only nearby objects a GOLD 3
+    tiles off the line and FORAGE. A probe with objects placed one at a time is needed.
+
+## 2026-11-08, round CL set up (`probe_cl.py`, `run-sheet-cl.md`, driver `tools/editor-automation/batch_cl.ps1`)
+
+28 maps: seeds 1011/1012, plus Comeer's variants at 1004. Every object is named by a constant.
+- **A:** CK's spoiled probes with constants:
+  - a1: group second object (control "drop");
+  - a2: builder deletes (control "off");
+  - a3: the town centre on a 647, measured.
+- **B:** Comeer at 1004 with its hut command missing max_distance_to_other_zones 4 (b1), avoid_forest_zone 2 (b2),
+  avoid_actor_area 1113 (b3) or min_distance_group_placement 2 (b4). Measured.
+- **C:** the 1870 marker with second_object TOWN_CENTER near forest, plus place_on_forest_zone (c1),
+  min_distance_group_placement 4 (c2) or both (c3); FORAGE's facets measure the draws.
+- **R:** require_path:
+  - r1 open grass (N 1, 5, bare);
+  - r2-r5 GOLD on GRASS clearings in a FOREST base with DIRT paths between players, at N 0/1/5/20;
+  - r6 behind a stone wall ring.
+
+  Main reading: not modelled; controls "+theta-block" and "+theta-terrain".
+- The driver waits 90-150 s for the R maps.
+
+## 2026-11-09, round CL compared, first part (`compare_cl.py`, `cl_run.txt`; 14 of 28 saved, 3 of them with the wrong script)
+
+- **Run:** the Sonnet session saved maps 1-14, then stopped on repeated "Save As screen did not load" (game on More
+  Content). The label crops showed c1 1011, c1 1012 and c2 1011 were saved with the b4 script: the editor was still
+  dimmed (label average 35,28,24 against about 175,144,119) when the script was picked. Those three maps are in
+  `scenario\cl-wrong-script-2026-11-08\`. `batch_cl.ps1` now waits for a bright label before picking (Wait-EditorReady,
+  90 s, one Esc recovery from More Content) and confirms the pick against the earlier crops (same script: difference 0;
+  two scripts: 6 or more).
+- **Frozen main reading: 5 of 11 identical** (a1 x2, a3 x2, c2 1012).
+- **A1 confirms `second_group "pick"`** (main identical, `+drop` differs, both seeds).
+- **A2 refutes `builder_deletes "scripted"`:** DE keeps every PH_NEUTRAL_OFF under the live PH_PLAYER_OFF and SHEEP
+  (`+off` identical). In Bulls_Eyes the deleters are objects with hit points exactly 0 (the LAZY flags, effect-set, that
+  647 brings as second objects; the pigs, GAIA_SET HP 0). New default **`builder_deletes "hp0"`** (`cd.hp == 0`;
+  647's own data value -1 does not count): a2 identical at both seeds, Bulls_Eyes 1004/1005 unchanged (380 and 387
+  objects, as saved; `off` gives 392).
+- **A3** (647 with second_object TOWN_CENTER, constants): identical at both seeds.
+- **B, Comeer's huts:** only b1 (no `max_distance_to_other_zones 4`) has huts, one per player, at the model's tiles
+  (49,58) and (86,63). The players stand on 289-tile islands (restriction 4 components); with the filter the model
+  sent the huts to (13,87) and (98,92), on other landmasses (765 and 754 tiles). New default **`other_zones_ref
+  "player"`**: a player's object measures `max_distance_to_other_zones` against its player's origin zone, so it stays
+  on that zone. b2 repredicted: no huts (as DE), script objects identical 8,178 -> 8,182. (`cl_huts.py` counts huts;
+  `cl_post.py <stem> KEY=VALUE` repredicts one map with overrides.)
+- **C:** c2 1012 identical; the rest not saved yet.
+- **Regression with both new defaults** (`FRESH=1 MAIN_ONLY=1`; `reg_cl_ch.txt`, `reg_cl_co.txt`, `reg_cl_cf.txt`):
+  CH 18/18, CO 56 identical / 5 different (as before), CF unchanged (u4, u6, u7 differ).
+- **Left to save:** c1 x2, c2 1011, c3 x2, r1-r6 x2 (17 maps).
+
+## 2026-11-09, round CL compared, second part (parts C and R; `cl_run_c.txt`, `cl_run_r.txt`)
+
+- **Editor run:** the 17 missing maps were saved by `batch_cl.ps1`, which now uses `tools/editor-automation/screen.py`
+  (recognises the game's screens from a coarse colour grid and clicks through them, checking each screen before the
+  next click). A stale label crop (24hr_Petra saved as c1's) had blocked the script check; the check now also needs
+  the label to start with "cl-", and two scripts count as different from a label difference of 1.5 (r3/r4: 2.26).
+- **C (Caverns' +2 stream-6 draws per player):** frozen 4 of 6. Every FORAGE facing after the town centre matches on
+  all six maps, so neither `place_on_forest_zone` nor `min_distance_group_placement 4` makes the draws; Caverns'
+  effects are what is left. c1/c3 at 1011: both town centres one tile right of the model's. Cause: the zone check
+  scanned x-pos..x+neg while its reach test allows neg to the left and pos to the right, so a tree 3 tiles left of a
+  4x4 footprint was never seen. **New default `zone_scan "inside"`** (control `"box"`): C 6 of 6 identical.
+- **R (require_path):** frozen 0 of 12 (the main reading had it off). Readings:
+  - trees (objects) blocking, any-angle routes (`path_objects "block"`): r2, r4, r5 (N = 0, 5, 20) identical at both
+    seeds; with terrain only none of them.
+  - N = 1 is stricter: `path_slack -1` (route, truncated, at most the straight distance, truncated) makes r3 1011
+    identical; r3 1012 has 2 GOLD on other tiles. Grid routes (diagonal 1.414) fit r3 1011 but are too strict
+    elsewhere.
+  - CK p1 1009 keeps STONEs (N = 1) whose only walkable route goes round its lake: **terrain does not block**
+    (`path_terrain "ignore"`): p1 1009 identical, u7 1002/1003 identical (u7 1003 was different before).
+  - Unexplained: on open grass DE refuses one N = 1 STONE per r1 map whose straight route is clear (r1 1011 (85,77)
+    from (77,94); 1012 (11,15) from (43,24)), as in CK p1 1010. Tiles with nearly the same offset and distance are
+    accepted, and nothing stands near the route or the origin, so it is not a route length.
+  - r6 (walls) not modelled.
+- **New defaults** (`object_model`): `require_path "on"`, `path_objects "block"`, `path_terrain "ignore"`,
+  `path_slack -1`, `zone_scan "inside"`. Controls: `require_path "off"`, `path_objects "ignore"`, `path_terrain
+  "block"`, `path_slack 0`, `zone_scan "box"`.
+- **Regression** (`reg_cl2_*.txt`, before `path_terrain`): CH 19 identical, CO 61 lines as before, CF one better
+  (u7 1003). Battle Lines and Rage Forest (both use require_path) unchanged under every reading.
+- Open: the N = 1 open-ground refusals, u7 1004/1005, r3 1012, walls, Caverns' effects and its two facing draws.
+- **N = 1 open-ground refusals, investigated (2026-11-09, `r_table.py`, `r_rows.txt`, `r_fit.py`, `path_sweep.py`):**
+  7 refused of 89 N = 1 tiles on r1, u7 and CK p1 (all with a clear straight route; u7 1004 also accepts a tile with
+  a 1.27-tile detour). Not separated by: the route's clearance from any object (decorations included), decorations
+  blocking their tile (`path_decor "tile"`), the town centre blocking its square with the open area round the origin
+  at 0-2 (`path_buildings "block"`, `path_origin_free`), or any sub-tile offset of route and straight ends with
+  floor/ceil/round (best 6 errors of 89, accept-all 7). Pattern: every refused tile lies north of its origin (dy < 0),
+  six of seven north-east, and exactly opposite offsets get opposite answers ((12,-9) refused, (-12,9) accepted).
+
+## 2026-11-10, require_path solved: AoE2RMSIDE's route search, restated (`path_search.py`, `path_search "hier"`)
+
+- **Data (owner's experiments on `test.rms`, all n2-brit, seeds 1011-1015):** one STONE command with 650 groups,
+  `require_path 1`, `find_closest` (`cl-r1-path-open-edited-stone-only-find-closest`), and three controls: no
+  require_path (`-nopath`, 1300 stones, no gaps), `require_path 0` (`-path0`, ~432, no gaps), no town centre
+  (`-notc`), plus 650 one-stone commands (`-650cmds`, nearly the same gaps as one command) and the owner's
+  `find_closest_to_map_edge` version (`cl-r1-path-open-edited` 1011). So the gaps in the ring come from N = 1's
+  length test, not from the town centre or from the command structure. Run by `tools/editor-automation/batch_seeds.ps1`
+  (seed change only; test.rms has no effects, so no fresh editor needed).
+- **The search (behaviour, restated from AoE2RMSIDE 7525df0 `exact_path.rs` and its search module):** the walkable
+  grid (here: every tile, minus the collision box of each object whose pathing action is 1, 2, 10, 11 or 13, outline for
+  11; trees and STONE block, town centre and decorations do not) is kept as a 4-level quadtree (cells of 1, 2, 4, 8
+  tiles). A best-first search runs over cells from the candidate's tile centre to the origin's tile centre, 4-connected
+  with shortcuts at orthogonal turns, ties broken by its own bucket queue; the route is then rebuilt through the
+  portals between cells, and its length is the sum of the straight segments (f32). Status 2 (stopped near a goal it
+  cannot reach) and 3 (no route) refuse. N = 0 needs only a route; for N >= 1, trunc(length) <= trunc(straight) + N.
+  The route bends where the cell grid makes it bend, so on open ground its length exceeds the straight line by an
+  amount that depends on direction and position: that is the north/north-east pattern of the "open-ground refusals"
+  (2026-11-09), and why exactly opposite offsets got opposite answers.
+- **Results:** all 20 stone maps identical, stone for stone (find_closest 164/193/189/157/171; path0
+  432/397/432/432/432; notc 164/172/171/152/165; 650cmds 170/193/171/169/171), the edge version 1011 (1300) too
+  (`hier_stone_maps2.txt`, `hier_edge_1011.txt`).
+- **Two more rules from the route maps** (`hier_sweep.py`; r1-r5 at 1011/1012, CK p1 1009/1010, u7 1002-1005):
+  - terrain does not block DE's route even here (water blocking loses five CK p1 1009 stones whose route goes round
+    the lake): 13 -> 14 of 16. AoE2RMSIDE takes terrain costs from a reference object named in a bindings file that is
+    not in the repository, so its side cannot be checked;
+  - **the route check comes after the group-distance squares are removed** (AoE2RMSIDE's order: a refused tile still
+    knocks out its `min_distance_group_placement` / `temp_min_distance_group_placement` neighbours; `path_order
+    "after"`): r3 1012 identical (the model had accepted a GOLD with route 30.99 against a limit of 31): 15 of 16.
+  - clearance: the villager's collision half-extent (0.2) is best; 0.6 gives 13, 1.0 gives 11.
+- **CK p1 1010 is not a route question:** its one difference is player 2's first GOLD of a command with no
+  require_path, which DE refuses on (46,59), a three-tile grass island inside the lake (beach round it). The
+  2026-11-08 note ("one later GOLD follows from" the STONE) was wrong: the GOLD command comes first. Open; perhaps
+  player objects stay in the area joined to the player's land.
+- **New defaults:** `path_search "hier"`, `path_order "after"`, `path_clearance -1` (villager). Controls:
+  `path_search "theta"`, `path_order "before"`. `path_slack` is not used by "hier" (its rule is built in).
+- **Regression** (`reg_hier_*.txt`): CH 19 identical and CO 61 as before, map for map; CF 60 (+2: u7 1004 and 1005).
+  Old route maps: 10 of 16 under the old any-angle reading, 15 of 16 now. Battle Lines and Rage Forest (1004/1005)
+  give the same output under both searches (`reg_hier_cg_*.txt`); their differences lie elsewhere.
+- Speed: one route search per untried candidate per grid state (`_hier_memo`); a map with one big command takes
+  seconds, 650 one-stone commands take 30-70 minutes (the grid changes after every command).
+- Open: CK p1 1010's island GOLD, r6 walls.
+
+## 2026-11-10, player objects stay in their centre's zone (`player_zone "same"`)
+
+- **CK p1 1010's GOLD** (the one route-map difference left above): DE refuses (46,59), a grass tile on a small lake
+  island (33 land tiles), for player 2's first GOLD (no require_path), and takes a later candidate instead.
+- **Rule (behaviour, restated from AoE2RMSIDE 7525df0, `exact_object.rs` candidate loop and `exact_zone.rs`):** for
+  an object placed for a player (not `ignore_terrain_restrictions`), each candidate popped from the queue is first
+  checked against the zone of the player's centre; a mismatch drops it with no draws. Zones: 4-neighbour patches of
+  tiles that the object's restriction all allows or all refuses, with the centre's own terrain and layer terrain
+  counted as allowed. Labels are given to every patch in tile order, modulo 512, and the centre's label is compared
+  on its low 8 bits. The zones are worked out once per allowed set and not refreshed when objects repaint terrain.
+- **Results** (`zone_fresh.py`, fresh predictions): CK and CL 52 of 52 identical (51 without the rule: p1 1010);
+  route maps 16 of 16 (`hier_sweep.py`). Regression `reg_zone_compare_{ch,co,cf}_same.txt`: CH, CO, CF map for map
+  as before.
+- **New default** `player_zone "same"` (control `"off"`). Not run yet: the CG-CJ corpus objects (water maps such as
+  Immersion would show it most).
+
+## 2026-11-14, walls (`wall_model.py`, `compare_walls.py`)
+
+- **What DE saved** (u6 1002, read before modelling): a per-player wall at min 12 / max 13 is a square ring on the
+  inner line (Chebyshev 12) whose four corner tiles stay empty. Each side is a run of 23 tiles with a 4-tile gate in
+  the middle (offsets span//2-2 .. span//2+1 from the run's start), so 19 pieces per side, 76 in all. The gate is one
+  object (palisade 789 horizontal / 793 vertical, stone 64 / 88); its flanks are its own children, which the file
+  omits. Pieces store facet 2 at a run's ends, 0 on horizontal runs, 1 on vertical runs. A ring that reaches the
+  map's edge runs to the edge row and has no side there (the stone ring at 20, 3 gates).
+- **Rule (behaviour, restated from AoE2RMSIDE 7525df0, `exact_object.rs` wall path cache and ring placement; full
+  description at the top of `wall_model.py`):** a per-player command whose object is of the wall class takes no
+  candidate tiles. The queue and the first pick are spent as for any command. Then, once per pair of radii, four
+  bands per player (left, right, top, bottom, players in slot order, centred on the town centre's tile) are crossed
+  by a best-first search whose step costs favour walkable tiles on the inner line and avoid tiles already taken.
+  Tiles are kept only where the owner's centre reaches them through side steps over land without crossing its own
+  wall (this drops the corners) and where its enemies reach them from outside. The kept tiles are cut into
+  straight runs; runs over unwalkable tiles are not built; runs of span 4 or more get a gate. Every piece spends its
+  creation draws (2 for a wall, 1 for the gate and 1 for each flank). Gaia commands build the routes but place nothing.
+- **Results, fresh predictions:** all 7 saved wall maps identical (u6 1002/1004/1005, ob13 1000/1004, CL r6
+  1011/1012; r6 places GOLD and STONE with require_path behind a stone ring, plus DEER, GOLD and FORAGE afterwards,
+  so it also checks the draws and the walls as route blockers). Control `walls "off"` (walls as ordinary objects,
+  the model before): all 7 differ.
+- **New default** `walls "ring"` (control `"off"`). `path_ok_hier`'s walkable grid moved into `Stage.walk_grid`
+  (same grid). Regression: see below.
+- **Not tested** (every saved ring is a plain square on open grass): bends around trees, water, cliffs or resources;
+  diagonal runs and their gates; walls of allied players (the enemy-reach filter); two wall commands sharing
+  radii after the town centres moved (the cache is reused); unwalkable gaps in a ring; wall groups; walls with
+  `actor_area`. A confirming round would put rings across forest edges, lakes and gold, with teams.
+- **Regression after walls:** CH 18 of 18 fresh (same as `reg_zone_compare_ch_same.txt`), CL route maps r1-r6 12 of
+  12 fresh. No other saved script has a per-player wall-class command (Blind Valley's is commented out; Venn's
+  walls come from a class-11 placeholder), so the wall branch changes no other map.
+
+## 2026-11-14, Caverns' two extra draws: an effect's standing graphic
+
+- **Cause:** Caverns sets `ATTR_STANDING_GRAPHIC 12800` on TC_PLACEHOLDER 1870 (beside HP 0). Graphic 12800 has 4
+  angles flagged random facet and random angle; 1870's own graphic 12801 has 1. Round CK g1-g3 used the marker
+  without that effect, which is why they matched.
+- **Rule:** an object's creation draws follow its current standing graphic. For buildings (constructor 80) the content
+  pack's creationRng follows from the graphic for 469 of 471 (the 2 others have a 0-angle graphic and differ only in a
+  stored fixed facet): several angles flagged random angle give a random angle, plus a random facet when the graphic
+  is flagged random facet too; otherwise fixed facet 7; the combat seed always. So the 1870 spends facet + angle +
+  seed, 3 draws instead of 1: the +2 per player. The file's frame field holds 0 (as for every fixed-facet building),
+  and its rotation field holds the drawn facet: 3, 5, 1, 1 on the four 1870s, exactly the model's draws (corrected
+  later the same day: our reader takes the frame for 1870, because the base object draws no angle).
+- **Results:** `obj_facets.py`: every random facet at DE's positions matches on Caverns 1004 and 1005. **Caverns
+  1004 and 1005 are identical, every object** (14,141 and 13,808; the first corpus maps fully exact). Control
+  `graphic_effect "off"`: identical 12,406 and 12,111, first wrong facing at cmd 18 as before.
+- **New default** `graphic_effect "derive"` (object_model; attribute 71 added to `appearance_model.EFFECT_ATTRS`).
+  Other scripts with standing-graphic effects (Comeer, Ra, Rage Forest, Rekawa on terrain makers; DLC_ZEBRA;
+  predators) keep their draws under the rule, so no other map changes. Untested: the rule for non-building
+  constructors (types 10/20 use `graphic_creation_rng`, 70 and others are left as they are).
+
+## 2026-11-14, effects in general, Heart's decorations, Rekawa's terrain makers, Bazi's zones
+
+- **One rule for creation draws** (object_model `derived_creation_rng`): facet count = the standing graphic's angle
+  count; a random facet when the graphic has several angles and is flagged random facet and random angle; a random
+  angle when it has several angles and is flagged random angle, for constructors 30, 60, 70, 80; a combat seed for
+  constructors 70 and 80. It gives the content pack's draws for all 2,502 objects that have both a graphic and a
+  creationRng (no exception), so an effect that changes a standing graphic (attribute 71) changes the draws by it.
+- **What the file stores** (reader check over 78 corpus maps): the rotation field holds the facet set at creation
+  (7 for fixed-facet objects, the drawn facet otherwise); the frame field equals it for objects that draw, and holds
+  0 or 5 for fixed-facet buildings (k9). Units with a random angle (constructor 70) store radians; buildings with one
+  store the 8-direction facet (walls, the 1870s). The model stored radians for random-angle buildings; no saved map
+  had one besides walls (which the wall model sets), now fixed (`construct`: constructor 80 stores the facet).
+- **Effects, the standing reading:** an effect changes the object's definition before generation, and everything
+  generation derives from that definition is derived from the changed one: collision (3, 4), terrain restriction
+  (53), hit points (0: status, builder deletes), standing graphic (71: creation draws). Attributes generation does not
+  read change nothing (u10). Effects persist in the editor between generations (carry-over). Still not modelled, and
+  not expected to matter in a saved scenario: foundation terrain (34; terrain makers act when a game starts, and
+  Heart's terrain is exact without it), dead unit, storage value, occlusion.
+- **Upgrades** (`rms_front` `upgrade_effect "creation"`, control "off"): GAIA_UPGRADE_UNIT / UPGRADE_UNIT A B leaves
+  A's id in the file but creates A with B's creation draws. Heart upgrades UNDERBUSH_PLANT_2 1352 (9 facets) to 1366
+  (8): DE's 1352 facets are 1366's. With it every Heart decoration at a predicted position has DE's facet.
+- **Heart's decorations** (`stage_model` `composite_layer_decor "under"`, control "source"): DLC_JUNGLELEAVES 62 is a
+  composite (77 over 60) with no decoration table. Heart paints it with terrain_mask 1 over GRASS_FLOWERS_2 123, so
+  the tile has 123 under a 62 layer and resolves to 77 over 60. DE decorates such a tile from 123 (3 draws, 1358
+  only); the model used 62's empty table and its raster scan fell 3 tiles behind DE's at the first three such tiles.
+  A composite painted as the terrain itself keeps its own table (Ra 1004). Heart 1004 decorations identical 80 -> 622
+  of 629, 1005 22 -> 581 of 593; script objects identical 15,488 -> 17,065 and 13,893 -> 17,084. Heart's first wrong
+  script command is now cmd 43 BUN_BUNS (hares with second_object MAPLE_LEAVES); the few decorations left differ
+  where its objects stand.
+- **Rekawa's terrain makers** (`object_model` `retire_obstructing "obstructing"`, control "any"): its 3,881
+  MAKE_DIRT3_TERRAIN 1640 (base size 0, made 0.5 by `effect_percent ... 50`, obstruction "none") stand at DE's
+  positions, and DE keeps 247 decorations on their tiles; the model deleted 278. Reading: an object with no
+  obstruction deletes no decorations. Rekawa 1004 decorations at DE's positions 1,577 -> 1,627, script objects at
+  DE's positions 5,158 -> 5,353 (1005: 5,230 -> 5,386). Refuted on the way: `effect_percent` scaling the current
+  value (`percent_set "scale"`): size 0 lets the makers pile up, 13,968 script objects against DE's 6,427.
+  Rekawa's decorations are still out of step in the object-stage scan (positions differ on 1640 tiles as often on
+  both sides). Note: Rekawa places 1358/1359 itself (zero-size, at tile corners), and compare_co counts them with
+  the decorations.
+- **Bazi** (`object_model` `other_zones_gaia "object"`, control "off"): AoE2RMSIDE measures
+  max_distance_to_other_zones on the zones of the command's object's restriction with or without a player; the model
+  skipped the check for commands without one. +2 objects on each seed; not the cause of Bazi's first wrong command
+  (cmd 59 at 1004, cmd 43 at 1005: its huntables). Bazi's decorations are already within 8 of DE's.
+- **Not yet regressed:** `composite_layer_decor`, `upgrade_effect`, `other_zones_gaia`, `retire_obstructing` on
+  rounds CH, CO, CF and the other corpus maps.
+- **Draw-offset tests (`obj_tilt.py`):** Heart 1004 cmd 43 BUN_BUNS, shifts -12..12, best 15 of 144 (7 at 0); Bazi
+  1004 cmd 59 HUNTABLE_SMALL_B, shifts -20..20, best 13 of 102 (7 at 0). No peak in either, so both commands' own
+  rules are wrong, not the draws before them. Both are loose groups of 6 small huntables (Heart's without a grouping
+  keyword, Bazi's with set_loose_grouping and group_placement_radius 2): the loose-group rule for moving units is
+  the next suspect.
+- **CO ob8 1000 (the one CO map left):** one FORAGE of player 1 (`avoid_other_land_zones 1`): DE refuses (115,73),
+  which the model takes as its 4th forage; the rest of the queue is the same, so DE's 5th lands on (107,75). At that
+  command the model accepts (115,73) on every check. Its four-point test at distance 2 reads (117,73), which the model
+  has in player 1's zone as a one-tile spur between no-land tiles (117,72) and (117,74) at the land's ragged edge,
+  where several DIRT tiles carry no land zone. Readings tried and refuted (`land_zone_scan`, default stays "cross",
+  as AoE2RMSIDE): "eight" (diagonals too) and "square" (the whole square) break seeds 1001 and 1004 and make 1000
+  worse. Most likely the land stage's zone map differs from DE's at that edge tile; the terrain matches, and the zone
+  map is not stored in the file, so it has never been checked directly. A probe would map DE's zones at land edges
+  with dense single objects under `avoid_other_land_zones 1`.
+
+## 2026-11-14, Heart and Bazi solved; regression of the day's rules
+
+- **Heart's hares (cmd 43) and Bazi's huntables** (`object_model` `filter_queue "resolve"`, control "fixed"): with a
+  class filter (avoid_forest_zone etc.) and an object that has to be resolved (a group, or an object with a
+  replacement rule), every tile that is available and inside the geometry resolves the object (group roll, plus a
+  replacement roll where one applies) before the filter is tested. This happens while the candidates are collected,
+  at every pick of the queue shuffle (a pick that passes moves to the front, or joins the queue if it was not a
+  candidate), and in a loose group's local queue (whose tiles are also tested against the class filter and the
+  actor areas). Restated from AoE2RMSIDE (collect_candidates, the shuffle predicate, local_group_queue). Heart 1004
+  script objects identical 17,065 -> 17,449.
+- **Heart cmd 48** (`loose_route "area"`, control "local"): a loose group on the actor-area route (MAPLE_LEAVES,
+  actor_area_to_place_in 2) draws its members from the whole area record, as its anchors, not from a local queue
+  round the anchor (AoE2RMSIDE). Heart 1004: every decoration identical, all 17,507 script objects at DE's
+  positions.
+- **Bazi 1004's last 4 draws** (`desc_round "half-up"`, control "even"): birds.inc asks for number_of_objects
+  (BIRD_COUNT * 1.5) = 4.5 with set_scaling_to_map_size; DE made 7 = 5 * 1.44, the model 5 = 4 * 1.44 (Python's
+  round() rounds half to even). Integer attributes now round half away from zero. **Bazi 1004 identical, every tile,
+  decoration and object.**
+- **`retire_obstructing` corrected to "hp"**: town centres (obstruction "none") delete decorations in DE (Heart
+  1005, Bazi), so "obstructing" is refuted. Reading: an object with negative hit points (the terrain makers 1639 -2,
+  1640 and 1641 -1) deletes no decorations. Rekawa unchanged from the obstruction reading.
+- **Left on the four maps:** Heart's PANDA_ROCK 2082 is saved with frame 1385 (1004) and 737 (1005), from no stream
+  the model tracks (every later facet matches); Bazi 1005 has one decoration DE deletes 0.207 tiles from a villager
+  of half-size 0.2 (just outside the model's overlap test); the town centres' facings are left open by the comparison.
+- **Regression (fresh, `regress_1114.sh`, files `reg_1114_*`):** CH 18/18 (unchanged); CO 60/61 (was 56: both
+  ob13 wall maps, ob5 1001 and xr1 1000 now identical; ob8 1000 left, see above); CF 52/55 (was 49; u4-force left at
+  all three seeds); CK + CL 52/52; walls 7/7. Corpus (30 maps, `obj_analysis_v8.pkl`, `corpus_totals.py` against
+  the 1 November cache): terrain exact on all 30; script objects identical 109,632 -> 123,558 and at DE's positions
+  128,766 -> 136,548 of about 143,000; decorations identical 77,381 -> 78,414. Battle Lines, Blind Valley, Bazi and
+  Heart are exact but for open facings and the rock; Rekawa, Venn, Namatjira, Ra and Comeer keep real differences.
+- **Round CM set up** (`probe_cm.py`, `run-sheet-cm.md`, driver `tools/editor-automation/batch_cm.ps1`, 46 maps,
+  seeds 1013/1014): walls in new layouts, the queue rules, effects, decorations under negative-HP objects, layer
+  composites, force_placement, the ignored commands, land-zone edges, the rock's frame.
+
+## 2026-11-14, round CM compared (`compare_cm.py`, `cm_run.txt`; predictions written by 16:19, frozen 16:27:45)
+
+- **Frozen main reading 28 of 46 identical**; every control differs from its main reading. As predicted: w4-w6
+  (wall routes reused, a gaia wall, actor areas per piece, rings leaving the map), q1-q3 (`filter_queue`,
+  `loose_route`, `desc_round` confirmed on new layouts), e2 (upgrade), e3 (`effect_percent` sets value/100, not a
+  scale), c1 (`composite_layer_decor "under"`), f3 (frameless force_placement does nothing), x1 (`make_indestructible`),
+  x2 (`set_gaia_civilization CIVILIZATION_AZTECS` changes nothing for gaia VILLAGER and SCOUT here), x3
+  (`nomad_resources`, `guard_state`).
+- **Fixed after the run (defaults, controls kept):**
+  - d1: DE deletes the decorations under the 1640 terrain makers and under STONE at HP -1; its control ("any")
+    is identical at both seeds. `retire_obstructing` back to "any" ("hp" and "obstructing" refuted). Rekawa's "247
+    decorations kept on 1640 tiles" were Rekawa's own zero-size 1358/1359 script objects (all at tile corners),
+    created after the makers.
+  - e1: GOLD given graphic 12800 draws its facet over the graphic's 4 angles, not the pack's 7
+    (`effect_creation_rng` now also compares the facet count). DEER given the one-angle 12801: positions and draws
+    right.
+  - w1/w2 at 1014: a run's end piece is a post (facet 2) only when the tile beyond it along the run holds none of the
+    player's wall; a horizontal run starting next to a diagonal run's end piece starts with facet 0
+    (`wall_model` `wall_end_facet "open"`, control "always" = AoE2RMSIDE). Refuted on the way: cutting runs by
+    direction passes (`wall_runs "passes"`: right pieces, wrong order, older maps broken) and starting a new run at a
+    walkability change (`wall_split "same-direction"`: moved a gate).
+  - w3: DE's rings run straight on the inner line across lakes, unbuilt on the water. The wall routes' walkable grid
+    ignores terrain (as require_path's: objects block, terrain does not) and pieces on terrain a wall cannot stand on
+    are not built (`wall_terrain "ignore"`, control "block" = AoE2RMSIDE). With these, every wall map is identical:
+    u6 x3, ob13 x2, CL r6 x2, CM w1-w6 x2 (19 maps).
+- **Open after the run:**
+  - f1/f2 (force_placement per player): counts right (60 sheep, 72 gold); the normal phase matches; the forced
+    objects visit the anchors newest first as in the model, but DE's corner offsets (0 or 1 in x and y) match no
+    simple reading of the main stream (low bit, high bit, bounded(2); 2-5 draws per object; up to 3,000 draws on) or
+    of stream 6. A 9-of-9 fit at 1013 (3 draws per object, 379 on) failed at 1014. Either DE visits the anchors in
+    another order, or the offsets come from elsewhere.
+  - z1 (TURKEYs under avoid_other_land_zones 1): every TURKEY DE placed is at a model position, in the model's order
+    with DE's refusals removed (23 at 1013, 42 at 1014). The refusals are spread through the land; three at 1013 have
+    their tile and every check point vouched for by accepted tiles, so no fixed zone map explains them. Not tied to
+    the town centre, earlier turkeys at the check points, later objects, decorations, terrain or distance from the
+    player. ob8 1000's refusal is probably the same rule.
+  - r1/r2: the panda rock's stored frame repeats exactly at the same seed (460, 406, 301, 1339, 950, 550 at 1013), so
+    it is deterministic; its source is not found (the model spends no stream-6 draw on it, and every later facet
+    matches).
+- **Second regression (`regress_1114b.sh`, `reg_1114b_*`), after the CM fixes:** CH 18/18, CO 60/61 (ob8 1000), CF
+  52/55 (u4), CK + CL 52/52, walls 7/7, corpus unchanged (`obj_analysis_v9.pkl`: script objects identical 123,558,
+  at position 136,548, terrain exact on 30). **CM fresh: 36 of 46** (`reg_1114b_cm.txt`); left: f1, f2, z1, r1, r2
+  at both seeds.
+
+## 2026-11-14 (evening), the CM questions against AoE2RMSIDE (7525df0)
+
+- **force_placement (f1/f2, CF u4):** AoE2RMSIDE's forced phase is the model's (anchors newest first; x and y from the
+  low bits of two stream-2 draws, drawn before any check; from pass 10 a first draw picks the tile centre when it is
+  divisible by 5), but it checks obstruction in every pass. That refuses too much (94 objects against DE's 112). What
+  fits DE: a start 378 draws later (9 passes x 21 anchors x 2 draws) with the centre-or-corner draw, all 36 forced
+  positions on four maps at two seeds. So passes 1-9 check obstruction and here refuse every anchor (every tile
+  already holds a sheep or the town centre); from pass 10 nothing is checked and objects stack. New default
+  `force_obstruction "early"` (controls "never", the model before, and "always", AoE2RMSIDE): **f1, f2, f3 identical
+  at both seeds, and CF u4-force identical at all three seeds** (open since round CF); ob10 unchanged.
+- **avoid_other_land_zones refusals (z1, CO ob8 1000):** AoE2RMSIDE's `land_zone_rejection_removal`: a tile refused by
+  avoid_other_land_zones that lies more than the zone distance from the player's centre (and within the command's
+  min/max distance) takes out of the queue the tile one zone-distance step from it toward the centre on each axis
+  (an axis level with the centre steps negative). The removed tile is never tested, which is why DE skipped tiles
+  that pass every check. New default `land_zone_removal "toward"` (control "off"): **z1 identical at both seeds, and
+  CO ob8 1000 identical** (CO now 61 of 61 under fresh predictions, pending the regression).
+- **PANDA_ROCK's stored frame:** AoE2RMSIDE has no stored-frame logic (it models generation state, not the scenario
+  file), and its content pack has the same three fields for graphic 12860 as ours (no frame count). Placing the six
+  rocks spends no draw on stream 2 or stream 6 (the queue is built once and popping it draws nothing), yet every rock
+  gets its own frame; no stream 1-15 gives six consecutive draws that scale to the frames (6,000 offsets, 15-bit and
+  32-bit scaling, modulo). Round CN (`probe_cn.py`, `run-sheet-cn.md`, `batch_cn.ps1`, `compare_cn.py`, 7 maps,
+  frozen 20:01:08) separates instance id from position and seed.
+- **Third regression (`regress_1114c.sh`, `reg_1114c_*`):** CH 18/18, **CO 61/61, CF 55/55**, CK + CL 52/52, walls 7/7,
+  **CM 42/46** (only r1 and r2, the rock frames, differ), corpus unchanged (`obj_analysis_v10.pkl`, 123,558 script
+  objects identical, terrain exact on 30).
+
+## 2026-11-15, round CN run and compared (`compare_cn.py`, `cn_run.txt`; frozen 2026-11-14 20:01:08)
+
+- 7 maps, positions all as predicted (the frozen frame field was 0, so every rock "differed" in frame only).
+- **PANDA_ROCK's stored frame: the k-th rock created gets the k-th value of a per-seed sequence.** In reference-id
+  order n1, n2, n3 and CM r1/r2 give the same values at a seed (1013: 1339, 406, 301, 950, 550, 460; 1014: 1159,
+  725, 1195, 470, 427, 61; 1015 n3: 272, 891, 800, 497, 534, 1318), whatever the tiles, the instance ids (n1 vs n2,
+  +12) or the objects and decorations made before. (The run notes' "n1 order vs n3 order" was a misreading.)
+- **Source not found:** `rock_search.py`, `rock_search2.py` (streams 1-32 of the seed's chain, offsets to 4,000,
+  strides 1-5, multiply-shift at any scale, modulo N 1,386-69,999; two planted sequences found as a control);
+  mt19937, the exe's 64-bit LCG, Numerical Recipes' LCG and MSVC rand seeded with the map seed: no hit.
+- **Closed:** `object_model` `unknown_frame "open"` (control "zero"): the rock's frame is a file field the model leaves
+  open, as for fixed facets; it is cosmetic, so the preview does not need it.
+- **New rule (n3 1015):** a placed object also deletes a decoration already retired (status 7) by the object stage's
+  decoration pass: `retire_dying "delete"` (control "skip" keeps a DLC fern 1358 under a rock).
+- Fresh: rock maps 11 of 11 (`rock_fresh.py`; controls 10 and 0). **Regression (`regress_1115.sh`, `reg_1115_*`):
+  CH 18/18, CO 61/61, CF unchanged, CK + CL 52/52, walls 7/7, CM 46/46 (`cm_fresh.py`; was 42), corpus unchanged
+  (`obj_analysis_v11.pkl`: script objects identical 123,558, at position 136,548 of 143,084, terrain exact on 30).**
+  Every probe round is now complete; what is left is in the corpus (Rekawa, Venn, Namatjira, Ra, Comeer objects).
+
+## 2026-11-15 (later), Venn's walls (corpus; `obj_analysis_v14.pkl`, `regress_1115c.sh`, `reg_1115c_*`)
+
+- **Placeholders:** 450 of 452 PLACEHOLDER_WALL 278 (HP 0, can be built on) are missing under the WALLs they bring as
+  second objects. `builder_deletes "hp0-either"` (default; control "hp0"): a non-build-on object deletes a scripted
+  build-on object under it when either of the two has HP 0. CL a2's surviving PH_NEUTRAL_OFF 346 have HP 1, so it
+  holds; it restores what the old "scripted" reading did for Venn before CL a2 narrowed it.
+- **Wall shapes:** walls placed outside `create_player_walls` keep their creation draws (angle + combat seed), but
+  the file stores a joint shape from the piece's final neighbours of the same owner: N and S -> 1, else E and W -> 0,
+  else NE and SW -> 4, else SE and NW -> 3, else the post 2. One shape per neighbour pattern, 38 patterns, both seeds.
+  `wall_joints "neighbours"` (control "angle"), only for class-27 objects that draw a random angle (the terrain
+  makers 1639-1641 are class 27 too and store 0: CM d1 broke without that limit); ring pieces keep wall_model's shape.
+- **Gaia walls:** `gaia_occupancy "all"` (candidate since 2026-11-08) is now the default: with the placeholders
+  deleted, the 14 gaia walls go to the lens tips as in DE and every wall and second object is identical
+  (472 of 472 at both seeds). The 11 empty crossing tiles of 11-08 are gone.
+- Venn script objects identical 165 -> 600 (1004), 177 -> 606 (1005); corpus 123,558 -> 124,422, at position
+  136,548 -> 136,576. Regression: CH 18/18, CO 61/61, CF unchanged, CK + CL 52/52, walls 7/7, CM 46/46, rock maps
+  11/11. `obj_facets.py` now skips wall pieces (their stored shape is not their draw).
+- Counting note: `corpus_totals.py` counts an open facing (None, e.g. Rekawa's 3,881 terrain makers 1640, which
+  store 0) as not identical, so its "identical" understates maps with fixed-facet objects; "at position" is unaffected.
+- Venn left: HOUSE (cmd 112) and KING (113) positions, FORAGE facings (115), 25 type-66 and 18 type-102 objects no
+  prediction explains, one decoration each at (60,15) and (68,24).
+
+## 2026-11-15 (evening), the rest of Venn: stuck on actor-area route picks (no default changed)
+
+- **Where Venn now parts from DE:** 1004 cmd 112 HOUSE (one of four), then cmd 113 KING at both seeds; every later
+  command (WATCH_TOWER, FORAGE, GOLD, STONE, ... 114-129, ~65 objects a map, the "unexplained" 66/102/59/65 types)
+  follows. All three of HOUSE (area 2814), KING (2812) and WATCH_TOWER (2820) are `actor_area_to_place_in` routes
+  over areas made by the ONGRID_PLACEHOLDER 1613 commands (two per player, one per land frame, both on the TC tile:
+  positions match DE, 32 per player). The script defines REGICIDE itself (line 10), so the KING command is real.
+- **HOUSE 1004:** a three-way tie at Chebyshev 8 from the player's origin (85,59): (85,51), (77,59), (85,67). DE takes
+  the top and the left, the model the bottom and the left. Stream shifts of -3/-4 at cmd 112 fix it (`obj_tilt.py`),
+  which points at the shuffle's draws, not the tie rule.
+- **KING (both seeds):** DE's tile passes every check in the model (terrain 41, forest zone, min 6 / max 12 Chebyshev
+  from the land origin, area 2812) but ranks 26th-42nd of ~70 valid candidates in the model's route order.
+  Refuted, each on both seeds:
+  - a stream-2 shift at cmd 113 of -20..+20 (`obj_tilt.py`), and a brute-force search of -3,000..+3,000 for the
+    route's start (scratch `king5.py`): offsets that place each player's KING exist at chance density, with one
+    common offset per seed (-1978, -2531), which differs between seeds;
+  - the four frame orders (land 2 first, per player, both);
+  - the plain shuffled queue instead of the route (for KING, and KING + tower);
+  - skipping the command (draws not spent): worse;
+  - `area_ctx "land"` (records per land): whole map worse on both seeds (6537 -> 6382, 6503 -> 6343);
+  - a repeat registration at the same spot adds no weight: whole map worse; limited to the ONGRID areas 2804-2839, no
+    change for HOUSE/KING/tower;
+  - `route_order "oldest"`: no KING.
+- **Stream 6 is not the problem:** the first wrong facing is cmd 115's FORAGE, half of them right at shift 0; the
+  forage objects are created in another order (stream 2 picks), not drawn wrong.
+- **Next:** a probe round for routed picks, since the saved Venn maps cannot separate the readings: a KING (and a plain
+  object) with `actor_area_to_place_in` over an area registered once vs twice at one spot, with one and with two
+  land frames per player, at several seeds. New tool: `obj_whole.py` (one cached map predicted under each value of a
+  VAR, totals as corpus_totals counts them).
+- **AoE2RMSIDE on the KING (7525df0, read 2026-11-15):** nothing specific. "Regicide" occurs only as a game mode and
+  lobby label (`lib.rs`, `lobby_labels.rs`); object 434 has no single-request count (so not the
+  `place_expanded_single_request` path); the actor-area route (`collect_actor_area_candidates`: iterations = the
+  record's total weight, weighted draws, unavailable tiles restored, newest valid pick first), the per-draw test
+  (`actor_area_queue_candidate_matches`: max distance from the land centre with >=, avoided areas, map edge, class
+  filter), record registration and lookup (per land context = the frame's player slot, a land-less record found
+  from anywhere) and the frame order (`descriptor_dispatch_placements`) all match our restatement. Its automatic
+  technologies spawn units at buildings on stream 7, not the main stream. So AoE2RMSIDE predicts the KING where the
+  model does; the probe round stays the way forward.
+
+## 2026-11-15 (late), round CP run and compared (`probe_cp.py`, `run-sheet-cp.md`, `compare_cp.py`, `cp_run.txt`)
+
+- **12 of 12 identical** under the predictions frozen at 22:28:17 (seeds 1016/1017): KING, SHEEP and OUTPOST through
+  an ONGRID-made actor area (same tiles, so no KING- or unit-specific rule), the area registered twice on one tile,
+  Venn's second one-tile land per player (control `+area-ctx-land` differs on both), and the KING by the plain queue.
+  The model's actor-area route is confirmed in each set-up Venn combines.
+- **Venn's maps are genuine:** regenerated in a fresh editor (`tools/editor-automation/batch_vennregen.ps1`,
+  `RMSTEST_cg-x-venn-regen_1004/1005`), they equal the 30 October files object for object; the script copy is
+  byte-identical to the game's and unchanged since 28 October. REGICIDE is `#define`d unconditionally at line 10.
+- **Also refuted for Venn's KING:** the KING's route with every tile available, with every occupied tile unavailable,
+  and with the model's availability plus occupied tiles (none places a KING at DE's tile); the tiles the model ranks
+  ahead of DE's do not differ from it in distance to trees or to other objects or in terrain.
+- **Next for Venn:** bisect Venn itself: cut the script right after the KING (everything before kept), then drop
+  earlier blocks in halves, a fresh editor per map, until a cut makes the model's KING match DE's. The model is exact
+  through cmd 112, so only the KING has to be compared.
+
+## 2026-11-16 (night), round CQ: bisecting Venn's object section (`probe_cq.py`, `compare_cq.py`, `cq_run.txt`, `cq2_run.txt`)
+
+Cuts of `cg-x-venn.rms` (land/elevation/terrain/connection sections whole, objects cut, the KING block last), seeds
+1004/1005, a fresh editor per map, predictions frozen before each pass (23:55:33, 00:18:35, 02:08:44).
+- Pass 1: v0 (everything to the KING) DE's KING = the full Venn's (control holds), model wrong; v1 (no trees A, no
+  walls B) wrong; **v2 (only TC, ONGRID 2812, KING) identical**.
+- Pass 2: **v3 (no H = THEMED_TREE1, VILLAGER, HOUSE) identical; v5 (no C, D) and v6 (no D) identical; v4 (only D and
+  H) wrong**, the HOUSE itself already off at both seeds (a four-way tie at distance 8 from the origin; DE takes other
+  members). So it takes the HOUSE routed through area 2814 (made by the ONGRID block D) to throw the KING off.
+- Refuted on v0/v4 (no KING right at either seed): other tie orders after a route under find_closest (route order
+  reversed, raster, raster reversed); stream shifts at the KING of +-1250, +-1682, +-2500, +-3364 (the HOUSE route's
+  draws per frame, and its two second-land frames); the HOUSE's invalidation off, radius + 1, moved by +-1, or around
+  the 2x2 footprint (no effect at all on the KING); a route's weight growth shared with the land's other records.
+- Pass 3 (frozen 02:08:44, not saved yet: the screen locked at 02:10): v7 HOUSE without THEMED_TREE1/VILLAGER, v8 v7
+  with only areas 2812 and 2814, v9 v7 without the HOUSE's find_closest, v10 v7 with number_of_objects 1, v11 v7 with
+  the KING before the HOUSE. Driver `tools/editor-automation/batch_cq3.ps1`; compare with `CQ_PASS=3 compare_cq.py`.
+- Pass 3 run 2026-11-16 11:05-11:25 (fresh editor per map; `cq3_run.txt` is the frozen-time stub): **all 10 identical**
+  under the predictions frozen at 02:08:44. v7 (v4 without THEMED_TREE1 and VILLAGER) is right, HOUSE and KING, so the
+  HOUSE's own route is fine; one of the two commands before it moves it.
+- Pass 4 (`CUTS4`, `cq4_predictions.pkl` frozen 12:07:15, driver `batch_cq4.ps1`): v12 the tree without the villagers,
+  v13 v4 with the villagers' `place_on_forest_zone` dropped, v14 the villagers through ONGRID area 2806 with no tree.
+  **6 of 6 identical.** So it takes the villagers' forest-zone filter.
+
+## 2026-11-16, Venn solved: two rules (`object_model` defaults, controls kept)
+
+- **`route_resolve "late"`** (control "after"). With a class filter (forest/cliff zone), an actor-area route
+  re-resolves the object it tests (`filter_resolve`, which spends the VILLAGER's male/female roll). DE spends that roll
+  only on a draw that has already passed the distance (from the land centre), avoided-area and map-edge tests, right
+  before the class filter; the model, as AoE2RMSIDE, spent it on every draw right after the weight is used. Venn's
+  straggler VILLAGER command also runs in each player's second one-tile land frame, where its 9 draws over area 11 all
+  fail `max_distance_to_players 10`: 9 rolls each in the model, none in DE, so the HOUSE route started 18 draws late
+  (the per-frame HOUSE scan's only both-seeds hit was -18). Found by tracing the frames (scratch `venn_vil.py`).
+  v4: HOUSE and KING right at both seeds; whole Venn 6537 -> 6612 of 6615 (1004), 6503 -> 6571 of 6574 (1005).
+- **`member_layer "check"`** (control "off"). Loose-group members must stand on `layer_to_place_on` too (the model
+  tested only the anchor). Venn's HUNTABLE pairs (LAYER_AUX, 2 groups of 2): the last 3 deer per map and one
+  decoration a wrong deer deleted. **With both: Venn 1004 and 1005 identical, every object** (terrain was already
+  exact).
+- Refuted on the way (v4): a second route per house (`route_regroup`), a symmetric forest-zone reach for the 2x2
+  house, the tree's/villagers' tiles (radius 0/1) marked taken, `avoid_actor_area 1113` read as the tree's area 11,
+  a class-filter refusal keeping the tile's weight. The HOUSE tie orders were never the cause: DE's picks follow from
+  its draws.
+- Tools: `cq_fresh.py` (every CQ and CP map predicted afresh), `regress_1116.sh` (outputs `reg_1116_*`, corpus cache
+  `obj_analysis_v15.pkl`).
+
+## 2026-11-16 (afternoon), Comeer and Namatjira solved (five rules; rounds CR and CS)
+
+New defaults, each with the old rule kept as the control:
+- **`other_zones_ref "player-allowed"`** (`object_model`; control "player", CL part B). A player's object with
+  `max_distance_to_other_zones` is compared with its player's origin zone only when its restriction allows the
+  origin's tile; otherwise with the tile's own zone. Comeer's TRANSPORT_SHIPs (water restriction, land origin, label
+  0) were refused everywhere; DE places one per player. Both ships then on DE's tiles; Comeer's huts unchanged.
+- **`area_fallback "landless"`** (`object_model` `record_for`; control "off"). A command in a land frame that finds no
+  actor-area record of its own context uses the record made outside any land. Comeer cmd 36 (SHORE_FISH per player,
+  `actor_area_to_place_in 7011`, whose areas gaia placeholders made after the per-player commands had left the land
+  context on a non-player land): DE placed all 36 fish, the model none. u1's GOLD (a gaia command) is not affected.
+- **`unknown_object "merge"`** (`rms_front`; control "skip"). `create_object` with a name DE does not know (Comeer's
+  `BIRD_A`, `BIRD_B`) works as a bare number does (round CK): its block joins the previous `create_object`. Comeer's
+  60-80 SNOW_PINE_TREE took the birds' `number_of_objects rnd(3,5)` and `set_scaling_to_map_size`: 4 scaled to Tiny
+  = 5 pines, DE's exact first 5 of the model's queue at both seeds. Round CS (`probe_cs.py`, passes 1-4,
+  `compare_cr.py cs`, `cs*_run.txt`): a cut after the pines (birds gone, so another map: 78 pines, identical), the
+  terrain makers removed (still 5), the bird commands replaced by `#const` lines with the same draws (78, identical),
+  the comment removed (5), BIRD_B without scaling (5: BIRD_A's scaling stays), braces on their own line (5).
+- **`specific_land_area "anywhere"`** (`object_model`; control "connected", the owner's rule of 2026-10-31). Round CR
+  (`probe_cr.py`, `cr_run.txt`; Namatjira cut after cmd 22, one attribute of cmd 22 dropped per variant): DE places
+  `set_scaling_to_map_size`'s 10 riverbank GOLD groups of land id 2 all over the map, across water; "connected" left
+  room for 7. The forest palms "connected" was fitted to stay 132 of 132 under today's other rules. AoE2RMSIDE has no
+  such limit either (its land id only picks the frame).
+- **`zone_own "group"`** (`object_model` `class_filter_ok`; control "count", "command" worse). A group member's forest
+  or cliff zone ignores the trees its own group has just placed. Namatjira cmd 43 (PALMTREE, loose groups of 3,
+  `avoid_forest_zone 2`): DE put members next to the group's first palm, which the model refused.
+- **Comeer 1004/1005 and Namatjira 1004/1005 identical, every script object** (8710, 8405, 1096, 1167; `obj_whole.py`
+  with the current defaults). Refused on the way: per-object routes, symmetric forest reach, an up-right-down-left
+  order for tight neighbours (fits 5 groups by chance, breaks the player sheep), other-zones tests on tight and loose
+  members, skipping the empty RELIC shuffles.
+- Tools: `cs_fresh.py` (CS and CR afresh), `regress_1116b.sh` (outputs `reg_1116b_*`, corpus `obj_analysis_v16.pkl`).
+  `obj_whole.py` takes further fixed VARs in `OBJ_VARS` (JSON).
+
+## 2026-11-16 (evening), Caverns and Pag
+
+- **Caverns was already exact** by the measure used for Venn, Comeer and Namatjira. Its "50 missing decorations" are
+  the GRASS_PATCH_SMALL (1358) script objects, all on DE's tiles: obj_analysis and corpus_totals file DE's under
+  decorations because the type is also a decoration type (bookkeeping only). The 9/12 left were open facings.
+- **`fixed_frame "type"`** (`object_model` `place_one`; control "open"). A fixed-facet object's stored frame is fixed
+  per constructor type: 5 for type 30 (fish 53, 61, 69, 457, 458, 1141: 1,117 objects over every cached map) and 0 for
+  types 70 and 80 (houses, town centres, 1640/1641, ...: 9,330 objects); others (1285) stay open. Cosmetic.
+- **`objects_see_layers "before-cleanup"`** (`stage_model`; control "after-cleanup"). The object stage sees the layers
+  from before the beach-layer cleanup (`layer_cleanup`); only the saved map shows the cleanup. Pag cmd 16 (5 RELIC,
+  `layer_to_place_on BEACH_BUILDABLE`): 3 of DE's relics stand on beach tiles that carried layer 80 before the
+  cleanup and none in the file; all 5 then match at both seeds. Also fixed in `rms_front`: the composite-layer view
+  was rebuilt from the cleaned layers, which hid any earlier choice of view.
+- **Pag 1004/1005 identical, every script object** (534, 508; `obj_whole.py`).
+- **`area_fallback` limited to commands dispatched to land frames** (per player or per land id): regression (b) showed
+  CF u1 broken at all four seeds (its GOLD, a gaia command in a stale player context, found the land-less record);
+  u1 and u3 identical again, Comeer's shore fish (a per-player command) unaffected.
+- Regression (c) in three parallel streams (`reg_1116c_A.sh`, `_B.sh`, `_C.sh`; outputs `reg_1116c_*`, corpus
+  `obj_analysis_v17.pkl`).
+- **Regression (c), every rule of the day:** CQ 30/30, CP 12/12, CS 16/16, CR 14/14, CH 18/18, CO 61/61, CF same map
+  for map as 2026-11-15 (u1, u3 identical), CK+CL 52/52, walls 7/7, CM 46/46, rock 11/11. Corpus (`corpus_totals.py`,
+  strict: open facings count as different): script objects identical 124,422 -> 136,985 of 143,084, at DE's position
+  136,576 -> 139,102; no map lost any. Exact on script objects now also Ra 1004/1005 and Rage Forest 1005 (the
+  unknown-name rule: their BIRD_A/B blocks), besides Venn, Comeer, Namatjira, Pag, Caverns. Left: Rekawa (970 and 974
+  off position), Menindee (20, 28), Immersion (8 facings at 1004), Bulls_Eyes/Heart (open facings only).
+
+## 2026-11-16 (night), Rekawa, Menindee and Immersion solved: every tile, object, decoration and frame at both seeds
+
+Four new defaults, each with the old rule as its control (scratch tools `rk_cache.py`, `rk_report.py`, `rk_strict.py`,
+`rk_dec.py`, `rk_tab.py`, `rk_destroy.py`, `flag_search.py`, `flag_check.py`, `flag_before.py`, `rk_rockchk.py`):
+- **`stage_model` `composite_decor_stale "drop"`** (control "keep"; applied in `appearance_model.run`). A composite tile
+  that a later pass repainted (the end-of-stage beach pass) grows the decorations of what is there, not the
+  composite's: what `composite_stale` already did for objects. Rekawa's terrain slice (`cj-r1-rekawa`) 1004: the first
+  difference was a GRASS_GREEN on BEACH at (70,17), BEACH having no decoration table; decorations identical
+  102 -> 965 of 969.
+- **`stage_model` `composite_destroys "terrain"`** (control "all"; "none" also spares composite terrains, not
+  separated by any map). Resolving a composite *layer* at the end of the terrain stage (62 painted with terrain_mask
+  over GRASS -> 77 over 60) destroys no objects: DE keeps the land stage's GRASS decorations there (retired at the
+  object stage). Rekawa's slice 969 of 969 at 1004, 993 of 993 at 1005.
+- **`object_model` `zone_own_second True`** (control False). A group's own second objects count as its own for
+  `zone_own "group"`. Menindee cmd 144 (ONGRID placeholders in loose pairs, `second_object ITALIAN_PINETREE`,
+  `avoid_forest_zone 3`): DE puts the second member 1-3 tiles from the first, the model kept it 4-5 tiles away, off
+  the first member's own pine. Menindee 1004 and 1005 identical, every object.
+- **`object_model` `anim_frames "stream3"`** (control "off": no stream-3 draws, frames open). **The stored start frame
+  of animated objects comes from stream 3 of the seed's chain**: every object of constructor type 20 or above whose
+  standing graphic is flagged random facet spends two stream-3 draws when created, and the frame is
+  `F * (second & 0x7fff) // 0x7fff`. Found by searching streams 1-40 for Immersion 1004's 8 FE flag (1285) frames:
+  stream 3, every second draw, F = 91, from draw 5. Then checked, not fitted:
+  - the flags of Venn and Bulls_Eyes at 1004 and 1005 (start draws 21 and 29, the same at both seeds);
+  - **PANDA_ROCK 2082 (open since round CN)**: stream 3, every second draw from draw 1, F = 1450, at 1013, 1014 and
+    1015, and Heart 1004/1005's rock (draw 1); every CN rock frame is now predicted (`rk_rockchk.py`);
+  - who spends the draws before the first flag: units whose graphic has the flag (turkey 833 x2 on Immersion; 1245 x8
+    and scout 448 x2 on Venn; 1245 x8, sheep 594 x4 and 448 x2 on Bulls_Eyes = 2, 10, 14 = the start draws / 2);
+    Heart's 95 units of type 1028 (graphic flagged random angle only) spend none; trees (constructor 10) none; the
+    ES flag 851 (no flag) none.
+  Frame counts are not in the content pack: `ANIM_FRAMES` has the two measured (graphic 10539: 91, 12860: 1450);
+  other graphics keep their frame open (units store a rotation instead).
+- **Result:** Rekawa 1004/1005 (9,444 and 9,484 saved objects and decorations), Menindee 1004/1005 (3,899, 3,886)
+  and Immersion 1004/1005 (1,741, 1,740): **strictly identical, every object, decoration and frame, nothing open;
+  terrain, elevation and layer identical.** Rock maps 11 of 11 with the frames compared.
+- **Regression (d/e) with all four rules** (`reg_1116d_*.sh`, `reg_1116e_*.sh`; outputs `reg_1116d_*`, `reg_1116e_*`;
+  corpus `obj_analysis_v18.pkl`; strict per-map counts `rk_corpus.py`): CH 18/18, CO 61/61, CF same map for map, CK+CL
+  52/52, walls 7/7, CM 46/46, rocks 11/11 (frames now compared), CQ/CP 42/42, CS/CR all identical. **Corpus: 27 of 30
+  maps exact in everything** (every tile, layer, object, decoration and stored frame; nothing open); strictly
+  identical objects and decorations 228,682 -> 236,830 of 236,851. Exact for the first time: Rekawa, Menindee,
+  Immersion, Heart, Bulls_Eyes, Venn (frames) at both seeds.
+- **Left (3 maps, 21 + 4 + 1 objects):** Rage Forest 1004 keeps 4 retired forest trees (411, status 7) that DE
+  deleted, each under a 1543 placeholder standing exactly on it; Rage Forest 1005: the same for 2 retired 413, and one
+  SNOWPINETREE (cmd 101) the model puts at (77.5,53.5) (terrain 32 under layer 3, three 1543 stacked there in DE's
+  file) that DE refused, so the command's later facings run one object behind (20 objects); Bazi 1005: the known
+  borderline decoration (0.207 tiles from a villager).
+
+## 2026-11-17, Rage Forest and Bazi solved: every corpus map exact
+
+Four new `object_model` defaults, each with the old rule as its control (scratch tools `rf_near.py`, `rf_retired.py`,
+`rf_pines*.py`, `rf_trace*.py`, `rf_block.py`, `rf_ids.py`, `rf_raw.py`, `rf_gaps.py`, `bz_margin.py`, `bz_vil.py`,
+`bz_corner.py`, `dz_try.py`, `dz_band.py`, `dz_close.py`, `dz_rclass.py`):
+- **`retire_any True`** (control False). A placed object deletes a *retired* decoration (status 7) under it even when
+  the decoration cannot be built on. Rage Forest: every retired forest tree with a 1543 placeholder on it is missing
+  from DE's map (4 at 1004, 2 at 1005), every retired tree nothing stands on is kept (9 and 6); no other corpus map
+  has a retired decoration of a kind that cannot be built on under a placed object.
+- **`decor_scope "gaia"`** (control "owner"). A decoration's definition is read with the gaia effects whoever owns the
+  object it is tested against. Bazi's `constants.inc` sets GRASS_SINGLE_GREEN's (1358) ATTR_RADIUS_1/2 to 1% with
+  GAIA_SET_ATTRIBUTE; the model read the decoration in player 2's scope (radius 0) when player 2's villager was
+  placed, so the 1358 at 0.207 tiles (inside 0.2 + 0.01) survived. Not a corner, villager or mover rule: round DZ
+  part B (below) keeps such decorations at 0.207 in maps without the effect.
+- **`blocking_obstructs True`** (control False). A land- or cliff-stage object left alive on a tile that a later stage
+  repainted (the "blocking" objects of the object stage's start) obstructs placement as any decoration does. The model
+  skipped every decoration whose tile terrain differed from its source. Round DZ r1: DE refuses all 37 (1004) and 13
+  (1005) pines the model put on such trees; touching ones (orthogonal or diagonal) are placed.
+- **`blocking_zone True`** (control False). Such objects also count for forest and cliff zones. Rage Forest 1005
+  cmd 101 (STRAGGLER = SNOWPINETREE, `avoid_forest_zone 2`, `max_distance_to_other_zones 7`; not the 100-pine block
+  of the 1v1 branch I first read): DE refuses (77,53), one tile from a SNOWPINETREE that the land stage grew on SNOW_FOREST (21)
+  and that stayed alive when its tile was later painted UNDERBRUSH_SNOW (72) (in the model, painting with
+  `create_terrain` destroys no objects; only the end-of-stage passes and the connections do). The probe placed a
+  pine on the same tile (no forest-zone test there), so the tile itself is fine.
+- **Result:** Rage Forest 1004 (13,711 objects) and 1005 (13,295) and Bazi 1005 (10,675): strictly identical, every
+  tile, elevation, layer, object, decoration and stored frame.
+
+**Round DZ** (`probe_dz.py`, driver `tools/editor-automation/batch_dz.ps1`, `compare_dz.py`; 14 maps saved by Claude
+through the editor, a fresh editor for each; predictions frozen 2026-11-17 09:51:58 before any map was read):
+- Part B (GRASS2, 2500 objects a command): b1 corner villagers (1909 + second_object VILLAGER), b2 villagers at
+  tile centres, b3 corner sheep, b4 corner gold (gaia), seeds 1018/1019: **8 of 8 identical as frozen**, with about
+  50 decorations each just outside the model's overlap test (one at 0.207 from a corner villager, the Bazi geometry,
+  kept). So DE's test is the model's, and Bazi's deletion needed the radius effect.
+- Part R (Rage Forest's script with every object command removed, then 2000 SNOWPINETREE, GOLD or SHEEP, seeds
+  1004/1005): frozen 0 of 6 (the 2000 objects run into the blocking trees). With the four rules: **6 of 6 identical**, so **round DZ 14 of 14**.
+
+**Regression** (`reg_1117_A.sh`, `_B.sh`, `_C.sh`; outputs `reg_1117_*`, corpus `obj_analysis_v19.pkl`):
+CQ/CP 42/42, CS 16/16, CR 14/14, CH 18/18, CO 61/61, CF the same map for map as 2026-11-16 (66 identical lines), CK+CL 52/52, walls 7/7, CM 46/46, rocks 11/11, DZ 14/14. **Corpus (`rk_corpus.py obj_analysis_v19.pkl`): all 30 maps exact in everything, 236,851 of 236,851** objects, decorations and stored frames strictly identical; terrain and layer identical on all 30. Nothing in the corpus is open any more.
+- **Retired terrain objects as obstacles: undecided.** `dz_retired_obs.py` (retired objects skipped in the overlap
+  check) gives the same maps as the default on DZ r1 1004/1005, r2 1004, r3 1004 and Rage Forest 1004
+  (`dz_retired_obs.txt`), probably because a retired tree shares its tile with the live tree drawn there.
+- **Write-up:** `notes/de-objects-cg-dz.md` (every object-stage finding of rounds CG to DZ, and the disagreements with
+  AoE2RMSIDE).
+
+## 2026-11-17 (later), the objects write-up re-implemented from its text
+
+- `writeup_check_obj.py`: the object stage written from `notes/de-objects-cg-dz.md` and `de-connections-objects.md`
+  Sections 5-8 (Stage and Desc swapped into the pipeline; streams, terrain objects, parser and effects reused).
+  `writeup_diag_obj.py <stem>` compares it with the model object by object; `writeup_check_probes.py` with DE's
+  saved probe maps. Outputs `wdiag/*.txt`, `wcheck_probes.txt`, `wcheck_cp.txt`.
+- **Result: all 30 corpus maps identical to the model (so to DE), and 65 probe maps identical to DE** (CM walls,
+  force, zones, effects; CL routes and walls; CK; CP; DZ).
+- **Text gaps found and fixed in the write-up:** (1) an animated object with an unknown frame count keeps its fixed
+  frame (box turtle 1141, Pag); (2) `set_place_for_every_player` only reaches player lands with no `land_id`
+  attribute (Immersion); (3) the stored fixed facet is the pack's, not derived (647 has no graphic; constructor-20
+  objects with a random facet carry one); (4) the zone filter always filters the list, resolution only when needed;
+  (5) the wall search's start tiles, "land", the keep rule, per-piece resolution; (6) **closest-first orders drop the
+  origin tile itself when there is no `min_distance_to_players`** (the minimum defaults to -1, squared to 1;
+  Heart's and Venn's town centres, Rage Forest's RELICs, CP); (7) the last-resort placement builds the object alone
+  (no second object, min square only, one resolution: Venn's surviving PLACEHOLDER_WALL); (8) the exact fit, slope,
+  overlap and `min_connected_tiles` rules (new Section 18), and the data list (Section 19).
+- `notes/aoe2rmside-discrepancies.md`: a report on every disagreement with AoE2RMSIDE, written as future tests for
+  its author.

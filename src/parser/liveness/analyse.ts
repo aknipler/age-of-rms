@@ -20,7 +20,20 @@ import {
   type LivenessInput,
   type WalkBranch,
   type WalkResult,
+  type WalkUse,
 } from "./walk";
+
+/**
+ * The default node cap of one diagram. Slice B's brief (B2) measured it: at
+ * 1,000,000 seven of the ten scripts that overflow 200,000 finish, the slowest
+ * in about 0.3 s, and one that cannot finish gives up within about 1 s. The
+ * Bdd class keeps its own smaller default so its unit tests keep their meaning.
+ */
+export const LIVENESS_MAX_NODES = 1_000_000;
+
+export interface LivenessOptions {
+  maxNodes?: number;
+}
 
 export type Verdict = "live" | "dead" | "maybe";
 
@@ -40,9 +53,9 @@ export interface LivenessResult {
 }
 
 /** One walk with its own diagram. The second walk of a file must not share atoms with the first. */
-function run(input: LivenessInput) {
+function run(input: LivenessInput, maxNodes: number) {
   const labels = input.language.predefinedLabels ?? [];
-  const bdd = new Bdd();
+  const bdd = new Bdd(maxNodes);
   const atoms = new AtomTable(
     bdd,
     labels,
@@ -96,45 +109,78 @@ function deadBranches(
   return dead;
 }
 
+/**
+ * What the report needs and LivenessResult does not keep: the diagram itself.
+ * A BDD node is only meaningful beside the Bdd that made it, so the report
+ * (report.ts) must read these while the diagram is alive, and `analyseDetailed`
+ * hands it over instead of walking the script a third time.
+ */
+export interface LivenessDetail {
+  bdd: Bdd;
+  atoms: AtomTable;
+  domain: BddNode;
+  walk: WalkResult;
+  uses: { use: WalkUse; verdict: Verdict }[];
+  deadBranches: { branch: WalkBranch; kind: "contradiction" | "switch" }[];
+}
+
 export function analyseLiveness(
   input: Omit<LivenessInput, "freeNames">,
+  options: LivenessOptions = {},
 ): LivenessResult {
+  return analyseDetailed(input, options).result;
+}
+
+export function analyseDetailed(
+  input: Omit<LivenessInput, "freeNames">,
+  options: LivenessOptions = {},
+): { result: LivenessResult; detail?: LivenessDetail } {
+  const maxNodes = options.maxNodes ?? LIVENESS_MAX_NODES;
   const started = performance.now();
-  const empty = (status: LivenessResult["status"], nodeCount = 0) => ({
-    status,
-    uses: [],
-    deadBranches: [],
-    namesAtEnd: new Map<string, Verdict>(),
-    nodeCount,
-    ms: performance.now() - started,
+  const empty = (
+    status: LivenessResult["status"],
+    nodeCount = 0,
+  ): { result: LivenessResult } => ({
+    result: {
+      status,
+      uses: [],
+      deadBranches: [],
+      namesAtEnd: new Map<string, Verdict>(),
+      nodeCount,
+      ms: performance.now() - started,
+    },
   });
 
   // A name could come from a file nobody read, so no verdict is safe (Sec.6.3).
   if (input.includesUnread) return empty("incomplete");
 
   try {
-    const first = run(input);
+    const first = run(input, maxNodes);
     const { bdd, walk, domain } = first;
     const tokenText = (i: number): string => input.parse.tokens[i].text;
 
     const uses: LivenessResult["uses"] = [];
+    const detailUses: LivenessDetail["uses"] = [];
     for (const u of walk.uses) {
       if (bdd.isFalse(bdd.and(u.guard, domain))) continue;
+      const verdict = verdictOf(bdd, domain, u.guard, u.def);
       uses.push({
         token: u.token,
         name: u.name,
-        verdict: verdictOf(bdd, domain, u.guard, u.def),
+        verdict,
         definitionTokens: u.definitionTokens,
       });
+      detailUses.push({ use: u, verdict });
     }
 
     const dead = deadBranches(bdd, domain, walk, tokenText);
     const classified: LivenessResult["deadBranches"] = [];
+    const detailBranches: LivenessDetail["deadBranches"] = [];
     if (dead.length > 0) {
       // Walk again with every switch as a free atom. A branch that is alive
       // there is dead only because a flag is always defined above, a switch
       // case. One still dead is a contradiction whatever the flags say.
-      const second = run({ ...input, freeNames: walk.switches });
+      const second = run({ ...input, freeNames: walk.switches }, maxNodes);
       const guards = new Map<number, BddNode>();
       for (const b of second.walk.branches) guards.set(b.keywordToken, b.guard);
       for (const b of dead) {
@@ -142,10 +188,9 @@ export function analyseLiveness(
         const alive =
           g !== undefined &&
           !second.bdd.isFalse(second.bdd.and(g, second.domain));
-        classified.push({
-          keywordToken: b.keywordToken,
-          kind: alive ? "switch" : "contradiction",
-        });
+        const kind = alive ? "switch" : "contradiction";
+        classified.push({ keywordToken: b.keywordToken, kind });
+        detailBranches.push({ branch: b, kind });
       }
     }
 
@@ -154,12 +199,22 @@ export function analyseLiveness(
       namesAtEnd.set(name, verdictOf(bdd, domain, bdd.TRUE, def));
 
     return {
-      status: "complete",
-      uses,
-      deadBranches: classified,
-      namesAtEnd,
-      nodeCount: bdd.nodeCount,
-      ms: performance.now() - started,
+      result: {
+        status: "complete",
+        uses,
+        deadBranches: classified,
+        namesAtEnd,
+        nodeCount: bdd.nodeCount,
+        ms: performance.now() - started,
+      },
+      detail: {
+        bdd,
+        atoms: first.atoms,
+        domain,
+        walk,
+        uses: detailUses,
+        deadBranches: detailBranches,
+      },
     };
   } catch (e) {
     if (e instanceof BddOverflow) return empty("overflow");

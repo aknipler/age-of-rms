@@ -318,6 +318,42 @@ const whatsNew0110: TutorialDefinition = {
   ],
 };
 
+// No new controls to point at, so the announcement is the whole tour.
+const whatsNew0120: TutorialDefinition = {
+  id: "whats-new-0.12.0",
+  kind: "feature",
+  title: "What's new in 0.12",
+  blurb:
+    "Objects (and the entire preview engine) now match DE! New checks for names that may not be defined, and some minor improvements to Advanced Land Placement.",
+  version: "0.12.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.12",
+      body: [
+        "Hello!",
+        "",
+        "With objects in, every section of the preview now matches DE's engine.",
+        "Liveness: New checks for names. The editor warns when a #const is read somewhere it can never be defined, and gives a note when it may not be, when a branch can never run, or when a branch only runs if a flag that is always defined is turned off. The last one can be switched off in Settings, Diagnostics. Each note links to the line that defines the name.",
+        "Minor work on Advanced Land Placement, still needs major improvement.",
+        "Toggle Command Layout - fixed.",
+        "",
+        "Coming up next.",
+        "(1) adding in community hub for sharing maps (stalled - looking into integrating with an existing AoE2 project),",
+        "(2) version history for scripts (built, needs testing),",
+        "(3) more tutorials!",
+        "(4) improving the Advanced Land Placement tool,",
+        "(5) any of the bug fixes or small QOL improvements that you guys suggest along the way.",
+        "I am still looking into supporting multiple languages. If anyone is interested in helping with that (or with anything else, like making tutorials), please reach out to me on GitHub or Discord.",
+        "Thank you for the support!",
+        { kind: "text", text: "Happy scripting,", align: "right" },
+        { kind: "text", text: "Captain Kniples the Fourth", align: "right" },
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
@@ -326,4 +362,5 @@ export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew090,
   whatsNew0100,
   whatsNew0110,
+  whatsNew0120,
 ];

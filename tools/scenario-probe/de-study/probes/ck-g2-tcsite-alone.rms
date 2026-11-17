@@ -1,0 +1,13 @@
+#const TC_PH 1870
+effect_amount SET_ATTRIBUTE TC_PH ATTR_HITPOINTS 0
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<OBJECTS_GENERATION>
+create_object TC_PH { set_place_for_every_player find_closest actor_area 1 actor_area_radius 8 }
+create_object FORAGE { number_of_objects 10 set_place_for_every_player set_gaia_object_only temp_min_distance_group_placement 2 }
+create_object DEER { number_of_objects 3 number_of_groups 6 set_loose_grouping set_gaia_object_only min_distance_to_players 15 }
+create_object GOLD { number_of_objects 3 number_of_groups 4 set_tight_grouping set_gaia_object_only min_distance_to_players 15 temp_min_distance_group_placement 10 }
+create_object FORAGE { number_of_objects 1 number_of_groups 20 set_gaia_object_only min_distance_to_players 12 }

@@ -159,8 +159,13 @@ export function LandPlacementHelpDialog({ onClose }: { onClose: () => void }) {
             </li>
             <li>
               Drops snap to the tile lattice, and magnetically to the centre and
-              the parent's axis. Hold <kbd>Ctrl</kbd> to snap to whole
+              the parent's axis. Hold <kbd>Shift</kbd> to snap to whole
               percentages instead.
+            </li>
+            <li>
+              Dragging a chained land moves every copy of it together, because
+              each copy follows the one template. Hold <kbd>Ctrl</kbd> to move
+              just the one copy.
             </li>
             <li>
               A drag that would overwrite a formula or a random parameter is

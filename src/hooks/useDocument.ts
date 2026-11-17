@@ -509,6 +509,14 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     // a replacement for the current model's contents, so anything unsaved
     // in it has to be resolved first.
     if (!(await ensureSavedBefore("new"))) return;
+    // The new script gets its file first (2026-11-14). Asked before anything
+    // is replaced, so backing out of the picker leaves the current document
+    // exactly as it was, the same reason the unsaved guard above runs first.
+    const target = await save({
+      filters: RMS_FILTERS,
+      defaultPath: await dialogStartFolder(),
+    });
+    if (!target) return;
     // setValue (not pushEditOperations), same as openFile: a new document
     // starts a new undo history rather than inheriting the old one.
     documentModel.setValue("");
@@ -522,8 +530,11 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     setFilePath(null);
     setIsDirty(false);
     setLastSavedAt(null);
-    void rememberOpenFile(null);
-  }, [ensureSavedBefore]);
+    // Writes the file at the chosen path, stamping the header with today as
+    // the created date, and sets the document's path. Until this resolves the
+    // document is the untitled blank it used to be.
+    await writeToPath(target);
+  }, [ensureSavedBefore, writeToPath]);
 
   // Reopens the script the last run ended on. Runs once at launch. The read
   // is asynchronous, so the guard checks the document is still the untouched

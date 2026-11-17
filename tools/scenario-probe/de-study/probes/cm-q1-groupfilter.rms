@@ -1,0 +1,18 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<TERRAIN_GENERATION>
+create_terrain FOREST { base_terrain GRASS land_percent 15 number_of_clumps 30 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+#const HARE_B 2099
+create_object_group HARES {
+  add_object HARE_A 50
+  add_object HARE_B 50
+}
+create_object HARES { number_of_objects 6 number_of_groups 12 min_distance_to_players 20 temp_min_distance_group_placement 8 avoid_forest_zone 2 }
+create_object DEER { number_of_objects 3 number_of_groups 6 set_loose_grouping set_gaia_object_only min_distance_to_players 15 }
+create_object GOLD { number_of_objects 3 number_of_groups 4 set_tight_grouping set_gaia_object_only min_distance_to_players 15 temp_min_distance_group_placement 10 }
+create_object FORAGE { number_of_objects 1 number_of_groups 20 set_gaia_object_only min_distance_to_players 12 }

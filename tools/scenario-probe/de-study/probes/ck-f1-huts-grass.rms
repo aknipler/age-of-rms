@@ -1,0 +1,23 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object DLC_AFRICANHUT_A { set_place_for_every_player find_closest min_distance_to_players 8 }
+create_object DLC_AFRICANHUT_B { set_place_for_every_player set_gaia_object_only find_closest min_distance_to_players 12 }
+create_object HOUSE { set_place_for_every_player find_closest min_distance_to_players 16 }
+create_object_group HUT_VARS {
+  add_object DLC_AFRICANHUT_A 14
+  add_object DLC_AFRICANHUT_B 14
+  add_object DLC_AFRICANHUT_C 15
+  add_object DLC_AFRICANHUT_D 15
+  add_object DLC_AFRICANHUT_E 14
+  add_object DLC_AFRICANHUT_F 14
+  add_object DLC_AFRICANHUT_G 14
+}
+create_object HUT_VARS { set_place_for_every_player find_closest min_distance_to_players 20 number_of_groups 3 temp_min_distance_group_placement 3 }
+create_object DEER { number_of_objects 3 number_of_groups 6 set_loose_grouping set_gaia_object_only min_distance_to_players 15 }
+create_object GOLD { number_of_objects 3 number_of_groups 4 set_tight_grouping set_gaia_object_only min_distance_to_players 15 temp_min_distance_group_placement 10 }
+create_object FORAGE { number_of_objects 1 number_of_groups 20 set_gaia_object_only min_distance_to_players 12 }

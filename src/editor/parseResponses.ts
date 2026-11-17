@@ -48,6 +48,30 @@ export interface ParseDiagnosticsMessage {
 }
 
 /**
+ * How long the worker must sit idle before it starts the name liveness pass
+ * (docs/name-liveness-slice-b-brief.md B1). The same wait the preview uses for
+ * its own debounce. The analysis is not on the typing path: it runs after the
+ * parse result is posted, and any message reaching the worker first cancels it.
+ */
+export const LIVENESS_IDLE_MS = 300;
+
+/**
+ * The liveness pass's reply, posted on its own after the parse result. It is
+ * not part of the diagnostics-then-result pair, and it carries only the marks
+ * the pass found, so a main thread that applies it never re-renders the card
+ * tree (the cost docs/diagnostics-latency-report.md Sec.10 removed).
+ */
+export interface ParseLivenessMessage {
+  kind: "liveness";
+  /** The parse request this was computed for. */
+  requestId: number;
+  status: "complete" | "incomplete" | "overflow";
+  diagnostics: Diagnostic[];
+  /** How long the pass took inside the worker. */
+  ms: number;
+}
+
+/**
  * Anything with a `data` field, which is all the router reads of a
  * MessageEvent. Declared this narrow so tests can pass an object whose
  * `data` getter counts how often it is read.
@@ -65,6 +89,13 @@ export interface ParseResponseHandlers {
   onResult(message: ParseResultMessage): void;
   /** A full result dropped unread because a newer request superseded it. */
   onSkippedResult(requestId: number): void;
+  /**
+   * A liveness reply. The handler decides whether it still applies. The router
+   * cannot use `isCurrent` for it, since useParsedDocument forgets a request's
+   * source once the request's result is applied, so by the time the liveness
+   * reply arrives `isCurrent` is false for every one of them.
+   */
+  onLiveness(message: ParseLivenessMessage): void;
 }
 
 /**
@@ -86,9 +117,18 @@ export interface ParseResponseHandlers {
  */
 export function createParseResponseRouter(
   handlers: ParseResponseHandlers,
-): (event: MessageLike<ParseDiagnosticsMessage | ParseResultMessage>) => void {
+): (
+  event: MessageLike<
+    ParseDiagnosticsMessage | ParseResultMessage | ParseLivenessMessage
+  >,
+) => void {
   let resultFollowsFor: number | null = null;
   return (event) => {
+    // The worker posts a diagnostics message and its result back to back in
+    // one task, and a liveness reply always in a later task (a timer that
+    // fires after the worker has been idle). So a liveness reply can never sit
+    // between the pair, and the "next message is the result" rule below stays
+    // true without looking at it.
     if (resultFollowsFor !== null) {
       const requestId = resultFollowsFor;
       resultFollowsFor = null;
@@ -98,6 +138,10 @@ export function createParseResponseRouter(
       }
     }
     const data = event.data;
+    if (data.kind === "liveness") {
+      handlers.onLiveness(data);
+      return;
+    }
     // `kind` is the discriminant of a *discriminated union*. Checking it
     // narrows `data` to one member, so each branch below can only touch the
     // fields that member has.

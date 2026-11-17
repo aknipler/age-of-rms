@@ -21,6 +21,7 @@ import {
 import { createPortal } from "react-dom";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../components/HelpTip";
+import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
 import { usePreviewView } from "../components/preview/PreviewViewContext";
@@ -433,16 +434,20 @@ export function ToolsPane({
           </div>,
         )}
         {parseResult ? (
-          <PanelComponent
-            parseResult={parseResult}
-            source={source}
-            reparseNow={reparseNow}
-            applyTextEdits={applyTextEdits}
-            onJumpToOffset={onJumpToOffset}
-            playerCount={generation.playerCount}
-            mapSize={generation.mapSize}
-            lang={lang}
-          />
+          <PanelErrorBoundary>
+            <PanelComponent
+              parseResult={parseResult}
+              source={source}
+              reparseNow={reparseNow}
+              applyTextEdits={applyTextEdits}
+              onJumpToOffset={onJumpToOffset}
+              playerCount={generation.playerCount}
+              mapSize={generation.mapSize}
+              teams={generation.teams}
+              teamPositions={generation.teamPositions}
+              lang={lang}
+            />
+          </PanelErrorBoundary>
         ) : (
           <p className={styles.empty}>Waiting for a parse…</p>
         )}

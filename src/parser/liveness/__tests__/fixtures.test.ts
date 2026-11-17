@@ -132,3 +132,21 @@ describe("rms-check fixtures", () => {
     expect(result.deadBranches).toEqual([]);
   });
 });
+
+describe("the node cap", () => {
+  it("reports overflow, and nothing else, when the cap is tiny", () => {
+    const parse = parseRms(read("liveness_test.rms"), lang, OPTIONS);
+    const result = analyseLiveness(
+      {
+        parse,
+        language: lang,
+        builtinConstants: OPTIONS.builtinConstants,
+        includesUnread: false,
+      },
+      { maxNodes: 10 },
+    );
+    expect(result.status).toBe("overflow");
+    expect(result.uses).toEqual([]);
+    expect(result.deadBranches).toEqual([]);
+  });
+});

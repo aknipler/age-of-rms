@@ -27,6 +27,7 @@ import { useResolveFlashEnabled } from "../../../../settings/AppSettingsContext"
 import {
   MAX_PLAYER_COUNT,
   type MapSize,
+  type TeamNumber,
 } from "../../../../generationSettings/generationSettingsConstants";
 import type { LanguageData } from "../../../../parser/language";
 import type { ParseResult, SymbolInfo } from "../../../../parser/types";
@@ -44,6 +45,7 @@ import {
 import { parseFormula } from "../compiler/frontend";
 import {
   bindParamLabels,
+  collectScriptConstUses,
   collectUnsetNames,
   computeFormulaFeedback,
   describeUnknownName,
@@ -59,6 +61,7 @@ import {
   type UnsetNameNote,
 } from "./formulaField";
 import { locateFence, readFenceModel } from "../fence";
+import { describeConstantProblem } from "../emitModel";
 import type { AlpModel } from "../fence";
 import { jitterUnitsForKind } from "../prologue";
 import { perimeterSides } from "../expand";
@@ -83,6 +86,7 @@ import {
 } from "../model";
 import {
   addChainTemplate,
+  addPanelConstant,
   addPatternSlot,
   addRandomParam,
   addRing,
@@ -103,6 +107,10 @@ import {
   materialiseRndParams,
   removeChainTemplate,
   removeGroupJitter,
+  removePanelConstant,
+  renamePanelConstant,
+  uniqueConstantName,
+  updatePanelConstantValue,
   removePatternSlot,
   setGroupJitter,
   setGroupKind,
@@ -161,12 +169,15 @@ const FormulaEnvContext = createContext<{
   scriptSymbols: readonly SymbolInfo[];
   /** The rows under a formula field for the name being typed (name-lookup-design.md Sec.4.3). Null where there is no panel around it. */
   rowsFor: ((query: string) => FormulaRow[]) | null;
+  /** Called with the id of a panel constant just made by a formula box's Create offer, so the Constants section can put the cursor on it. */
+  onConstantCreated: ((id: string) => void) | null;
 }>({
   params: NO_PARAMS,
   model: null,
   onChangeModel: null,
   scriptSymbols: [],
   rowsFor: null,
+  onConstantCreated: null,
 });
 
 /**
@@ -194,9 +205,79 @@ function UnknownNameNotes({
       {unknown.map((u) => (
         <span key={u.name} className={styles.formulaWarning}>
           {describeUnknownName(u)}
+          {u.reason === "notInScript" && <CreateConstantOffer name={u.name} />}
         </span>
       ))}
     </>
+  );
+}
+
+/**
+ * The Create constant button after a "defined nowhere" warning. It opens a
+ * small number box, and Create adds a panel constant of that name (the model
+ * writes it into the fence on Apply). Only a name the script defines nowhere
+ * gets this, since any other reason means the script already has the name.
+ */
+function CreateConstantOffer({ name }: { name: string }) {
+  const env = useContext(FormulaEnvContext);
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  if (env.onChangeModel === null || env.model === null) return null;
+  const parsed = text.trim() === "" ? NaN : Number(text);
+  const valid = Number.isFinite(parsed);
+  const create = () => {
+    if (!valid || env.onChangeModel === null || env.model === null) return;
+    // The id is made against the model as rendered, and the update re-checks
+    // the model it receives, so two quick clicks cannot add the name twice.
+    const { constantId } = addPanelConstant(env.model, name, parsed);
+    env.onChangeModel((m) =>
+      m.constants.some((c) => c.name === name)
+        ? m
+        : {
+            ...m,
+            constants: [
+              ...m.constants,
+              { id: constantId, name, value: { k: "num", v: parsed } },
+            ],
+          },
+    );
+    env.onConstantCreated?.(constantId);
+    setOpen(false);
+    setText("");
+  };
+  if (!open) {
+    return (
+      <HelpTip id="landPlacement.constCreate">
+        <button type="button" onClick={() => setOpen(true)}>
+          Create constant
+        </button>
+      </HelpTip>
+    );
+  }
+  return (
+    <span className={styles.fieldRow}>
+      <HelpTip id="landPlacement.constCreateValue">
+        <input
+          type="number"
+          aria-label={`Value for ${name}`}
+          placeholder="Value"
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              create();
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+        />
+      </HelpTip>
+      <button type="button" disabled={!valid} onClick={create}>
+        Create
+      </button>
+    </span>
   );
 }
 
@@ -264,6 +345,9 @@ export interface LandPlacementPanelProps {
   onJumpToOffset: (offset: number) => void;
   playerCount: number;
   mapSize: MapSize;
+  /** The generation settings' teams and Team Positions. Optional, since a caller with no settings means no teams. */
+  teams?: readonly TeamNumber[];
+  teamPositions?: boolean;
   lang: LanguageData;
 }
 
@@ -275,6 +359,8 @@ export function LandPlacementPanel({
   onJumpToOffset,
   playerCount,
   mapSize,
+  teams,
+  teamPositions,
   lang,
 }: LandPlacementPanelProps) {
   const {
@@ -285,7 +371,8 @@ export function LandPlacementPanel({
     selection,
     setSelection,
   } = useLandPlacementModel();
-  const { seed, reseed } = usePanelPreviewSeed();
+  const { seed, reseed, setSeed, followSeed, setFollowSeed } =
+    usePanelPreviewSeed();
   // Local, not in `landPlacementModel.tsx`'s store: an open explanation
   // dialog is not part of the model, and it should not survive a tab switch
   // the way the model deliberately does (Sec.3.6(b)).
@@ -298,6 +385,9 @@ export function LandPlacementPanel({
   // the alternative to an effect that "fixes" state after the fact, which
   // would render one frame with a dangling id.
   const [newRoleChoice, setNewRoleChoice] = useState<string | null>(null);
+  // The panel constant a formula box's Create offer or the section's Add just
+  // made. Its row takes the keyboard focus once, so the person lands on it.
+  const [newConstantId, setNewConstantId] = useState<string | null>(null);
   // What the last Apply did, in words, shown under the button until the
   // model changes again (2026-09-22: "there isn't enough feedback to show
   // that the code has been applied"). Keyed to the model object so an edit
@@ -337,7 +427,16 @@ export function LandPlacementPanel({
   const model = storeModel ?? EMPTY_MODEL;
   const mapDim = resolveMapDim(mapSize, lang.predefinedLabels ?? []) ?? 0;
 
-  const dry = useEmission(parseResult, model, lang, playerCount, mapSize, seed);
+  const dry = useEmission(
+    parseResult,
+    model,
+    lang,
+    playerCount,
+    mapSize,
+    seed,
+    teams,
+    teamPositions,
+  );
   const emission = dry?.emission ?? null;
 
   // The formula field's own resolver (Sec.8's "resulting position" part of
@@ -475,6 +574,7 @@ export function LandPlacementPanel({
     model,
     onChangeModel: setModel as (updater: (prev: AlpModel) => AlpModel) => void,
     scriptSymbols: parseResult.symbols,
+    onConstantCreated: setNewConstantId,
     // A plain function, rebuilt each render. RmsSuggestInput reads it when a
     // key is typed and nothing memoises on it, so a new identity costs nothing.
     rowsFor: (query: string): FormulaRow[] =>
@@ -509,14 +609,35 @@ export function LandPlacementPanel({
           applyTextEdits={applyTextEdits}
         />
 
-        <HelpTip id="landPlacement.seed">
-          <div className={styles.toolbar}>
-            <span>Seed {seed}</span>
+        <div className={styles.toolbar}>
+          <HelpTip id="landPlacement.seed">
+            <label className={styles.newWithRole}>
+              Seed
+              <SeedInput seed={seed} onCommit={setSeed} />
+            </label>
+          </HelpTip>
+          <HelpTip id="landPlacement.reroll">
             <button type="button" onClick={reseed}>
               Re-roll
             </button>
-          </div>
-        </HelpTip>
+          </HelpTip>
+          <HelpTip id="landPlacement.followSeed">
+            <label className={styles.newWithRole}>
+              <input
+                type="checkbox"
+                checked={followSeed}
+                onChange={(e) => setFollowSeed(e.target.checked)}
+              />
+              Shapes follow seed
+            </label>
+          </HelpTip>
+        </div>
+        {followSeed && emission?.ok === true && emission.paramsHeld > 0 && (
+          <p className={styles.applyReport}>
+            Some random values are not in the script yet, so those shapes draw
+            at the middle of their range. Apply to see them at this seed.
+          </p>
+        )}
 
         <div className={styles.toolbar}>
           <HelpTip id="landPlacement.newRole">
@@ -637,6 +758,18 @@ export function LandPlacementPanel({
           </div>
 
           <div className={styles.rightColumn}>
+            <ConstantsSection
+              model={model}
+              parseResult={parseResult}
+              resolveSym={resolveSym}
+              onChangeModel={setModel}
+              applyTextEdits={applyTextEdits}
+              problems={emission?.ok === false ? emission.problems : []}
+              focusId={newConstantId}
+              onFocused={() => setNewConstantId(null)}
+              onAdded={setNewConstantId}
+            />
+
             <ListSection
               title="Roles"
               columns={3}
@@ -822,6 +955,14 @@ export function LandPlacementPanel({
               </button>
             </HelpTip>
             <UnsetNamesNotice notes={unsetNotes} />
+            {emission?.ok === false && emission.error !== undefined && (
+              // Shown here rather than inside the collapsed generated code
+              // section, since it is the reason Apply is off.
+              <p className={styles.formulaError}>
+                The panel cannot write this layout, so Apply is off. Change or
+                remove what was last edited to get it back. ({emission.error})
+              </p>
+            )}
             {applied && (
               <p className={styles.applyReport}>
                 Written to the script: {describeApplyReport(lastApply.report)}.
@@ -1473,9 +1614,9 @@ const OVERRIDABLE: readonly { key: keyof RoleOverrides; label: string }[] = [
   { key: "rightBorder", label: "Right border" },
   { key: "topBorder", label: "Top border" },
   { key: "bottomBorder", label: "Bottom border" },
-  { key: "borderFuzziness", label: "Fuzziness" },
+  { key: "borderFuzziness", label: "Border Fuzziness" },
   { key: "clumpingFactor", label: "Clumping" },
-  { key: "otherZoneAvoidanceDistance", label: "Zone gap" },
+  { key: "otherZoneAvoidanceDistance", label: "Other Zone Avoidance Distance" },
   { key: "landId", label: "Land id" },
   { key: "circularBase", label: "set_circular_base" },
   { key: "landConformity", label: "Conformity" },
@@ -2557,8 +2698,20 @@ function ChainList({
       </summary>
       {chain.map((t) => {
         const polar = t.offset.kind === "polar" ? t.offset : null;
+        // How deep this template hangs, by following `parent` up the list.
+        let depth = 0;
+        for (
+          let up = t.parent;
+          up !== undefined && depth < chain.length;
+          up = chain.find((c) => c.id === up)?.parent
+        )
+          depth++;
         return (
-          <div key={t.id} className={styles.section}>
+          <div
+            key={t.id}
+            className={styles.section}
+            style={depth > 0 ? { marginLeft: `${depth}rem` } : undefined}
+          >
             <HelpTip id="landPlacement.chainRole">
               <div className={styles.fieldRow}>
                 <input
@@ -2632,6 +2785,26 @@ function ChainList({
                 Remove
               </button>
             </HelpTip>
+            <HelpTip id="landPlacement.chainAddNested">
+              <button
+                type="button"
+                onClick={() =>
+                  run((m) =>
+                    addChainTemplate(
+                      m,
+                      group.id,
+                      slot.id,
+                      newRoleId,
+                      parseResult,
+                      emission,
+                      t.id,
+                    ),
+                  )
+                }
+              >
+                + chained land
+              </button>
+            </HelpTip>
           </div>
         );
       })}
@@ -2655,6 +2828,285 @@ function ChainList({
         </button>
       </HelpTip>
     </details>
+  );
+}
+
+/** The preview seed as a whole number, committed on Enter or blur. Anything else puts the old seed back. */
+function SeedInput({
+  seed,
+  onCommit,
+}: {
+  seed: number;
+  onCommit: (seed: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(seed));
+  useEffect(() => setDraft(String(seed)), [seed]);
+  const commit = () => {
+    const n = draft.trim() === "" ? NaN : Number(draft);
+    if (Number.isInteger(n) && n >= 0 && n !== seed) onCommit(n);
+    else setDraft(String(seed));
+  };
+  return (
+    <input
+      type="number"
+      min={0}
+      aria-label="Seed"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setDraft(String(seed));
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+/** A number box that commits on Enter or blur only, never per keystroke. A script edit lands in the document, and one edit per keystroke would fill the undo history. */
+function CommitNumberInput({
+  value,
+  ariaLabel,
+  onCommit,
+}: {
+  value: number;
+  ariaLabel: string;
+  onCommit: (n: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const n = draft.trim() === "" ? NaN : Number(draft);
+    if (Number.isFinite(n) && n !== value) onCommit(n);
+    else setDraft(String(value));
+  };
+  return (
+    <input
+      type="number"
+      aria-label={ariaLabel}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setDraft(String(value));
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+/** A name box that commits on Enter or blur only. Characters outside letters, digits and underscore become underscores. */
+function CommitNameInput({
+  value,
+  ariaLabel,
+  inputRef,
+  onCommit,
+}: {
+  value: string;
+  ariaLabel: string;
+  inputRef?: (el: HTMLInputElement | null) => void;
+  onCommit: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => {
+    const clean = draft.replace(/[^A-Za-z0-9_]/g, "_");
+    if (clean !== "" && clean !== value) onCommit(clean);
+    else setDraft(value);
+  };
+  return (
+    <input
+      type="text"
+      aria-label={ariaLabel}
+      ref={inputRef}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setDraft(value);
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+/**
+ * The Constants section (land-placement-constants-chains-drag-brief.md item
+ * 1.5). Panel constants come first, owned by the model and written into the
+ * fence on Apply. Script constants follow, the names the formulas use that
+ * the script defines. A script constant is editable only where rewriting its
+ * one number is safe, and otherwise shows why not in brackets.
+ */
+function ConstantsSection({
+  model,
+  parseResult,
+  resolveSym,
+  onChangeModel,
+  applyTextEdits,
+  problems,
+  focusId,
+  onFocused,
+  onAdded,
+}: {
+  model: AlpModel;
+  parseResult: ParseResult;
+  resolveSym: (name: string) => number | undefined;
+  onChangeModel: (updater: AlpModel | ((prev: AlpModel) => AlpModel)) => void;
+  applyTextEdits: (edits: readonly TextEdit[]) => void;
+  problems: readonly { name: string }[];
+  focusId: string | null;
+  onFocused: () => void;
+  onAdded: (id: string) => void;
+}) {
+  const fence = locateFence(parseResult);
+  const fenceStart = fence?.span.start;
+  const fenceEnd = fence?.span.end;
+  const scriptRows = useMemo(
+    () =>
+      collectScriptConstUses(
+        model,
+        parseResult,
+        fenceStart === undefined || fenceEnd === undefined
+          ? null
+          : { start: fenceStart, end: fenceEnd },
+      ),
+    [model, parseResult, fenceStart, fenceEnd],
+  );
+  const problemById = new Map<string, string>();
+  for (const pr of problems) {
+    const d = describeConstantProblem(pr.name);
+    if (d) problemById.set(d.id, d.text);
+  }
+  const scriptNames = new Set(parseResult.symbols.map((x) => x.name));
+  const rowRefs = useRef(new Map<string, HTMLInputElement>());
+  useEffect(() => {
+    if (focusId === null) return;
+    const el = rowRefs.current.get(focusId);
+    if (el) {
+      el.focus();
+      el.select();
+      onFocused();
+    }
+  }, [focusId, onFocused, model.constants]);
+
+  return (
+    <div className={styles.section}>
+      <p className={styles.sectionTitle}>
+        Constants ({model.constants.length + scriptRows.length})
+      </p>
+      <HelpTip id="landPlacement.constants">
+        <div>
+          <div className={styles.fieldRow}>
+            <span>CONST_NUM_PLAYERS</span>
+            <span className={styles.muted}>
+              built in, the number of players. Written when a formula uses it.
+            </span>
+          </div>
+          {model.constants.map((c) => (
+            <div key={c.id}>
+              <div className={styles.fieldRow}>
+                <HelpTip id="landPlacement.constName">
+                  <CommitNameInput
+                    value={c.name}
+                    ariaLabel="Constant name"
+                    inputRef={(el) => {
+                      if (el) rowRefs.current.set(c.id, el);
+                      else rowRefs.current.delete(c.id);
+                    }}
+                    onCommit={(name) =>
+                      onChangeModel((m) => renamePanelConstant(m, c.id, name))
+                    }
+                  />
+                </HelpTip>
+                <HelpTip id="landPlacement.constValue">
+                  <FormulaField
+                    label="="
+                    value={c.value}
+                    fieldSuffix={`CONST_${c.id}`}
+                    resolveSym={resolveSym}
+                    onCommit={(value) =>
+                      onChangeModel((m) =>
+                        updatePanelConstantValue(m, c.id, value),
+                      )
+                    }
+                  />
+                </HelpTip>
+                <HelpTip id="landPlacement.constRemove">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChangeModel((m) => removePanelConstant(m, c.id))
+                    }
+                  >
+                    Remove
+                  </button>
+                </HelpTip>
+              </div>
+              {problemById.has(c.id) && (
+                <span className={styles.formulaError}>
+                  {problemById.get(c.id)}
+                </span>
+              )}
+            </div>
+          ))}
+          {scriptRows.map((r) => (
+            <div key={r.name} className={styles.fieldRow}>
+              <span>{r.name}</span>
+              {r.valueSpan !== undefined && r.value !== undefined ? (
+                <HelpTip id="landPlacement.constScriptValue">
+                  <CommitNumberInput
+                    value={r.value}
+                    ariaLabel={`Value of ${r.name} in the script`}
+                    onCommit={(n) =>
+                      applyTextEdits([
+                        {
+                          start: r.valueSpan!.start,
+                          end: r.valueSpan!.end,
+                          newText: String(n),
+                        },
+                      ])
+                    }
+                  />
+                </HelpTip>
+              ) : (
+                <span className={styles.muted}>[{r.readOnlyReason}]</span>
+              )}
+              <span className={styles.muted}>
+                {r.line !== undefined
+                  ? `in script, line ${r.line}`
+                  : "in script"}
+                , used {r.uses} {r.uses === 1 ? "time" : "times"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </HelpTip>
+      <HelpTip id="landPlacement.constAdd">
+        <button
+          type="button"
+          onClick={() => {
+            const name = uniqueConstantName(model, "NEW_CONST", scriptNames);
+            const { model: next, constantId } = addPanelConstant(
+              model,
+              name,
+              0,
+            );
+            onChangeModel(next);
+            onAdded(constantId);
+          }}
+        >
+          + Constant
+        </button>
+      </HelpTip>
+    </div>
   );
 }
 
@@ -2910,7 +3362,7 @@ function RoleRow({
       <HelpTip id="landPlacement.roleFuzziness">
         <OptionalAttributeField
           field="borderFuzziness"
-          label="Fuzziness"
+          label="Border Fuzziness"
           value={role["borderFuzziness"]}
           nameStem={role.label}
           lang={lang}
@@ -2940,7 +3392,7 @@ function RoleRow({
       <HelpTip id="landPlacement.roleZoneAvoidance">
         <OptionalAttributeField
           field="otherZoneAvoidanceDistance"
-          label="Zone gap"
+          label="Other Zone Avoidance Distance"
           value={role["otherZoneAvoidanceDistance"]}
           nameStem={role.label}
           lang={lang}
@@ -2966,13 +3418,10 @@ function RoleRow({
         />
       </HelpTip>
 
-      {/* Tier 2 behind one disclosure, labelled for what it holds rather
-          than for its rank ("advanced" tells the user nothing about whether
-          their case is in there, Sec.7). Where the line falls is a
-          judgement call left to whoever has the panel in front of them
-          (Sec.12); move it and say so. */}
-      <details className={styles.roleTier2}>
-        <summary>Shape and conformity</summary>
+      {/* Shape and conformity sit with the other attributes, with a gap
+          between the two (2026-11-14, owner feedback). They were folded into
+          a disclosure of their own before. */}
+      <div className={styles.attributeStack}>
         <HelpTip id="landPlacement.roleCircularBase">
           <label className={styles.fieldRow}>
             <input
@@ -3006,7 +3455,7 @@ function RoleRow({
             }
           />
         </HelpTip>
-      </details>
+      </div>
     </div>
   );
 }

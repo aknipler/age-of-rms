@@ -54,7 +54,14 @@ function placement(id: string, parent: string): Placement {
 }
 
 function modelWith(placements: Placement[]): AlpModel {
-  return { v: 1, placements, roles: [], randomParams: [], groups: [] };
+  return {
+    v: 1,
+    placements,
+    roles: [],
+    randomParams: [],
+    constants: [],
+    groups: [],
+  };
 }
 
 describe("buildPlacementTree / flattenPlacementTree", () => {
@@ -420,6 +427,7 @@ describe("checkP4ForPanel — as the panel calls it (regression, reported 2026-0
       ],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const emission = emitAlpModel(model, namer, new Map(), 2);

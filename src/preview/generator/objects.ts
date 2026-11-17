@@ -264,6 +264,8 @@ export interface ObjectConstant {
   constId: number | null;
   /** Null for terrain entries with no callable constant. Object entries always have one; the union is here because this one type is passed to every stage, terrain lookups included. */
   rmsConstant: string | null;
+  /** The row's readable name, for an object with no constant (the canvas's terrain objects). Optional, since tests build bare rows. */
+  descriptiveName?: string;
   category: string;
   resourceAmounts?: Readonly<Record<string, number>>;
   isWater?: boolean;

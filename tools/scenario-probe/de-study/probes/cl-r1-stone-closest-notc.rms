@@ -1,0 +1,8 @@
+/* 2026-11-09 control of the owner's find_closest stone test */
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<OBJECTS_GENERATION>
+create_object STONE { set_place_for_every_player set_gaia_object_only number_of_objects 1 number_of_groups 650 min_distance_to_players 10 max_distance_to_players 35 require_path 1 find_closest }

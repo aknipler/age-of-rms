@@ -102,6 +102,8 @@ function checkOverlayShape(shape: unknown, index: number): string | null {
         return `shape ${index} (circle) has a non-numeric rTiles`;
       if (shape.fill !== undefined && typeof shape.fill !== "boolean")
         return `shape ${index} (circle) has a non-boolean fill`;
+      if (shape.square !== undefined && typeof shape.square !== "boolean")
+        return `shape ${index} (circle) has a non-boolean square`;
       return null;
     case "line":
       if (!isTilePoint(shape.from))

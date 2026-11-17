@@ -54,6 +54,8 @@ export function sizeKeys(labels: readonly PredefinedLabel[]): string[] {
 }
 
 interface BlockState {
+  line: number;
+  file?: string;
   /** The atom of every arm that can be taken, in order. */
   possible: BddNode[];
   total: number;
@@ -66,6 +68,8 @@ export class AtomTable {
   private nextVar = 0;
   private readonly names = new Map<number, string>();
   private readonly sizeAtoms = new Map<string, BddNode>();
+  /** The size keys whose atom has been named after a label the script read (messages, B5). */
+  private readonly sizeNamedByRead = new Set<string>();
   private readonly playerAtoms = new Map<number, BddNode>();
   /** Atoms for labels and unknown names, by name. A name has one atom whether it is read as a label or as a free name. */
   private readonly named = new Map<string, BddNode>();
@@ -93,10 +97,18 @@ export class AtomTable {
     // tests them nearest the root. Variable order is the main cost lever of
     // a BDD (a bad order can make a small formula exponentially large), and
     // putting the facts every guard leans on at the top keeps chains short.
+    // A size atom starts with its modern label as its name. The script's own
+    // spelling replaces it the first time the script reads a label of that size.
+    const modern = new Map<string, string>();
+    for (const label of labels) {
+      const key = sizeKeyOf(label);
+      if (key !== undefined && label.name.startsWith("MAPSIZE_"))
+        modern.set(key, label.name);
+    }
     for (const size of mapSizes)
-      this.sizeAtoms.set(size, this.newAtom(`${size} map size`));
+      this.sizeAtoms.set(size, this.newAtom(modern.get(size) ?? size));
     for (const n of PLAYER_COUNTS)
-      this.playerAtoms.set(n, this.newAtom(`${n} players`));
+      this.playerAtoms.set(n, this.newAtom(`${n}_PLAYER_GAME`));
 
     this.base = this.exactlyOne([...this.sizeAtoms.values()]);
     this.base = bdd.and(
@@ -119,7 +131,10 @@ export class AtomTable {
     const key = sizeKeyOf(data);
     if (key !== undefined) {
       const size = this.sizeAtoms.get(key);
-      if (size !== undefined) return size;
+      if (size !== undefined) {
+        this.noteRead(name);
+        return size;
+      }
     }
     if (data.category === "playerCount") {
       const m = PLAYER_LABEL.exec(name);
@@ -139,6 +154,25 @@ export class AtomTable {
   }
 
   /**
+   * Records that the script read this label, so a message names a size the way
+   * the script spelled it (B5 of the slice B brief): `TINY_MAP` in a script
+   * that tests `TINY_MAP`, `MAPSIZE_TINY` in one that tests that. Only the
+   * FIRST label of a size counts. The walk calls this in source order, as it
+   * reads each condition, because the nodes themselves are built lazily and in
+   * whatever order a question happens to ask for them.
+   */
+  noteRead(name: string): void {
+    const data = this.labelByName.get(name);
+    if (data === undefined) return;
+    const key = sizeKeyOf(data);
+    if (key === undefined || this.sizeNamedByRead.has(key)) return;
+    const size = this.sizeAtoms.get(key);
+    if (size === undefined) return;
+    this.sizeNamedByRead.add(key);
+    this.names.set(this.bdd.variableOf(size)!, name);
+  }
+
+  /**
    * A fresh atom for a name no data knows and the script never defines, the
    * same node every time for one name. This is CLAUDE.md's positive-resolver
    * rule applied to liveness: our data missing a name proves nothing about
@@ -152,9 +186,15 @@ export class AtomTable {
     return atom;
   }
 
-  /** Opens a start_random block and returns its id. */
-  openBlock(): number {
+  /**
+   * Opens a start_random block and returns its id. `line` is where its
+   * `start_random` sits, and `file` names the include file when the block is
+   * not in the open script, so an arm's name points at a place a reader can find.
+   */
+  openBlock(line: number, file?: string): number {
     this.blocks.push({
+      line,
+      file,
       possible: [],
       total: 0,
       nonLiteral: false,
@@ -189,7 +229,7 @@ export class AtomTable {
     if (chance !== undefined) state.total += chance;
     if (!possible) return this.bdd.FALSE;
     const atom = this.newAtom(
-      `arm ${state.possible.length + 1} of random block ${block + 1}`,
+      `arm ${state.possible.length + 1} of the start_random on line ${state.line}${state.file === undefined ? "" : ` of ${state.file}`}`,
     );
     state.possible.push(atom);
     return atom;

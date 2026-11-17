@@ -1,0 +1,8 @@
+#const PHA 1909
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS2
+create_player_lands { terrain_type GRASS2 number_of_tiles 0 base_size 4 }
+<OBJECTS_GENERATION>
+create_object PHA { second_object GOLD set_gaia_object_only number_of_objects 2500 }

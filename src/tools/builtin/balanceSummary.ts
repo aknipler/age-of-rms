@@ -16,7 +16,6 @@
  * game places resources.
  */
 
-import { buildLanguageIndex } from "../../parser/language";
 import type { ParseResult } from "../../parser/types";
 import type { PlacedObject, PlayerMarker } from "../../preview/generator/types";
 import type { PreviewReferenceData } from "../../preview/generator/index";
@@ -32,8 +31,8 @@ import {
   type ToolRunHandle,
 } from "../../../tools-api/index";
 import {
-  objectConstantsFromPublished,
   runPreviewFromContext,
+  toolPreviewReferenceData,
 } from "../previewBridge";
 import {
   DEFAULT_BASE_SEED,
@@ -459,10 +458,9 @@ async function runBalanceSummary(
       ? ctx.params.baseSeed
       : DEFAULT_BASE_SEED;
 
-  const refDb: PreviewReferenceData = {
-    language: buildLanguageIndex(ctx.referenceData.language),
-    constants: objectConstantsFromPublished(ctx.referenceData.gameConstants),
-  };
+  const refDb: PreviewReferenceData = toolPreviewReferenceData(
+    ctx.referenceData,
+  );
 
   const stats: BalanceStats = new Map();
   const totalGenerations = selectedCounts.length * runsPerPlayerCount;

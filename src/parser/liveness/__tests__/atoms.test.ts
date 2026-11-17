@@ -60,10 +60,47 @@ describe("AtomTable labels", () => {
   });
 });
 
+describe("AtomTable names", () => {
+  const nameOf = (bdd: Bdd, atoms: AtomTable, node: ReturnType<Bdd["not"]>) =>
+    atoms.atomName(bdd.variableOf(node)!);
+
+  it("names a size after the first label of it the script reads (B5)", () => {
+    const { bdd, atoms } = setup();
+    atoms.noteRead("TINY_MAP");
+    atoms.noteRead("MAPSIZE_TINY");
+    const node = atoms.label("MAPSIZE_TINY");
+    expect(nameOf(bdd, atoms, node)).toBe("TINY_MAP");
+  });
+
+  it("names a size after its modern label when the script reads none", () => {
+    const { bdd, atoms } = setup();
+    expect(nameOf(bdd, atoms, atoms.label("TINY_MAP"))).toBe("TINY_MAP");
+    const other = setup();
+    expect(
+      other.atoms.atomName(
+        other.bdd.variableOf(other.atoms.label("MAPSIZE_SMALL"))!,
+      ),
+    ).toBe("MAPSIZE_SMALL");
+  });
+
+  it("names a player atom N_PLAYER_GAME and an arm after its start_random line", () => {
+    const { bdd, atoms } = setup();
+    expect(nameOf(bdd, atoms, atoms.label("4_PLAYER_GAME"))).toBe(
+      "4_PLAYER_GAME",
+    );
+    const id = atoms.openBlock(12);
+    atoms.arm(id, 50);
+    const second = atoms.arm(id, 50);
+    expect(nameOf(bdd, atoms, second)).toBe(
+      "arm 2 of the start_random on line 12",
+    );
+  });
+});
+
 describe("AtomTable random blocks", () => {
   /** Opens a block, adds one arm per chance, closes it, and returns the arm nodes. */
   function block(atoms: AtomTable, chances: (number | undefined)[]) {
-    const id = atoms.openBlock();
+    const id = atoms.openBlock(1);
     const arms = chances.map((c) => atoms.arm(id, c));
     atoms.closeBlock(id);
     return arms;

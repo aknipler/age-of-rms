@@ -41,6 +41,12 @@ export interface Diagnostic {
    * quick-fix (docs/breakdown-design.md Sec.3.7 / Appendix rev-2 changelog).
    */
   suggestion?: string;
+  /**
+   * Other places in the same file the message refers to, each with a short
+   * label. Monaco shows them as links under the message and Breakdown's badge
+   * as buttons. Name liveness uses it to point at the lines that define a name.
+   */
+  related?: { span: Span; message: string }[];
 }
 
 export interface LexOptions {

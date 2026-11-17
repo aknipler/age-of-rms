@@ -89,6 +89,7 @@ function Harness({
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     moveItem: () => {},
     duplicateItem: () => {},
@@ -171,6 +172,7 @@ function SwitchHarness({
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
   } as unknown as BreakdownContextValue;
   return (
     <HelpSettingsProvider>

@@ -23,27 +23,138 @@ import {
 } from "./paramEmit";
 import { emitRole, emitRoleOverrides } from "./roleEmit";
 import { buildCreateLandSkeleton } from "./landCommand";
-import { emitCells, formatConstLine, type EmittedConst } from "./compiler/emit";
+import {
+  emitCells,
+  formatConstLine,
+  type EmittedConst,
+  type NamedCell,
+} from "./compiler/emit";
 import { verifyEmission, type VerifyProblem } from "./compiler/verify";
 import type { NameAllocator } from "./compiler/naming";
 import type { AlpModel } from "./fence";
 import {
   ROLE_OPTIONAL_ATTRIBUTES,
+  effectiveRepeatIndex,
   effectiveRole,
   type LandRole,
+  type PanelConstant,
   type Placement,
+  type RandomParam,
 } from "./model";
 import type { RoleConstNames } from "./roleEmit";
+import { MAX_PLAYER_COUNT } from "../../../generationSettings/generationSettingsConstants";
 import {
   buildPrologue,
   jitterUnitsForKind,
   renderConditionalBlock,
 } from "./prologue";
 
+/** The built in constant holding the number of players, written as an `if N_PLAYER_GAME` ladder when the model uses it. */
+export const NUM_PLAYERS_CONSTANT = "CONST_NUM_PLAYERS";
+
+/** True when any Expr anywhere in `value` names `name`. A structural walk over the plain data, so no field of the model is missed. */
+function usesSym(value: unknown, name: string): boolean {
+  if (Array.isArray(value)) return value.some((v) => usesSym(v, name));
+  if (value === null || typeof value !== "object") return false;
+  const o = value as { k?: unknown; name?: unknown };
+  if (o.k === "sym" && o.name === name) return true;
+  return Object.values(value).some((v) => usesSym(v, name));
+}
+
+/** The ladder `if 1_PLAYER_GAME ... endif`, one constant line per player count. */
+function numPlayersLadder(): string {
+  const branches = Array.from({ length: MAX_PLAYER_COUNT }, (_, i) => ({
+    condition: `${i + 1}_PLAYER_GAME`,
+    lines: [`#const ${NUM_PLAYERS_CONSTANT} ${i + 1}`],
+  }));
+  return renderConditionalBlock(branches);
+}
+
+/** Every `sym` name an Expr mentions. */
+function symNames(e: Expr, out: Set<string> = new Set()): Set<string> {
+  switch (e.k) {
+    case "sym":
+      out.add(e.name);
+      break;
+    case "neg":
+    case "sin":
+    case "cos":
+      symNames(e.e, out);
+      break;
+    case "bin":
+      symNames(e.l, out);
+      symNames(e.r, out);
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
+/**
+ * The four refusals for a panel constant. Each problem is named
+ * `constant:<id>:<reason>` and `describeConstantProblem` turns it into the
+ * sentence the Constants row shows.
+ */
+function refusePanelConstants(
+  constants: readonly PanelConstant[],
+  namer: NameAllocator,
+): VerifyProblem[] {
+  const problems: VerifyProblem[] = [];
+  const refuse = (id: string, reason: string) =>
+    problems.push({
+      name: `constant:${id}:${reason}`,
+      emittedValue: undefined,
+      directValue: undefined,
+    });
+  const seen = new Set<string>();
+  constants.forEach((c, i) => {
+    // The allocator holds the script's names from OUTSIDE the fence, plus the
+    // language's reserved words. The fence's own constants are not in it, so
+    // a constant written by an earlier Apply does not collide with itself.
+    if (namer.has(c.name)) refuse(c.id, "script");
+    else if (seen.has(c.name)) refuse(c.id, "duplicate");
+    seen.add(c.name);
+    const laterOrSelf = new Set(constants.slice(i).map((x) => x.name));
+    if ([...symNames(c.value)].some((n) => laterOrSelf.has(n)))
+      refuse(c.id, "order");
+  });
+  return problems;
+}
+
+const CONSTANT_PROBLEM_TEXT: Record<string, string> = {
+  script: "The script already defines this name outside the fence.",
+  duplicate: "Another panel constant has this name.",
+  order: "The value uses a constant at or after this one. Move it above.",
+  generated: "The value uses a name the panel generates for a land or role.",
+};
+
+/** The sentence for a problem named `constant:<id>:<reason>`, or undefined for any other problem. */
+export function describeConstantProblem(
+  problemName: string,
+): { id: string; text: string } | undefined {
+  const m = /^constant:(.+):(script|duplicate|order|generated)$/.exec(
+    problemName,
+  );
+  return m ? { id: m[1], text: CONSTANT_PROBLEM_TEXT[m[2]] } : undefined;
+}
+
+/** What the panel's preview asks of an emission beyond the model itself. */
+export interface EmitOptions {
+  /** Draw each RandomParam at the value the script rolled instead of the midpoint of its range. */
+  followSeed?: boolean;
+  /** The model read from the script's fence, used to tell which params the script was written for. */
+  fenceModel?: AlpModel | null;
+}
+
 export interface EmissionOk {
   ok: true;
-  /** Every `#const` line, role constants first then the frame/position algebra, the fence BODY (Sec.6.1). */
+  /** Every `#const` line, the fence BODY (Sec.6.1). Params first, then the panel's own constants, then the prologue, then role constants and the frame/position algebra. */
   body: string;
+  /** Params that drew at the value this seed rolled. 0 unless the emission followed the seed. */
+  paramsRolled: number;
+  /** Params that fell back to the midpoint while following the seed, because the script's fence was not written for them yet. */
+  paramsHeld: number;
   /** A `create_land` skeleton per placement that owns a role (Sec.6.2), keyed by Placement.id, WRAPPED in its `if ALP_AT_LEAST_k` guard where it has one. */
   createLandText: ReadonlyMap<string, string>;
   /** Every RandomParam's preview stand-in (the midpoint of its range) by param id, what the panel resolves a `param` leaf with. */
@@ -87,9 +198,35 @@ export interface EmissionFailed {
   ok: false;
   /** Sec.5.5: "on disagreement the tool emits nothing and reports the offending node." */
   problems: readonly VerifyProblem[];
+  /** Set when emission threw rather than disagreeing with itself (`tryEmitAlpModel`). The thrown message, for the panel to show. */
+  error?: string;
 }
 
 export type EmissionResult = EmissionOk | EmissionFailed;
+
+/**
+ * `emitAlpModel` for a caller that runs during a React render (the panel's
+ * dry run and Apply's preview). `emitAlpModel` throws on an internal
+ * contradiction, which is right for tests and for code that must not write a
+ * half-built fence. A throw inside a render with no error boundary above it
+ * unmounts the whole React tree, so one bad land blanked the entire app
+ * (2026-11-14). Here the throw becomes an ordinary failed emission. Apply
+ * then has nothing to write, and the panel stays up so the person can undo
+ * whatever caused it.
+ */
+export function tryEmitAlpModel(
+  ...args: Parameters<typeof emitAlpModel>
+): EmissionResult {
+  try {
+    return emitAlpModel(...args);
+  } catch (e) {
+    return {
+      ok: false,
+      problems: [],
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
 
 /**
  * Step 1 (Sec.5's fixed order): "expand every ShapeGroup into its members."
@@ -124,6 +261,7 @@ export function emitAlpModel(
   namer: NameAllocator,
   scriptSymbols: ReadonlyMap<string, number>,
   playerCount: number,
+  options?: EmitOptions,
 ): EmissionResult {
   // Step 0 (Sec.4.4, closed this slice; the perPlayer restriction lifted by
   // slice-b-brief.md item 3): hoist every RandomParam to its own #const
@@ -132,7 +270,58 @@ export function emitAlpModel(
   // leaf, and emit.ts's own contract requires it resolved to `sym(name)`
   // before a tree reaches lowering. `playerCount` is not threaded in here any
   // more: a `perPlayer` param now always emits at MAX_PLAYER_COUNT.
-  const paramEmission = emitRandomParams(model.randomParams, namer);
+  // Step 0, before the params: panel constants keep the exact name typed, so
+  // the allocator must know every one before anything allocates (a generated
+  // name can then never take one). A refusal is returned at once, since a
+  // body built around a shadowed or misordered constant would be wrong.
+  const constantRefusals = refusePanelConstants(model.constants, namer);
+  if (constantRefusals.length > 0) {
+    return { ok: false, problems: constantRefusals };
+  }
+  for (const c of model.constants) namer.reserve(c.name);
+
+  // The built in CONST_NUM_PLAYERS (2026-11-14), emitted only when a formula
+  // names it, so a model that never does is unchanged. A script that already
+  // defines the name keeps its own, so nothing is written over it.
+  const emitNumPlayers =
+    usesSym(model, NUM_PLAYERS_CONSTANT) && !namer.has(NUM_PLAYERS_CONSTANT);
+  if (emitNumPlayers) namer.reserve(NUM_PLAYERS_CONSTANT);
+  // Verification and the canvas read it as a plain cell at the previewed count.
+  const numPlayersCells: EmittedConst[] = emitNumPlayers
+    ? [
+        {
+          name: NUM_PLAYERS_CONSTANT,
+          text: String(playerCount),
+          tokens: [String(playerCount)],
+        },
+      ]
+    : [];
+
+  // Seed following (land-placement-seed-follow-brief.md item 2). A param draws
+  // at the value the script rolled only when the script's fence was written
+  // for that same param, otherwise its name could hold another param's roll.
+  const rolledParams = new Set<string>();
+  const heldParams = new Set<string>();
+  const fenceParams = new Map(
+    (options?.fenceModel?.randomParams ?? []).map((p) => [p.id, p] as const),
+  );
+  const rolled =
+    options?.followSeed === true
+      ? (name: string, p: RandomParam): number | undefined => {
+          const written = fenceParams.get(p.id);
+          const value =
+            written !== undefined &&
+            written.label === p.label &&
+            written.min === p.min &&
+            written.max === p.max &&
+            written.perPlayer === p.perPlayer
+              ? scriptSymbols.get(name)
+              : undefined;
+          (value === undefined ? heldParams : rolledParams).add(p.id);
+          return value;
+        }
+      : undefined;
+  const paramEmission = emitRandomParams(model.randomParams, namer, rolled);
   const paramProblems: VerifyProblem[] = [];
 
   function resolveExprParams(
@@ -153,6 +342,14 @@ export function emitAlpModel(
     }
     return resolved;
   }
+
+  // Step 0.5: the panel's own constants, in list order, straight after the
+  // params they may use and ahead of the prologue and every role.
+  const constantTargets: NamedCell[] = model.constants.map((c) => ({
+    name: c.name,
+    expr: resolveExprParams(c.value, undefined, `constant:${c.id}:value`),
+  }));
+  const constantCells = emitCells(constantTargets, namer);
 
   // Step 1.
   const placements = resolveFullPlacements(model);
@@ -433,6 +630,25 @@ export function emitAlpModel(
   // and flattening them into this array would render them a SECOND time,
   // unconditionally, alongside it.
   const emittedCells = [...paramEmission.cells, ...roleCells, ...frameCells];
+  // Refusal 4 needs every name the model generates, which exists only now.
+  const generated = new Set([
+    ...roleCells.map((c) => c.name),
+    ...frameCells.map((c) => c.name),
+    ...prologue.emittedNames,
+  ]);
+  const usedGenerated = model.constants.filter((c) =>
+    [...symNames(c.value)].some((n) => generated.has(n)),
+  );
+  if (usedGenerated.length > 0) {
+    return {
+      ok: false,
+      problems: usedGenerated.map((c) => ({
+        name: `constant:${c.id}:generated`,
+        emittedValue: undefined,
+        directValue: undefined,
+      })),
+    };
+  }
   // Sec.4.1: "emitted once per fence." NOT before EVERYTHING, despite what
   // this line used to say (slice A shipped that reading, and it went
   // untested because nothing before slice B ever put a param reference
@@ -450,7 +666,11 @@ export function emitAlpModel(
   // requirement — a script that never turns this on gets nothing new, and
   // this reduces to the untouched `paramEmission.cells, roleCells, frameCells`
   // order it always was).
-  const paramLines = paramEmission.cells.map(formatConstLine);
+  const paramLines = [
+    ...paramEmission.cells.map(formatConstLine),
+    ...(emitNumPlayers ? [numPlayersLadder()] : []),
+    ...constantCells.map(formatConstLine),
+  ];
   const restLines = [...roleCells, ...frameCells].map(formatConstLine);
   const body = [
     ...paramLines,
@@ -477,11 +697,16 @@ export function emitAlpModel(
   const crossCheck = verifyEmission(
     [
       ...paramEmission.cells,
+      ...numPlayersCells,
+      ...constantCells,
       ...roleCells,
       ...prologue.crossCheckDegCells,
       ...frameCells,
     ],
-    frame.cells.map((c) => ({ name: c.name, source: c.expr })),
+    [
+      ...constantTargets.map((c) => ({ name: c.name, source: c.expr })),
+      ...frame.cells.map((c) => ({ name: c.name, source: c.expr })),
+    ],
     scriptSymbols,
     undefined,
     undefined,
@@ -501,6 +726,8 @@ export function emitAlpModel(
   const verified = verifyEmission(
     [
       ...paramEmission.cells,
+      ...numPlayersCells,
+      ...constantCells,
       ...roleCells,
       ...prologue.liveDegCells,
       ...frameCells,
@@ -545,7 +772,7 @@ export function emitAlpModel(
       roleNames: effective.names,
       xName: quantity.xName,
       yName: quantity.yName,
-      repeatIndex: placement.repeatIndex,
+      repeatIndex: effectiveRepeatIndex(placement),
     });
     // Item 6: one guard per create_land. A land belonging to player 1 (or
     // chained to one) needs none; every other player's land is wrapped in
@@ -567,6 +794,9 @@ export function emitAlpModel(
   return {
     ok: true,
     body,
+    // A param counts as held when any of its cells fell back to the midpoint.
+    paramsRolled: [...rolledParams].filter((id) => !heldParams.has(id)).length,
+    paramsHeld: heldParams.size,
     createLandText,
     createLandSkeleton,
     paramPreview: paramEmission.previewById,
@@ -578,6 +808,8 @@ export function emitAlpModel(
     // — "what am I about to add", not just what the currently-previewed
     // branch happens to use).
     emittedNames: [
+      ...numPlayersCells.map((c) => c.name),
+      ...constantCells.map((c) => c.name),
       ...emittedCells.map((c) => c.name),
       ...prologue.emittedNames,
     ],

@@ -82,13 +82,34 @@ describe("toggleCommandLayoutInRange", () => {
     );
   });
 
-  it("declines to expand a command when doing so would also re-indent an unrelated sibling", () => {
-    // Node 2 is already expanded but with NO indentation at all, and it is
-    // the only indentation evidence in the file, so picking an indent unit
-    // to expand node 1 with also normalizes node 2's flush-left attributes,
-    // which is exactly the kind of collateral edit this hotkey must refuse
-    // to make. Node 2's own toggle (expanded -> inline) has no indentation
-    // decision to make, so it succeeds independently.
+  it("toggles a command in a script the formatter would also normalise elsewhere, touching only that command", () => {
+    // Before 2026-11-14 this ran the formatter over the whole document, so
+    // anything it would tidy elsewhere (the missing blank line before the
+    // second section, the flush left attributes of the second command) made
+    // the edit reach outside the command and the toggle did nothing at all.
+    const source =
+      "<LAND_GENERATION>\n" +
+      "create_land { terrain_type GRASS land_percent 20 }\n" +
+      "create_land\n{\nterrain_type WATER\nland_percent 10\n}\n" +
+      "<ELEVATION_GENERATION>\n" +
+      "create_elevation 4 { base_terrain GRASS }\n";
+    const parse = parseRms(source, lang);
+    const cursor = source.indexOf("create_land") + 3;
+    const result = toggleCommandLayoutInRange(parse, {
+      start: cursor,
+      end: cursor,
+    });
+    expect(result.toggledCount).toBe(1);
+    expect(result.skippedCount).toBe(0);
+    const text = applyEdits(source, result.edits);
+    expect(text).toMatch(/create_land\s*\n\s*\{\s*\n\s*terrain_type GRASS/);
+    // Everything after the toggled command is byte for byte what it was.
+    expect(text.endsWith(source.slice(source.indexOf("create_land\n{")))).toBe(
+      true,
+    );
+  });
+
+  it("toggles each of two commands independently on a selection", () => {
     const source =
       "<LAND_GENERATION>\n" +
       "create_land { terrain_type GRASS land_percent 20 }\n" +
@@ -98,17 +119,29 @@ describe("toggleCommandLayoutInRange", () => {
       start: 0,
       end: source.length,
     });
-    expect(result.toggledCount).toBe(1);
-    expect(result.skippedCount).toBe(1);
+    expect(result.toggledCount).toBe(2);
+    expect(result.skippedCount).toBe(0);
     const text = applyEdits(source, result.edits);
-    // Node 1 (the one that would have collided) is untouched.
-    expect(text).toContain(
-      "create_land { terrain_type GRASS land_percent 20 }",
-    );
-    // Node 2 still collapsed cleanly on its own.
     expect(text).toContain(
       "create_land { terrain_type WATER land_percent 10 }",
     );
+  });
+
+  it("keeps the indentation of a command that sits inside an indented section", () => {
+    const source =
+      "<LAND_GENERATION>\n" +
+      "  create_land { terrain_type GRASS land_percent 20 }\n" +
+      "  create_land\n  {\n    terrain_type WATER\n  }\n";
+    const parse = parseRms(source, lang);
+    const cursor = source.indexOf("create_land") + 3;
+    const result = toggleCommandLayoutInRange(parse, {
+      start: cursor,
+      end: cursor,
+    });
+    expect(result.toggledCount).toBe(1);
+    const text = applyEdits(source, result.edits);
+    expect(text).toContain("  create_land\n");
+    expect(text).toContain("    terrain_type GRASS");
   });
 
   it("skips collapsing a block that holds a nested if — expand direction has no such limit", () => {

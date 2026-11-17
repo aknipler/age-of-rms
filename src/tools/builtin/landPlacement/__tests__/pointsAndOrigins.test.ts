@@ -49,6 +49,7 @@ const EMPTY: AlpModel = {
   placements: [],
   roles: [role()],
   randomParams: [],
+  constants: [],
   groups: [],
 };
 

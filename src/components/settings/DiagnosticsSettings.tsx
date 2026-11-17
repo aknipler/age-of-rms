@@ -11,25 +11,55 @@ import styles from "./DiagnosticsSettings.module.css";
  * hover. This tab lists the second kind, each with a button to turn it back
  * on, and offers one button for every warning hidden with "Ok".
  */
+const SWITCH_BRANCH_CODE = "RMS0323";
+
 export function DiagnosticsSettings() {
-  const { turnedOff, turnBackOn, filesWithHidden, clearHiddenForFiles } =
-    useDiagnosticDismissal();
+  const {
+    turnedOff,
+    turnOff,
+    turnBackOn,
+    filesWithHidden,
+    clearHiddenForFiles,
+  } = useDiagnosticDismissal();
+  // RMS0323 has a checkbox of its own below, so the list of turned off
+  // warnings skips it. Both read and write the same per-code state, so the
+  // checkbox and the hover's "Don't show me this again" cannot disagree.
+  const listed = turnedOff.filter((code) => code !== SWITCH_BRANCH_CODE);
+  const switchBranchesShown = !turnedOff.includes(SWITCH_BRANCH_CODE);
 
   return (
     <>
       <h3 className={settingsStyles.panelTitle}>Diagnostics</h3>
 
+      <HelpTip id="settings.diagnostics.switchBranches">
+        <fieldset className={settingsStyles.fieldset}>
+          <legend className={settingsStyles.legend}>Notes</legend>
+          <label className={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={switchBranchesShown}
+              onChange={(event) =>
+                event.target.checked
+                  ? turnBackOn(SWITCH_BRANCH_CODE)
+                  : turnOff(SWITCH_BRANCH_CODE)
+              }
+            />
+            Report branches a switch turns off
+          </label>
+        </fieldset>
+      </HelpTip>
+
       <HelpTip id="settings.diagnostics.turnedOff">
         <fieldset className={settingsStyles.fieldset}>
           <legend className={settingsStyles.legend}>Warnings turned off</legend>
-          {turnedOff.length === 0 ? (
+          {listed.length === 0 ? (
             <p className={settingsStyles.hint}>
               None. A warning you can hide offers &quot;Don&apos;t show me this
               again&quot; when you hover it.
             </p>
           ) : (
             <ul className={styles.list}>
-              {turnedOff.map((code) => (
+              {listed.map((code) => (
                 <li key={code} className={styles.item}>
                   <span className={styles.summary}>
                     {DIAGNOSTIC_CODES[code]?.summary ?? code}

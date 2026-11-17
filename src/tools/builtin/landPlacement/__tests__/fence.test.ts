@@ -20,7 +20,14 @@ import {
 const lang = loadLanguage();
 
 function emptyModel(): AlpModel {
-  return { v: 1, placements: [], roles: [], randomParams: [], groups: [] };
+  return {
+    v: 1,
+    placements: [],
+    roles: [],
+    randomParams: [],
+    constants: [],
+    groups: [],
+  };
 }
 
 function modelWithLabel(label: string): AlpModel {
@@ -40,6 +47,7 @@ function modelWithLabel(label: string): AlpModel {
       },
     ],
     randomParams: [],
+    constants: [],
     groups: [],
   };
 }
@@ -231,6 +239,7 @@ describe("fence.ts — read-side upgrade of a pre-slice-1 role (role-attributes-
       placements: [],
       roles,
       randomParams: [],
+      constants: [],
       groups: [],
     });
     return `/* @alp v1 begin\n@alp-model ${json.replace(/ /g, "\\u0020")}\n*/\n/* @alp end */\n`;

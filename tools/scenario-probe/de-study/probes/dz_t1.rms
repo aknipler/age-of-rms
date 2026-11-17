@@ -1,0 +1,11 @@
+<PLAYER_SETUP>
+random_placement
+effect_amount GAIA_UPGRADE_UNIT DLC_AUTUMNSNOWTREE SNOWPINETREE 0
+<LAND_GENERATION>
+base_terrain SNOW
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 6 }
+create_land { terrain_type DLC_FORESTSNOWAUTUMN land_percent 40 land_position 50 50 }
+<TERRAIN_GENERATION>
+create_terrain UNDERBRUSH_SNOW { base_terrain DLC_FORESTSNOWAUTUMN land_percent 20 number_of_clumps 30 }
+<OBJECTS_GENERATION>
+create_object SNOWPINETREE { number_of_objects 300 set_gaia_object_only }

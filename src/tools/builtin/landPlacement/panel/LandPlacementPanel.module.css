@@ -328,6 +328,12 @@
   gap: 0 0.5rem;
 }
 
+.attributeStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 .roleTier2 {
   margin-top: 0.3rem;
 }

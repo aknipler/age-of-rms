@@ -10,7 +10,7 @@ import {
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
-import type { ParseResult, Span } from "../parser/types";
+import type { Diagnostic, ParseResult, Span } from "../parser/types";
 import { PlaceholderPane } from "../components/PlaceholderPane";
 import { BreakdownProvider, type CommitNote } from "./BreakdownContext";
 import { applyEditIntent, type ApplyTextEdits } from "./applyEdit";
@@ -102,6 +102,13 @@ interface BreakdownPaneProps {
   hasFile: boolean;
   source: string;
   parseResult: ParseResult | null;
+  /**
+   * The name liveness marks (RMS0320 to RMS0323) for the text `parseResult` was
+   * parsed from. They arrive separately from the parse (useParsedDocument.ts),
+   * so they are merged into the list the cards read here and never sit inside
+   * `parseResult`, which would re-render the whole card tree when they land.
+   */
+  livenessDiagnostics: readonly Diagnostic[];
   /** From useDocument (Sec.6.4), pushes one intent's TextEdits onto the shared Monaco model as one undo entry. */
   applyTextEdits: ApplyTextEdits;
   /** From useParsedDocument (Sec.6.2), BUG-001 Part B, bypasses the debounce for a programmatic edit's reparse. */
@@ -127,6 +134,7 @@ export function BreakdownPane({
   hasFile,
   source,
   parseResult,
+  livenessDiagnostics,
   applyTextEdits,
   reparseNow,
   selection,
@@ -213,8 +221,14 @@ export function BreakdownPane({
   const dismissal = useDiagnosticDismissal();
   const filePath = useCurrentFilePath();
   const diagnostics = useMemo(
-    () => dismissal.visible(parseResult?.diagnostics ?? [], filePath),
-    [dismissal, parseResult, filePath],
+    () =>
+      dismissal.visible(
+        livenessDiagnostics.length === 0
+          ? (parseResult?.diagnostics ?? [])
+          : [...(parseResult?.diagnostics ?? []), ...livenessDiagnostics],
+        filePath,
+      ),
+    [dismissal, parseResult, livenessDiagnostics, filePath],
   );
 
   // Sec.6.3 expansion anchors: a set of source offsets captured at
@@ -735,6 +749,30 @@ export function BreakdownPane({
     },
     [selection, tabIdAt, setFocusId],
   );
+  const revealCardAt = useCallback(
+    (offset: number) => {
+      const tab = tabs.find((t) => findItemAtOffset(t.items, offset));
+      const item = tab && findItemAtOffset(tab.items, offset);
+      if (!tab || !item) return;
+      if (!shownIds.includes(tab.id))
+        setShownIds(
+          shownAfterToggle(
+            shownIds,
+            tab.id,
+            tabs.map((t) => t.id),
+          ),
+        );
+      selection.selectCard(item.span);
+      setFocusId(tab.id);
+      // A section that was just added renders in the next commit, so the
+      // card may not exist yet. The effect further down finishes the scroll
+      // then. An already shown section has the card now.
+      const el = document.querySelector(`[data-anchor="${item.span.start}"]`);
+      if (el) el.scrollIntoView({ block: "center" });
+      else pendingScrollAnchorRef.current = item.span.start;
+    },
+    [tabs, shownIds, setShownIds, selection, setFocusId],
+  );
   const rearrangeSelected = useCallback(
     (action: "up" | "down" | "duplicate") => {
       // One-card actions, so they stand down while several are selected,
@@ -1027,6 +1065,7 @@ export function BreakdownPane({
         editInCode: (span) => onEditInCode(span.start),
         isSelected: selection.isSelected,
         selectCard,
+        revealCardAt,
         clearSelection: selection.clearSelection,
         selectedItem: selection.selectedItem,
         comments,

@@ -829,6 +829,7 @@ export function TutorialOverlay({
           <AnnouncementCallout
             title={announcement.title}
             body={announcement.steps[0]?.body ?? []}
+            hasTour={announcement.steps.length > 1}
             onContentResize={place}
             onShowMe={showAnnouncementTour}
             onNotNow={dismissAnnouncement}
@@ -929,12 +930,15 @@ function SupportLinks() {
 function AnnouncementCallout({
   title,
   body,
+  hasTour,
   onShowMe,
   onNotNow,
   onContentResize,
 }: {
   title: string;
   body: readonly BodyBlock[];
+  /** False for an announcement with no steps after its first, where Show me would have nothing to show. */
+  hasTour: boolean;
   onContentResize: () => void;
   onShowMe: () => void;
   onNotNow: () => void;
@@ -946,20 +950,38 @@ function AnnouncementCallout({
       <SupportLinks />
       <div className={styles.controls}>
         <span className={styles.spacer} />
-        <HelpTip id="tutorial.announcementNotNow">
-          <button type="button" className={styles.button} onClick={onNotNow}>
-            Not now
-          </button>
-        </HelpTip>
-        <HelpTip id="tutorial.announcementShowMe">
-          <button
-            type="button"
-            className={`${styles.button} ${styles.primary}`}
-            onClick={onShowMe}
-          >
-            Show me
-          </button>
-        </HelpTip>
+        {hasTour ? (
+          <>
+            <HelpTip id="tutorial.announcementNotNow">
+              <button
+                type="button"
+                className={styles.button}
+                onClick={onNotNow}
+              >
+                Not now
+              </button>
+            </HelpTip>
+            <HelpTip id="tutorial.announcementShowMe">
+              <button
+                type="button"
+                className={`${styles.button} ${styles.primary}`}
+                onClick={onShowMe}
+              >
+                Show me
+              </button>
+            </HelpTip>
+          </>
+        ) : (
+          <HelpTip id="tutorial.announcementFinish">
+            <button
+              type="button"
+              className={`${styles.button} ${styles.primary}`}
+              onClick={onNotNow}
+            >
+              Finish
+            </button>
+          </HelpTip>
+        )}
       </div>
     </>
   );

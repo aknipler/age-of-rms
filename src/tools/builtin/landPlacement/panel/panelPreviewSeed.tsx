@@ -30,6 +30,16 @@ import {
 export interface PanelPreviewSeedValue {
   seed: number;
   reseed: () => void;
+  /** Sets the seed to a number the person typed. */
+  setSeed: (seed: number) => void;
+  /**
+   * Whether the canvas draws each random value at what this seed rolled
+   * (land-placement-seed-follow-brief.md). On by default. Held here beside the
+   * seed so it survives a tab switch the same way, and not saved across
+   * restarts.
+   */
+  followSeed: boolean;
+  setFollowSeed: (follow: boolean) => void;
 }
 
 const PanelPreviewSeedCtx = createContext<PanelPreviewSeedValue | null>(null);
@@ -47,8 +57,12 @@ export function PanelPreviewSeedProvider({
   children: ReactNode;
 }) {
   const [seed, setSeed] = useState(randomSeed);
+  const [followSeed, setFollowSeed] = useState(true);
   const reseed = useCallback(() => setSeed(randomSeed()), []);
-  const value = useMemo(() => ({ seed, reseed }), [seed, reseed]);
+  const value = useMemo(
+    () => ({ seed, reseed, setSeed, followSeed, setFollowSeed }),
+    [seed, reseed, followSeed],
+  );
   return (
     <PanelPreviewSeedCtx.Provider value={value}>
       {children}

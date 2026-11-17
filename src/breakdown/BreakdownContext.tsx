@@ -101,6 +101,14 @@ export interface BreakdownContextValue {
   isSelected: (span: Span) => boolean;
   /** Sec.3.9, select a card, anchored at its span.start. Clicking a card's chrome (or any control inside it) calls this; ItemCard.tsx stops propagation so a nested click selects only the innermost card. */
   selectCard: (span: Span) => void;
+  /**
+   * Selects the card holding `offset` and scrolls it into view, showing its
+   * section first when only other sections are on screen. For a button that
+   * points at another place in the file (a name's definition, ProblemBadge's
+   * "Line N"), where the target can be in a section the user has not opened.
+   * Unlike `editInCode` it stays on the Breakdown tab.
+   */
+  revealCardAt: (offset: number) => void;
   /** Switches to the Code tab with the caret and selection on the card at `span`, for a card Breakdown cannot edit (a raw region, a shared block). */
   editInCode: (span: Span) => void;
   /** Sec.3.9, clears selection: pane-background click, tab switch, or the selected card getting deleted (handled automatically by the same anchor-drop rule as expansion). */

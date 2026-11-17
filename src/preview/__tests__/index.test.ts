@@ -444,13 +444,16 @@ describe("generatePreview: determinism (Sec.13 bedrock)", () => {
       // TWICE (collectSnapshots: true, so with the extra copy cost too),
       // which is exactly the shape connections.test.ts's own corpus gate
       // already found tips vitest's default under full-suite parallel load
-      // even though each run is fast standalone.
+      // even though each run is fast standalone. Raised to 60s on
+      // 2026-11-17. With the 6 minute object gate in the same run, these
+      // took 21 to 34s and timed out in nearly every full run, while the
+      // file alone passes in a few seconds a test.
       it(`${name} @ seed ${seed}: same (parse, settings, seed) -> deep-equal PreviewResult`, () => {
         const source = readFileSync(join(corpusDir, name), "utf8");
         const a = run(source, seed, true);
         const b = run(source, seed, true);
         expect(a).toEqual(b);
-      }, 15000);
+      }, 60_000);
     }
   }
 

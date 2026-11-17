@@ -297,3 +297,37 @@ describe("computeOwnerPlayers", () => {
     expect(owners.get("B")).toBeUndefined();
   });
 });
+
+describe("emitRandomParams, rolled values (seed follow brief item 1)", () => {
+  it("a shared param takes the rolled value in both maps", () => {
+    const e = emitRandomParams(
+      [sharedParam()],
+      new NameAllocator({ prefix: "" }),
+      (name) => (name === "PARAM_VAR_A1" ? 42 : undefined),
+    );
+    expect(e.previewValues.get("PARAM_VAR_A1")).toBe(42);
+    expect(e.previewById.get("p1")).toBe(42);
+  });
+
+  it("a per player param rolls only the names the source answers for", () => {
+    const e = emitRandomParams(
+      [sharedParam({ perPlayer: true, min: 0, max: 10 })],
+      new NameAllocator({ prefix: "" }),
+      (name) => (name === "PARAM_VAR_A1_P3" ? 42 : undefined),
+    );
+    expect(e.previewValues.get("PARAM_VAR_A1_P3")).toBe(42);
+    expect(e.previewValues.get("PARAM_VAR_A1_P1")).toBe(5);
+    expect(e.previewValues.get("PARAM_VAR_A1_P8")).toBe(5);
+    // The id keyed map holds player 1's value.
+    expect(e.previewById.get("p1")).toBe(5);
+  });
+
+  it("with no source every value is the midpoint", () => {
+    const e = emitRandomParams(
+      [sharedParam({ perPlayer: true, min: 0, max: 10 })],
+      new NameAllocator({ prefix: "" }),
+    );
+    for (const v of e.previewValues.values()) expect(v).toBe(5);
+    expect(e.previewById.get("p1")).toBe(5);
+  });
+});

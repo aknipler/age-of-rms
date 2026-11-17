@@ -154,6 +154,22 @@ export function createDeStream(seed: number): DeStream {
   return wrap(second);
 }
 
+/**
+ * Generator `generator` of the seed's chain, read from its second output as
+ * the script's stream is (generator 2, which `createDeStream` returns). Each
+ * generator in the chain is seeded with the one before's first output. The
+ * object stage reads two more of them, generator 6 for the facings and
+ * generator 3 for the animation start frames (Sec.8, rev 12).
+ */
+export function createDeChainStream(seed: number, generator: number): DeStream {
+  let state: DeStreamState = { words: seedWords(seed), index: 0, count: 0 };
+  for (let k = 2; k <= generator; k++)
+    state = { words: seedWords(wellNext(state)), index: 0, count: 0 };
+  // This generator's first output would seed the next one in the chain.
+  wellNext(state);
+  return wrap(state);
+}
+
 /** A new live stream that continues from `state`. The state itself is copied, so resuming it twice gives two identical streams. */
 export function resumeDeStream(state: DeStreamState): DeStream {
   return wrap({

@@ -29,6 +29,8 @@ export interface TileCircle {
   x: number;
   y: number;
   rTiles: number;
+  /** A square land. Its click test is the square, not the circle around it. */
+  square?: boolean;
 }
 
 /**
@@ -47,7 +49,13 @@ export function circlesFromOverlay(
   for (const shape of shapes) {
     if (shape.id === undefined) continue;
     if (shape.kind === "circle") {
-      out.push({ id: shape.id, x: shape.x, y: shape.y, rTiles: shape.rTiles });
+      out.push({
+        id: shape.id,
+        x: shape.x,
+        y: shape.y,
+        rTiles: shape.rTiles,
+        ...(shape.square ? { square: true } : {}),
+      });
     } else if (shape.kind === "point") {
       out.push({
         id: shape.id,
@@ -75,7 +83,10 @@ export function hitTestCircles(
   for (const circle of circles) {
     const dx = tile.x - circle.x;
     const dy = tile.y - circle.y;
-    if (dx * dx + dy * dy > circle.rTiles * circle.rTiles) continue;
+    const outside = circle.square
+      ? Math.max(Math.abs(dx), Math.abs(dy)) > circle.rTiles
+      : dx * dx + dy * dy > circle.rTiles * circle.rTiles;
+    if (outside) continue;
     if (best === null || circle.rTiles < best.rTiles) best = circle;
   }
   return best?.id ?? null;

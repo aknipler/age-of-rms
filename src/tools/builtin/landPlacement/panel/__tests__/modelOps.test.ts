@@ -89,6 +89,7 @@ describe("applyDragToPlacement — the drag's own model edit (item 2)", () => {
       placements,
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [oldGroup],
     };
     const afterDrag = applyDragToPlacement(model, memberId, draggedOffset);
@@ -131,6 +132,7 @@ describe("applyDragToPlacement — the drag's own model edit (item 2)", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model: withPlacement, id } = addStandalonePlacement(
@@ -165,6 +167,7 @@ describe("setThetaPerCountOverride", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model: withPlacement, id } = addStandalonePlacement(
@@ -183,6 +186,7 @@ describe("setThetaPerCountOverride", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model: withPlacement, id } = addStandalonePlacement(
@@ -203,6 +207,7 @@ describe("setThetaPerCountOverride", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model: withPlacement, id } = addStandalonePlacement(
@@ -222,6 +227,7 @@ describe("setThetaPerCountOverride", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model: withPlacement, id } = addStandalonePlacement(
@@ -241,6 +247,7 @@ describe("setThetaPerCountOverride", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model: withPlacement, id } = addStandalonePlacement(
@@ -286,6 +293,7 @@ describe("addPatternSlot / removePatternSlot (BUG-030)", () => {
         },
       ],
       randomParams: [],
+      constants: [],
       groups: [expanded],
     };
   }
@@ -448,6 +456,7 @@ describe("setRoleOverride / clearRoleOverride (role-attributes-escalation.md Sec
     placements: [],
     roles: [],
     randomParams: [],
+    constants: [],
     groups: [],
   };
 
@@ -480,6 +489,7 @@ describe("random parameters (2026-09-22): a ring is random by default, rnd() mat
     placements: [],
     roles: [],
     randomParams: [],
+    constants: [],
     groups: [],
   };
 
@@ -606,6 +616,7 @@ describe("applyGroupEdit takes a per player shape of every kind", () => {
       placements,
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [expanded],
     };
   }

@@ -4,6 +4,10 @@ Rev 1, 2026-11-02. Design only, nothing built. Opus wrote it. The owner answered
 
 Slice A built 2026-11-03.
 
+Slice B brief 2026-11-04, `docs/name-liveness-slice-b-brief.md`. The owner chose the second pass, a cap of 1,000,000 nodes and slice A's two deviations the same day.
+
+Slice B built 2026-11-04.
+
 ## 1. What this is for
 
 A `#const` defined in one branch and read where that branch may not have run is a real bug that the editor cannot see today. RMS0303 asks whether a definition sits above the use, and RMS0202 whether one exists anywhere. Neither asks **under what conditions** it runs. So this passes every check and fails in the game on half its seeds.
@@ -65,6 +69,8 @@ Measured facts rms-check also assumes, confirmed. Conditional state crosses sect
 
 A label tied to a size is a disjunction of size atoms, read from `predefinedLabels` (`category: "mapSize"`, `mapSize` field), the same data the preview's label environment uses. `TINY_MAP` and `MAPSIZE_TINY` both become `size = Tiny`, so exclusivity and implication between the legacy and new names come out of the data with nothing written by hand. `N_PLAYER_GAME` is `players = N`.
 
+Amended 2026-11-04. Size atoms are keyed by the label's `dimensions`, since `mapSize` is absent on the seven sizes Generation Settings does not offer (slice B brief B3).
+
 ### 4.2 Label groups
 
 The other categories need a cardinality, and only a measured one may be stronger than "none". A weaker constraint only turns a definite answer into a maybe, so unmeasured groups take the weaker one.
@@ -117,6 +123,8 @@ Guards are reduced ordered binary decision diagrams (BDDs), a canonical form for
 - A small in-house implementation in `src/parser/liveness/bdd.ts`, about 300 lines. A node table with hash-consing, an `ite` operation with a memo table, `and`, `or`, `not`, and `isFalse`. No dependency, since the npm packages for this are unmaintained or large.
 - Variable order by first appearance in the file, the size and player atoms first. Order is the main cost knob, and first appearance keeps the variables a chain tests next to each other.
 - A cap of 200,000 nodes per file. Past it the analysis stops for that file and reports nothing, never a partial answer.
+
+Amended 2026-11-04. The cap is 1,000,000, measured in slice B brief B2. A script that reaches it says so in the status bar.
 
 **Why not the cheaper options.** A syntactic check (a use is live when some definition's guard is a subset of the use's) is what `validate.ts` already does for RMS0314, and the measurement in Sec.5.2 shows it leaves 21,670 uses unresolved. Full SAT is more than the formulas need. Guards here are short conjunctions joined by chains, and a BDD is exact on them and simple to write.
 
@@ -181,6 +189,8 @@ Hover on a `#const` gains a line, "Defined when TINY_MAP or SMALL_MAP", from the
 `Stranded.rms`, the slowest DE script, takes 162 ms to parse and validate today. The analysis budget is **50 ms on the slowest corpus script**, measured in slice A with a relative benchmark like `corpus.test.ts`'s Vanguard gate (price a token on today's machine, require the analysis within a multiple of it), since this machine's wall clock varies by 6× under load.
 
 If slice A misses the budget, the analysis moves out of `validate` into a second pass the parser worker runs after it posts the parse result, debounced like the preview, and its diagnostics arrive as their own message (`ParseDiagnosticsMessage` already exists for the early diagnostics). The design allows either, and slice A's number picks.
+
+Settled 2026-11-04. Slice A missed the budget, so the analysis is the second pass.
 
 ## 8. Unit fixtures from rms-check
 

@@ -30,10 +30,12 @@ import {
 import gameConstantsRaw from "../../../../../reference/data/game-constants.json";
 import { useIncludeFiles } from "../../../../useIncludeFiles";
 import type { MapSize } from "../../../../generationSettings/generationSettingsConstants";
+import type { TeamNumber } from "../../../../generationSettings/generationSettingsConstants";
 import { reservedNamesForApply } from "../applyEdits";
 import { NameAllocator } from "../compiler/naming";
-import { emitAlpModel, type EmissionResult } from "../emitModel";
-import type { AlpModel } from "../fence";
+import { tryEmitAlpModel, type EmissionResult } from "../emitModel";
+import { readFenceModel, type AlpModel } from "../fence";
+import { usePanelPreviewSeed } from "./panelPreviewSeed";
 
 // The panel has no reference data of its own, so it reads the bundled table the
 // editor's parser worker reads. Built once at module scope: the options walk
@@ -56,7 +58,19 @@ export function useEmission(
   playerCount: number,
   mapSize: MapSize,
   seed: number,
+  /** The generation settings' teams and Team Positions, so a script that branches on team labels rolls the way the panel's map does. */
+  teams: readonly TeamNumber[] = [],
+  teamPositions?: boolean,
 ): DryEmission | null {
+  // Read here and nowhere else, so the toolbar's checkbox and the emission
+  // cannot disagree about whether shapes follow the seed.
+  const { followSeed } = usePanelPreviewSeed();
+  // `readFenceModel` parses the banner JSON, so it runs once per parse and not
+  // once per model edit.
+  const fenceModel = useMemo(
+    () => (parse === null ? null : readFenceModel(parse)),
+    [parse],
+  );
   // A script's constants may come from DE's own include files (Bazi reads
   // its map scale from `includes/scaling.inc`), and the emission resolves
   // against the same table the preview does.
@@ -67,7 +81,7 @@ export function useEmission(
     const instantiated = instantiateScript(
       parse,
       refDb,
-      { playerCount, mapSize, teams: [] },
+      { playerCount, mapSize, teams, teamPositions },
       seed,
       includeFiles,
       PARSE_OPTIONS,
@@ -75,12 +89,25 @@ export function useEmission(
     const namer = new NameAllocator({
       reserved: reservedNamesForApply(parse, lang),
     });
-    const emission = emitAlpModel(
+    const emission = tryEmitAlpModel(
       model,
       namer,
       instantiated.symbols,
       playerCount,
+      { followSeed, fenceModel },
     );
     return { emission, scriptSymbols: instantiated.symbols };
-  }, [parse, model, lang, playerCount, mapSize, seed, includeFiles]);
+  }, [
+    parse,
+    model,
+    lang,
+    playerCount,
+    mapSize,
+    seed,
+    includeFiles,
+    teams,
+    teamPositions,
+    followSeed,
+    fenceModel,
+  ]);
 }

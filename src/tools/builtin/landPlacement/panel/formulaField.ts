@@ -423,6 +423,15 @@ const EXPR_KINDS: ReadonlySet<string> = new Set([
   "bin",
 ]);
 
+/** True for an `Expr` node, the same test `exprsIn` walks with. */
+export function isExprNode(value: unknown): value is Expr {
+  const k =
+    value !== null && typeof value === "object"
+      ? (value as { k?: unknown }).k
+      : undefined;
+  return typeof k === "string" && EXPR_KINDS.has(k);
+}
+
 /**
  * Every top-level `Expr` anywhere inside `value`, in document order. A
  * structural walk and not a hand-written list of the model's fields, so a
@@ -464,6 +473,125 @@ export function collectUnsetNames(
     resolveSym,
     scriptSymbols,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Script constants in the Constants section (land-placement-constants-chains-
+// drag-brief.md item 1.5). The names the model's formulas use that the SCRIPT
+// defines outside the fence. Each row is editable only when rewriting its one
+// number is safe, and otherwise says why not.
+// ---------------------------------------------------------------------------
+
+export interface ScriptConstUse {
+  name: string;
+  /** How many `sym` leaves in the model use the name. */
+  uses: number;
+  /** 1-based line of the definition, or undefined for a name only an include file defines. */
+  line?: number;
+  /** The span of the value's number token when the row is editable. */
+  valueSpan?: { start: number; end: number };
+  /** The number as written, when editable. */
+  value?: number;
+  /** Why the row is read-only, for the row to show in brackets. Absent when editable. */
+  readOnlyReason?: string;
+}
+
+/** Every sym leaf in `e`, with repeats. */
+function countSyms(e: Expr, into: Map<string, number>): void {
+  switch (e.k) {
+    case "sym":
+      into.set(e.name, (into.get(e.name) ?? 0) + 1);
+      return;
+    case "neg":
+    case "sin":
+    case "cos":
+      countSyms(e.e, into);
+      return;
+    case "bin":
+      countSyms(e.l, into);
+      countSyms(e.r, into);
+      return;
+    default:
+      return;
+  }
+}
+
+/**
+ * The model's formula names that the script defines outside the fence, in
+ * order of first use. `fenceSpan` is the fence's own span (a symbol inside it
+ * is the panel's own emission, never a script constant) and is null when the
+ * script has no fence yet. The five editable rules are the brief's.
+ */
+export function collectScriptConstUses(
+  model: AlpModel,
+  parse: ParseResult,
+  fenceSpan: { start: number; end: number } | null,
+): ScriptConstUse[] {
+  const counts = new Map<string, number>();
+  for (const e of exprsIn(model)) countSyms(e, counts);
+  const own = new Set(model.constants.map((c) => c.name));
+  const inFence = (tokenIndex: number) => {
+    const t = parse.tokens[tokenIndex];
+    return (
+      fenceSpan !== null &&
+      t !== undefined &&
+      t.start >= fenceSpan.start &&
+      t.end <= fenceSpan.end
+    );
+  };
+  const out: ScriptConstUse[] = [];
+  for (const [name, uses] of counts) {
+    if (own.has(name)) continue;
+    const defs = parse.symbols.filter(
+      (s) => s.name === name && !inFence(s.nameToken),
+    );
+    const included = parse.includeIndex?.names.has(name) === true;
+    if (defs.length === 0 && !included) continue;
+    const first = defs[0];
+    const row: ScriptConstUse = { name, uses };
+    if (first !== undefined) {
+      row.line = lineNumberOfOffset(
+        parse.lineOffsets,
+        parse.tokens[first.nameToken].start,
+      );
+    }
+    const reason = scriptConstReadOnlyReason(defs, included, parse);
+    if (reason !== undefined) {
+      row.readOnlyReason = reason;
+    } else {
+      const tok = parse.tokens[defs[0].valueToken!];
+      row.valueSpan = { start: tok.start, end: tok.end };
+      row.value = Number(tok.text);
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+/** The first of the brief's five rules a script constant fails, or undefined when its number can be rewritten. */
+function scriptConstReadOnlyReason(
+  defs: readonly SymbolInfo[],
+  included: boolean,
+  parse: ParseResult,
+): string | undefined {
+  if (included) return "defined in an include file";
+  const def = defs[0];
+  if (def.directiveKind !== "const") return "a #define has no number";
+  if (def.conditionalDepth !== 0)
+    return "defined inside an if or random branch";
+  if (defs.length !== 1) return `defined ${defs.length} times`;
+  const value =
+    def.valueToken === undefined ? undefined : parse.tokens[def.valueToken];
+  const next =
+    def.valueToken === undefined ? undefined : parse.tokens[def.valueToken + 1];
+  const plain =
+    value !== undefined &&
+    value.kind === "number" &&
+    (next === undefined ||
+      next.kind === "commentOpen" ||
+      lineNumberOfOffset(parse.lineOffsets, next.start) >
+        lineNumberOfOffset(parse.lineOffsets, value.start));
+  return plain ? undefined : "its value is not a plain number";
 }
 
 function unknownNameReason(

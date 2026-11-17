@@ -13,11 +13,12 @@ All of it is DE build 101.103.54800.
 
 ## What is here
 
-| Folder       | Holds                                                                                                                                                            |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `probes/`    | The 234 probe scripts, as DE ran them (the `cg-x-*` ones are the corpus copies round CG ran).                                                                    |
-| `scenarios/` | 547 maps DE generated from them and the editor saved.                                                                                                            |
-| `evidence/`  | The three stage write-ups and the corner-cut note, the run sheets, the predictions written before each round, the results log (`results.md`) and the open cases. |
+| Folder       | Holds                                                                                                                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `probes/`    | The 342 probe scripts, as DE ran them (the `cg-x-*` ones are the corpus copies round CG ran).                                                |
+| `scenarios/` | 772 maps DE generated from them and the editor saved.                                                                                        |
+| `evidence/`  | The stage write-ups and notes, the run sheets, the predictions written before each round, the results log (`results.md`) and the open cases. |
+| `data/`      | Small data files the object stage needs that are not in `reference/data/` (see "Building the object stage" below).                           |
 
 The write-ups are `evidence/de-land-stage.md`, `evidence/de-elevation-cliffs.md`, `evidence/de-terrain-stage.md` and
 `evidence/de-connections-objects.md`. They state each rule with the maps that tested it and what was left untested.
@@ -27,19 +28,64 @@ Section 9 lists object attributes that are only measured.
 
 ## The rounds
 
-| Round                                                                        | Run sheet, predictions                                     | Maps | Result                                                                                                                                                                                |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Land (rounds 3 to 8, 2026-10-09 to 13)                                       | `RUN-SHEET.md`, `probe*-run-*.md`, `probe*-predictions.md` | 146  | 135 as saved, 6 more once stale alliances are read, 5 with alliance tables no lobby makes                                                                                             |
-| EC, EC2: elevation and cliffs (2026-10-17, 19)                               | `elev-cliff-run-sheet*.md`, `ec*-predictions.md`           | 51   | 51 match                                                                                                                                                                              |
-| ET: terrain, plus elevation and cliff leftovers (2026-10-26)                 | `run-sheet-et.md`, `et-predictions.md`                     | 44   | 44 match the primary reading                                                                                                                                                          |
-| GP: the gaps in land, elevation, cliffs and terrain (2026-10-28)             | `run-sheet-gp.md`, `gp-predictions.md`                     | 46   | 46 match one predicted reading (44 the primary one)                                                                                                                                   |
-| CO: connections and objects (2026-10-28)                                     | `run-sheet-co.md`, `co-predictions.md`                     | 56   | 23 as predicted; 42 with six rules found after the run, which still need confirming maps; 11 use attributes never modelled                                                            |
-| CF: CO's rules confirmed, unmodelled attributes measured (2026-10-28)        | `run-sheet-cf.md`, `cf-predictions.md`                     | 39   | CO's rules hold on new layouts and seeds; two refuted and replaced (below); with them all 26 modelled maps match, and CO's 45 modelled maps still do; 13 use attributes measured only |
-| CG: 15 real corpus scripts, the parser, measured attributes (2026-10-28/29)  | `run-sheet-cg.md`                                          | 67   | terrain exact on every corpus map after later rules; the 28 Oct corpus maps were spoiled by editor carry-over and remade (CG-clean)                                                   |
-| CG-clean: the corpus maps again, one fresh editor each (2026-10-30)          | `run-sheet-cgclean.md`                                     | 40   | terrain, elevation and layer exact on all                                                                                                                                             |
-| CH: off-grid objects, palms, effects, composites, scaling, math (2026-10-30) | `run-sheet-ch.md`                                          | 18   | 12 as predicted; all 18 with four rules found after                                                                                                                                   |
-| CI: slices of the open corpus maps, three object rules (2026-10-31)          | `run-sheet-ci.md`                                          | 29   | 9 as predicted; the slices located each map's first differing stage                                                                                                                   |
-| CJ: the rules found from CI's data (2026-10-31)                              | `run-sheet-cj.md`                                          | 16   | 6 as predicted; every parser, composite and connection rule confirmed                                                                                                                 |
+| Round                                                                                | Run sheet, predictions                                     | Maps | Result                                                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Land (rounds 3 to 8, 2026-10-09 to 13)                                               | `RUN-SHEET.md`, `probe*-run-*.md`, `probe*-predictions.md` | 146  | 135 as saved, 6 more once stale alliances are read, 5 with alliance tables no lobby makes                                                                                             |
+| EC, EC2: elevation and cliffs (2026-10-17, 19)                                       | `elev-cliff-run-sheet*.md`, `ec*-predictions.md`           | 51   | 51 match                                                                                                                                                                              |
+| ET: terrain, plus elevation and cliff leftovers (2026-10-26)                         | `run-sheet-et.md`, `et-predictions.md`                     | 44   | 44 match the primary reading                                                                                                                                                          |
+| GP: the gaps in land, elevation, cliffs and terrain (2026-10-28)                     | `run-sheet-gp.md`, `gp-predictions.md`                     | 46   | 46 match one predicted reading (44 the primary one)                                                                                                                                   |
+| CO: connections and objects (2026-10-28)                                             | `run-sheet-co.md`, `co-predictions.md`                     | 56   | 23 as predicted; 42 with six rules found after the run, which still need confirming maps; 11 use attributes never modelled                                                            |
+| CF: CO's rules confirmed, unmodelled attributes measured (2026-10-28)                | `run-sheet-cf.md`, `cf-predictions.md`                     | 39   | CO's rules hold on new layouts and seeds; two refuted and replaced (below); with them all 26 modelled maps match, and CO's 45 modelled maps still do; 13 use attributes measured only |
+| CG: 15 real corpus scripts, the parser, measured attributes (2026-10-28/29)          | `run-sheet-cg.md`                                          | 67   | terrain exact on every corpus map after later rules; the 28 Oct corpus maps were spoiled by editor carry-over and remade (CG-clean)                                                   |
+| CG-clean: the corpus maps again, one fresh editor each (2026-10-30)                  | `run-sheet-cgclean.md`                                     | 40   | terrain, elevation and layer exact on all                                                                                                                                             |
+| CH: off-grid objects, palms, effects, composites, scaling, math (2026-10-30)         | `run-sheet-ch.md`                                          | 18   | 12 as predicted; all 18 with four rules found after                                                                                                                                   |
+| CI: slices of the open corpus maps, three object rules (2026-10-31)                  | `run-sheet-ci.md`                                          | 29   | 9 as predicted; the slices located each map's first differing stage                                                                                                                   |
+| CJ: the rules found from CI's data (2026-10-31)                                      | `run-sheet-cj.md`                                          | 16   | 6 as predicted; every parser, composite and connection rule confirmed                                                                                                                 |
+| CK, CL: groups, placeholders, huts, require_path, walls behind rings (2026-11-08/09) | `run-sheet-ck.md`, `run-sheet-cl.md`                       | 58   | all match once found rules were applied (bare numbers in `create_object` are not objects; route search; zone scan)                                                                    |
+| CM: walls, queue rules, effects, force_placement, land-zone edges (2026-11-14)       | `run-sheet-cm.md`                                          | 46   | 28 as predicted; 46 with the rules found after                                                                                                                                        |
+| CN: the panda rock's stored frame (2026-11-14/15)                                    | `run-sheet-cn.md`                                          | 7    | positions as predicted; the frame later found on its own stream                                                                                                                       |
+| CP, CQ, CR, CS: Venn, Namatjira and Comeer cut down (2026-11-15/16)                  | `run-sheet-cp.md`; `results.md`                            | 72   | all match                                                                                                                                                                             |
+| DZ: Bazi's and Rage Forest's last objects (2026-11-17)                               | `results.md`                                               | 14   | 8 as predicted; all 14 with four rules found after                                                                                                                                    |
+
+## Building the object stage (2026-11-17)
+
+**The object stage is solved and written up, and preview-design rev 12 (2026-11-17) took it up** (`src/preview/generator/deObjects.ts` and the files it names, gated by `deObjectMaps.test.ts` on the maps below). `tools/extract-constants --object-data` now writes the object data from the dat, and `--check-pack` compares it with the content pack. All 30 corpus maps (15 real
+scripts at two seeds) are reproduced by the study's model in every tile, object, decoration and stored frame, and
+every probe round matches. Read, in this order:
+
+1. `evidence/de-connections-objects.md` (2026-10-28): the connection stage, and the object stage's base (terrain
+   objects, candidates, groups, facings).
+2. `evidence/de-findings-cg-cj.md` (2026-11-01): composites and layers, which the object stage reads.
+3. **`evidence/de-objects-cg-dz.md` (2026-11-17): everything found since, and where it overrides item 1** (its
+   Section 14 lists each replaced sentence). Its Section 16 orders the work for the preview, Section 18 states the
+   object's own checks exactly, Section 19 lists the object data the stage reads.
+
+It has been re-implemented from its own text and reproduces all 30 corpus maps and 65 probe maps, so it can be
+implemented as written.
+
+**Data the preview does not have yet: `tools/extract-constants` will need extending.** The study read object data
+from AoE2RMSIDE's content pack for this build (`de_content_54800.json`, Apache 2.0, not copied here). The preview
+should not depend on it: extend `tools/extract-constants` to read the fields listed in Section 19 of the write-up
+from `empires2_x2_p1.dat` into `reference/data/`. Per object: placement and collision half-sizes, footprint,
+placement rules and slope mode, collision and obstruction flags, hit points, restriction, position family, movement
+speed, edge margin, pathing action and extents, first resource slot, foundation, construction attachments, available
+civilizations, single-request count, centre and side terrain lists, standing graphic and creation draws. Per graphic:
+angle count and the random-facet and random-angle flags. Also the replacement rules, the restrictions' allowed,
+blocked and cost tables, and the terrains' placement classes. Before trusting the extracted values, check them
+against the pack's for every object: a field read differently shows first in the creation draws and stored facets
+(write-up 2.1). `data/` holds what is not in the dat or not a plain field:
+
+- `de_hidden_in_editor.json`: the ids the dat hides in the editor (the status-0 rule);
+- `wall_gates.json`: the gate object per wall and run direction;
+- `path_search.py`: our restatement of the game's route search behind `require_path` (our own code, written from
+  AoE2RMSIDE's description of it), to port line for line; the write-up's Section 7 says how it is called.
+
+**Reference maps for a DE object gate:** every `cg-x-*` map at seeds 1004/1005 (the corpus), and the probe maps of
+rounds CH to DZ. Each must be compared object for object, including rotation, frame and status; the write-up's
+Section 2.3 says what the file stores.
+
+**AoE2RMSIDE.** `evidence/aoe2rmside-discrepancies.md` lists every point where DE and AoE2RMSIDE disagree, written as
+future tests for its author.
 
 ## What the preview has not taken up yet
 
@@ -119,7 +165,7 @@ once Sec.6.4 is revised. The CO maps also test connections and objects, which th
 
 ## What was not kept
 
-The study's Python tools are not here. The evidence names them (`land_model.py`, `stage_model.py`,
+The study's Python tools are not here, except `data/path_search.py`. The evidence names them (`land_model.py`, `stage_model.py`,
 `connection_model.py`, `object_model.py`, `writeup_check.py`, `compare_ec.py` and others), so read those names as
 history. They were the study's own model of the game, which the preview has since replaced and which the DE gates
 check. The prediction pickles, the caches, and the study's notes on disassembling the game's executable were not kept

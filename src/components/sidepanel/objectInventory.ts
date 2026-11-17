@@ -1,5 +1,8 @@
 import type { Item, ParseResult, ScriptNode } from "../../parser/types";
-import type { PlacedObject } from "../../preview/generator/types";
+import type {
+  PlacedObject,
+  TerrainObjectLayer,
+} from "../../preview/generator/types";
 
 /**
  * One row of the preview's Obj. List: an object the script names, and how many
@@ -123,8 +126,18 @@ export function tallySpawned(
 export function buildObjectInventory(
   parse: ParseResult | null,
   placed: readonly PlacedObject[],
+  terrain?: TerrainObjectLayer,
 ): ObjectInventoryRow[] {
   const counts = tallySpawned(placed);
+  // The trees and decorations terrains spawn are drawn too, so by the rule
+  // above each one needs a row. They count into the same row as a scripted
+  // object of the same name, since the hidden set is keyed on the name and
+  // one tick box hides both.
+  if (terrain !== undefined)
+    for (let i = 0; i < terrain.kind.length; i++) {
+      const ref = terrain.kinds[terrain.kind[i]].objectRef;
+      counts.set(ref, (counts.get(ref) ?? 0) + 1);
+    }
   const names =
     parse === null ? new Set<string>() : collectScriptObjectNames(parse);
   for (const name of counts.keys()) names.add(name);

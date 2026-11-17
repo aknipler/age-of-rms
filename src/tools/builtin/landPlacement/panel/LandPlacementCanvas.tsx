@@ -70,7 +70,7 @@ import {
   gizmoHandlePositions,
   lineEndHandlePosition,
 } from "./gizmoGeometry";
-import { applyDragToPlacement, applyGroupEdit } from "./modelOps";
+import { applyGroupEdit, applyPlacementDrag } from "./modelOps";
 import { percentToTile } from "./viewModel";
 import type { EmissionResult } from "../emitModel";
 import type { AlpModel } from "../fence";
@@ -310,10 +310,11 @@ export function LandPlacementCanvas({
     if (!anchor || !previousPosition) return;
     const parentDegreesResolved = resolvedDegreesOf(placement.parent, emission);
 
-    // Ctrl is Sec.7.3's explicit integer-percent modifier, never the
+    // Shift is Sec.7.3's explicit integer-percent modifier, never the
     // default; every other drop point goes through the default snap set
     // (tile lattice unconditionally, centre/parent-axis magnetically).
-    const snapped = modifiers.ctrl
+    // Ctrl means something else here, drag one chain copy alone.
+    const snapped = modifiers.shift
       ? snapToIntegerPercent(percent)
       : applyDefaultSnapping(
           percent,
@@ -346,8 +347,17 @@ export function LandPlacementCanvas({
       return;
     }
     setDragDecline(null);
+    // A plain drag of a chain copy edits its template, so every copy moves.
+    // Ctrl keeps the older meaning, one nudged copy.
     onModelChange((m) =>
-      applyDragToPlacement(m, placementId, outcome.placement.offset),
+      applyPlacementDrag(
+        m,
+        placementId,
+        outcome.placement.offset,
+        modifiers.ctrl,
+        parseResult,
+        emission,
+      ),
     );
     void phase; // both move and end apply the same edit; only the final one matters once released
   };

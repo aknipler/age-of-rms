@@ -40,8 +40,14 @@ const DEBOUNCE_MS = 300; // Sec.10: "regenerate ~300ms [tune] after the parse se
  * against the stage budget: the watchdog exists for a worker that has stopped
  * responding, and every real generation must finish well inside it or the
  * mechanism is fighting the thing it protects.
+ *
+ * Raised to 40s on 2026-11-17 with the rev 12 object stage, measured the
+ * same way. With 8 players, the slowest Normal map took 5.3s in Node and the
+ * slowest Giant map 11.0s (24hr_Mont Saint Michel), right at the old 12s
+ * ceiling before the webview's own overhead. 40s keeps more than three
+ * times the measured worst case.
  */
-const WATCHDOG_MS = 12_000;
+const WATCHDOG_MS = 40_000;
 
 /**
  * How many times one request may be re-posted before giving up on it.

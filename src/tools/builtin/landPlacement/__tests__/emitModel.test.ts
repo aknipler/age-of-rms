@@ -12,6 +12,7 @@ import { add, num, param, sym } from "../compiler/expr";
 import { NameAllocator } from "../compiler/naming";
 import { emitAlpModel } from "../emitModel";
 import { perimeterPolar } from "../perimeterOffset";
+import { addRing, applyGroupEdit } from "../panel/modelOps";
 import type { AlpModel } from "../fence";
 import type { LandRole, Placement, ShapeGroup } from "../model";
 import { checkP4, reservedNames } from "../preconditions";
@@ -116,6 +117,7 @@ function bullsEyesModel(): AlpModel {
     placements: bullsEyesPlacements(),
     roles: [],
     randomParams: [],
+    constants: [],
     groups: [],
   };
 }
@@ -195,6 +197,7 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
       ],
       roles: [role()],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const namer = new NameAllocator();
@@ -236,6 +239,7 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
       ],
       roles: [role()],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 2);
@@ -273,6 +277,7 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
       ],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 2);
@@ -296,6 +301,7 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
       ],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     expect(() =>
@@ -338,6 +344,7 @@ describe("emitAlpModel — defensive ShapeGroup fill (Sec.5 item 1)", () => {
       placements: [],
       roles: [role],
       randomParams: [],
+      constants: [],
       groups: [group],
     };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 2);
@@ -433,6 +440,7 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
     ];
     const model: AlpModel = {
       v: 1,
+      constants: [],
       placements,
       roles: [role()],
       randomParams: [
@@ -484,6 +492,7 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
     ];
     const model: AlpModel = {
       v: 1,
+      constants: [],
       placements,
       roles: [role()],
       randomParams: [
@@ -508,6 +517,7 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
   it("a perPlayer param referenced by a node with no player-owning ancestor fails emission — a model error, not a silent P1 fallback (Sec.4.4)", () => {
     const model: AlpModel = {
       v: 1,
+      constants: [],
       placements: [
         {
           id: "neutral",
@@ -543,6 +553,7 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
   it("a perPlayer param referenced from a role field also fails emission — a role has no single owner (decided here, Sec.6.2)", () => {
     const model: AlpModel = {
       v: 1,
+      constants: [],
       placements: [
         {
           id: "P1",
@@ -580,6 +591,7 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
   it("a shared param referenced from a role field DOES resolve — no owner ambiguity for perPlayer:false", () => {
     const model: AlpModel = {
       v: 1,
+      constants: [],
       placements: [
         {
           id: "P1",
@@ -623,6 +635,7 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
       ],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const result = emitAlpModel(
@@ -682,6 +695,7 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
       placements: [],
       roles: [perPlayerRole()],
       randomParams: [],
+      constants: [],
       groups: [perPlayerRing()],
     };
   }
@@ -999,6 +1013,7 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
       placements: [],
       roles: [perimeterRole()],
       randomParams: [],
+      constants: [],
       groups: [perimeterGroup(kind, rotation)],
     };
   }
@@ -1071,6 +1086,7 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
       placements: [child],
       roles: [perimeterRole()],
       randomParams: [],
+      constants: [],
       groups: [group],
     };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 4);
@@ -1135,6 +1151,7 @@ describe("emitAlpModel — per-land role overrides (Sec.5, Q11)", () => {
     placements,
     roles,
     randomParams: [],
+    constants: [],
     groups: [],
   });
 
@@ -1233,6 +1250,7 @@ describe("emitAlpModel — per-land role overrides (Sec.5, Q11)", () => {
     const ok = emitAlpModel(
       {
         v: 1,
+        constants: [],
         placements: [p1, chained],
         roles: [player, auxRole()],
         randomParams: [jitter],
@@ -1252,6 +1270,7 @@ describe("emitAlpModel — per-land role overrides (Sec.5, Q11)", () => {
     const roleFails = emitAlpModel(
       {
         v: 1,
+        constants: [],
         placements: [p1, land("A1", 0, { parent: "P1" })],
         roles: [player, auxRole({ baseSize: param("jitter") })],
         randomParams: [jitter],
@@ -1270,6 +1289,7 @@ describe("emitAlpModel — per-land role overrides (Sec.5, Q11)", () => {
     const ownerless = emitAlpModel(
       {
         v: 1,
+        constants: [],
         placements: [
           land("A1", 0, { roleOverrides: { baseSize: param("jitter") } }),
         ],
@@ -1322,5 +1342,106 @@ describe("emitAlpModel — per-land role overrides (Sec.5, Q11)", () => {
     const a2 = result.createLandText.get("A2")!.split("\n");
     expect(a2).not.toContain("set_circular_base");
     expect(a2).toContain("land_percent ALP_ROLE_PERCENT_AUX");
+  });
+});
+
+describe("emitAlpModel, following the seed (seed follow brief item 2)", () => {
+  function ringModel() {
+    const base: AlpModel = {
+      v: 1,
+      placements: [],
+      roles: [
+        {
+          id: "r1",
+          label: "R",
+          terrain: { k: "name", name: "GRASS" },
+          baseSize: num(5),
+          baseElevation: num(0),
+          extent: { kind: "percent", value: num(0) },
+          zone: { kind: "none" },
+          assign: { kind: "none" },
+        },
+      ],
+      randomParams: [],
+      constants: [],
+      groups: [],
+    };
+    return addRing(base, "r1");
+  }
+  const at = (
+    r: Extract<ReturnType<typeof emitAlpModel>, { ok: true }>,
+    id: string,
+  ) => {
+    const q = r.quantities.get(id)!;
+    return [r.resolved.get(q.xName)!, r.resolved.get(q.yName)!];
+  };
+  const emit = (
+    m: AlpModel,
+    symbols: Map<string, number>,
+    options?: Parameters<typeof emitAlpModel>[4],
+  ) => {
+    const r = emitAlpModel(m, new NameAllocator(), symbols, 2, options);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("emission failed");
+    return r;
+  };
+
+  it("puts member 0 where the rolled value says, and counts the param as rolled", () => {
+    const { model, groupId } = ringModel();
+    const param = model.randomParams[0];
+    const name = `ALP_PARAM_${param.label}`;
+    const member0 = model.groups[0].members[0];
+    const literal = applyGroupEdit(
+      model,
+      groupId,
+      { rotation: num(90) },
+      parseRms("", lang),
+      null,
+    )!.model;
+    const expected = at(emit(literal, new Map()), member0);
+    const followed = emit(model, new Map([[name, 90]]), {
+      followSeed: true,
+      fenceModel: model,
+    });
+    expect(at(followed, member0)).toEqual(expected);
+    expect(followed.paramsRolled).toBe(1);
+    expect(followed.paramsHeld).toBe(0);
+  });
+
+  it("holds at the midpoint when the fence was written for a different range", () => {
+    const { model } = ringModel();
+    const param = model.randomParams[0];
+    const name = `ALP_PARAM_${param.label}`;
+    const member0 = model.groups[0].members[0];
+    const midpoint = at(emit(model, new Map()), member0);
+    const stale: AlpModel = {
+      ...model,
+      randomParams: [{ ...param, max: 180 }],
+    };
+    const held = emit(model, new Map([[name, 90]]), {
+      followSeed: true,
+      fenceModel: stale,
+    });
+    expect(at(held, member0)).toEqual(midpoint);
+    expect(held.paramsHeld).toBe(1);
+    expect(held.paramsRolled).toBe(0);
+  });
+
+  it("holds when the script has no fence model, and ignores symbols when not following", () => {
+    const { model } = ringModel();
+    const name = `ALP_PARAM_${model.randomParams[0].label}`;
+    const member0 = model.groups[0].members[0];
+    const midpoint = at(emit(model, new Map()), member0);
+    const noFence = emit(model, new Map([[name, 90]]), {
+      followSeed: true,
+      fenceModel: null,
+    });
+    expect(at(noFence, member0)).toEqual(midpoint);
+    const off = emit(model, new Map([[name, 90]]), {
+      followSeed: false,
+      fenceModel: model,
+    });
+    expect(at(off, member0)).toEqual(midpoint);
+    expect(off.paramsRolled + off.paramsHeld).toBe(0);
   });
 });

@@ -777,6 +777,13 @@ export type OverlayShape =
       rTiles: number;
       role: OverlayRole;
       fill?: boolean;
+      /**
+       * Draw a square of half side `rTiles` in tile space instead of a circle.
+       * A land with a square base (no `set_circular_base`) covers exactly that,
+       * and the map's projection shows it as a diamond, the way the map under
+       * the shape draws the land.
+       */
+      square?: boolean;
     }
   | {
       id?: string;

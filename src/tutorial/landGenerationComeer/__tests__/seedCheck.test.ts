@@ -9,7 +9,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadLanguage, REPO_ROOT } from "../../../parser/__tests__/testUtils";
 import type { ObjectConstant } from "../../../preview/generator/objects";
 import {
@@ -32,6 +32,12 @@ import {
   verifyOrFindSeed,
   type SeedCheckDeps,
 } from "../seedCheck";
+
+// 30s per test, not the 5s default. Each check generates the map once or
+// twice and takes about a second alone, but under the full suite's load
+// (the 6 minute object gate included) seven of them ran 5.2 to 7.2s and
+// timed out on 2026-11-17, as some had in most full runs before that.
+vi.setConfig({ testTimeout: 30_000 });
 
 const constants = (
   JSON.parse(

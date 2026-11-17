@@ -84,6 +84,11 @@ export function buildOverlayShapes(input: OverlayInput): OverlayShape[] {
     if (roleNames) {
       const baseSize = resolved.get(roleNames.baseSizeName);
       if (baseSize !== undefined) {
+        // set_circular_base decides the footprint. Without it the land is a
+        // square, so the shape is drawn as one. A per land override wins.
+        const role = model.roles.find((r) => r.id === placement.role);
+        const circular =
+          placement.roleOverrides?.circularBase ?? role?.circularBase;
         shapes.push({
           id: placement.id,
           kind: "circle",
@@ -91,6 +96,7 @@ export function buildOverlayShapes(input: OverlayInput): OverlayShape[] {
           y: pos.y,
           rTiles: baseSize,
           role: "primary",
+          ...(circular === true ? {} : { square: true }),
         });
       }
     } else {

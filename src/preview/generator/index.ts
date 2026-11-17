@@ -71,6 +71,16 @@ import {
 } from "./forestTreeSuppression";
 import { computeResourceSummary } from "./resourceSummary";
 import { cleanupNote, createCleanupTally, recordCleanup } from "./cleanupNote";
+import { createDeChainStream, resumeDeStream } from "./deRandom";
+import { ObjectCatalog, type ObjectDataFile } from "./deObjectData";
+import { TerrainObjectWorld, decorationTables } from "./terrainObjects";
+import {
+  collectEffects,
+  runDeObjectStage,
+  terrainObjectLayer,
+} from "./deObjects";
+import { COMPOSITE_AS_LAYER, COMPOSITE_AS_TERRAIN } from "./terrains";
+import { COMPOSITE_TERRAINS, terrainClassTable } from "./terrainClass";
 
 /**
  * The bundled reference data `generatePreview` needs, `instantiateScript`
@@ -102,6 +112,13 @@ export interface PreviewReferenceData {
    * this field existed.
    */
   terrainRestrictions?: readonly TerrainRestriction[];
+  /**
+   * `reference/data/object-data.json`, the dat's object fields. With it the
+   * object stage is DE's own (Sec.6.6, rev 12) and the result carries
+   * `deObjects`. Without it the older approximate stage in `objects.ts` runs,
+   * which is what a caller that never loads the file still gets.
+   */
+  objectData?: ObjectDataFile;
 }
 
 /**
@@ -298,6 +315,23 @@ export function generatePreview(
   } = resolveBaseFill(instantiated, constants);
   const grid = createTileGrid(instantiated.dim, baseTerrainId, baseLayerId);
 
+  // The object stage's data and its world of terrain objects, which the land
+  // and cliff stages fill long before the object stage runs (Sec.6.6, rev
+  // 12). Effects change the object data before anything is generated,
+  // wherever their lines stand, so they are read now.
+  let catalog: ObjectCatalog | undefined;
+  let world: TerrainObjectWorld | undefined;
+  if (refDb.objectData) {
+    catalog = new ObjectCatalog(refDb.objectData, terrainClassTable(constants));
+    catalog.setOverrides(collectEffects(instantiated, constants, catalog));
+    world = new TerrainObjectWorld(
+      catalog,
+      instantiated.dim,
+      decorationTables(constants),
+      createDeChainStream(opts.seed, 6),
+    );
+  }
+
   const snapshots: StageSnapshot[] | undefined = opts.collectSnapshots
     ? []
     : undefined;
@@ -312,11 +346,17 @@ export function generatePreview(
   // the same way, so the order of the draws is visible here in the order of
   // the calls. S4 and later keep their own substreams.
   const landResult = placeLandOrigins(instantiated, grid, constants);
+  // The land zones the object stage reads (write-up 6.2 step 3) are growth's
+  // own one-byte grid, which the cleanup leaves alone in the game.
+  let landZone = new Int16Array(grid.terrain.length).fill(0xfe);
   const grown = growLands(
     landResult.origins,
     grid,
     landResult.reports,
     landResult.stream,
+    (zones) => {
+      landZone = Int16Array.from(zones);
+    },
   );
   // Read right after growth and before the cleanup pass below, which also
   // clears `landId`. A land the cleanup erases was not buried by a later
@@ -340,6 +380,7 @@ export function generatePreview(
     grown,
     (_tile, formerTerrain, formerLand) =>
       recordCleanup(cleanup, "S1", baseTerrainId, formerTerrain, formerLand),
+    world,
   );
   const baseElevationNoteList = baseElevationNotes(
     instantiated,
@@ -362,6 +403,7 @@ export function generatePreview(
     constants,
     landResult.origins,
     elevationResult.stream,
+    world,
   );
   snapshot("S3");
 
@@ -377,6 +419,7 @@ export function generatePreview(
   // for the connections and the objects. Then cliff lines get their earlier
   // terrain back and the cleanup runs against WATER, then the beach pass,
   // which reads each tile's beach_terrain mark.
+  const terrainBeforeEnd = world ? grid.terrain.slice() : undefined;
   const composites = resolveComposites(grid);
   finishTerrainStage(
     grid,
@@ -390,8 +433,22 @@ export function generatePreview(
   const beachedAtTerrainEnd = applyAutomaticBeach(grid, constants, {
     beachMark: terrainsResult.beachMark,
   });
+  // A tile the end of the stage changed loses the terrain objects its old
+  // terrain made or its new one refuses. Resolving a composite layer is not
+  // such a change (write-up 11), so a tile that still holds what its layer
+  // composite resolves to is spared.
+  if (world && terrainBeforeEnd)
+    for (let i = 0; i < grid.terrain.length; i++) {
+      if (terrainBeforeEnd[i] === grid.terrain[i]) continue;
+      if (composites.kind[i] === COMPOSITE_AS_LAYER) {
+        const r = COMPOSITE_TERRAINS.get(composites.layer[i]);
+        if (r && r[0] === grid.terrain[i] && r[1] === grid.layer[i]) continue;
+      }
+      world.changed(i, terrainBeforeEnd[i], grid.terrain[i]);
+    }
   snapshot("S4");
 
+  const terrainBeforeConnections = world ? grid.terrain.slice() : undefined;
   const connectionsResult = applyConnections(
     instantiated,
     grid,
@@ -412,6 +469,11 @@ export function generatePreview(
       });
     beachedAfterConnections = applyAutomaticBeach(grid, constants);
   }
+  if (world && terrainBeforeConnections)
+    for (let i = 0; i < grid.terrain.length; i++)
+      world.changed(i, terrainBeforeConnections[i], grid.terrain[i]);
+  // The object stage sees layers as they were before this cleanup (write-up 6.5).
+  const layerBeforeCleanup = grid.layer.slice();
   // A beach tile has no layer, read after the connections, with or without
   // a connection section (Sec.6.4, rev 11).
   clearBeachLayers(grid, constants);
@@ -441,7 +503,10 @@ export function generatePreview(
   grid.terrain = painted.terrain;
   grid.layer = painted.layer;
   let forestWood: number;
-  let objectsResult: ReturnType<typeof applyObjects>;
+  let objectsResult!: Pick<
+    ReturnType<typeof applyObjects>,
+    "objects" | "players" | "reports" | "notes"
+  >;
   try {
     forestWood = computeForestWood(
       grid,
@@ -450,16 +515,45 @@ export function generatePreview(
       suppression.suppressed,
       suppression.yieldOverrides,
     );
-    objectsResult = applyObjects(
-      instantiated,
-      grid,
-      constants,
-      landResult.origins,
-      opts.seed,
-    );
+    if (!catalog)
+      objectsResult = applyObjects(
+        instantiated,
+        grid,
+        constants,
+        landResult.origins,
+        opts.seed,
+      );
   } finally {
     grid.terrain = resolved.terrain;
     grid.layer = resolved.layer;
+  }
+  let deObjects: PreviewResult["deObjects"];
+  let terrainObjects: PreviewResult["terrainObjects"];
+  if (catalog && world) {
+    const de = runDeStage(
+      instantiated,
+      constants,
+      catalog,
+      world,
+      grid,
+      composites,
+      layerBeforeCleanup,
+      landResult.origins,
+      cliffsResult.pieces,
+      connectionsResult.stream,
+      landZone,
+      settings,
+      opts.seed,
+      opts.objectTrace,
+    );
+    deObjects = de.objects;
+    terrainObjects = terrainObjectLayer(de.objects, constants);
+    objectsResult = {
+      objects: de.placed,
+      players: de.players,
+      reports: de.reports,
+      notes: [],
+    };
   }
   snapshot("S6");
 
@@ -546,5 +640,87 @@ export function generatePreview(
     landOrigins: landResult.origins,
     resourceTotals,
     cliffPieces: cliffsResult.pieces,
+    deObjects,
+    terrainObjects,
   };
+}
+
+/**
+ * DE's object stage (Sec.6.6, rev 12), after the connections: the terrain
+ * objects' own pass over every tile, then every scripted command. Both read
+ * the map as painted where a composite still holds (write-up 6.5 and 11),
+ * and layers from before the beach-layer cleanup.
+ */
+function runDeStage(
+  instantiated: InstantiatedScript,
+  constants: PreviewReferenceData["constants"],
+  catalog: ObjectCatalog,
+  world: TerrainObjectWorld,
+  grid: TileGrid,
+  composites: ReturnType<typeof resolveComposites>,
+  layerBeforeCleanup: Uint16Array,
+  origins: readonly LandOrigin[],
+  pieces: PreviewResult["cliffPieces"],
+  streamState: ReturnType<typeof applyConnections>["stream"],
+  landZone: Int16Array,
+  settings: PreviewSettings,
+  seed: number,
+  trace?: (line: string) => void,
+) {
+  const n = grid.terrain.length;
+  const holds = (i: number): boolean => {
+    const kind = composites.kind[i];
+    if (kind === 0) return false;
+    const comp =
+      kind === COMPOSITE_AS_TERRAIN
+        ? composites.terrain[i]
+        : composites.layer[i];
+    const r = COMPOSITE_TERRAINS.get(comp);
+    // Against the cleaned layer, so a composite tile the beach pass turned
+    // into beach (and so lost its layer) is no longer the composite.
+    return (
+      r !== undefined && r[0] === grid.terrain[i] && r[1] === grid.layer[i]
+    );
+  };
+  // The terrain the scripted objects see, and the table each tile draws.
+  const view = grid.terrain.slice();
+  const viewLayer = layerBeforeCleanup.slice();
+  const table = grid.terrain.slice();
+  for (let i = 0; i < n; i++) {
+    if (!holds(i)) continue;
+    // A terrain composite shows as itself with its resolved layer kept. A
+    // layer composite shows as the terrain under it with the composite as
+    // its layer.
+    view[i] = composites.terrain[i];
+    if (composites.kind[i] === COMPOSITE_AS_LAYER)
+      viewLayer[i] = composites.layer[i];
+    // A composite terrain draws its own table, and a tile whose layer was
+    // painted with a composite draws the table of the terrain under the
+    // layer (write-up 11). Both are the painted terrain.
+    table[i] = composites.terrain[i];
+  }
+  const stream = resumeDeStream(streamState);
+  world.objectStage(stream, grid.terrain, pieces, (i) => table[i]);
+  return runDeObjectStage({
+    script: instantiated,
+    constants,
+    catalog,
+    world,
+    stream,
+    anim: createDeChainStream(seed, 3),
+    dim: grid.dim,
+    terrain: view,
+    layer: viewLayer,
+    elevation: grid.elevation,
+    landZone,
+    origins,
+    playerCount: settings.playerCount,
+    teams: settings.teams,
+    civilizations: settings.civilizations ?? [],
+    pieces,
+    trace,
+    paint: (tile, terrain) => {
+      grid.terrain[tile] = terrain;
+    },
+  });
 }

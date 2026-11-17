@@ -68,6 +68,7 @@ import { useDocument, getDocumentModel } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useRememberedTab } from "./hooks/useRememberedTab";
 import { useParsedDocument } from "./useParsedDocument";
+import { livenessMarksFor, withLivenessMarks } from "./editor/livenessMerge";
 import { ParsedDocumentProvider } from "./ParsedDocumentContext";
 import { PreviewCutProvider, usePreviewCut } from "./PreviewCutContext";
 import {
@@ -167,10 +168,12 @@ function PreviewResultProviders({
  */
 function StatusBarContainer({
   diagnostics,
+  livenessSkipped,
   onReportBug,
   onSuggestFeature,
 }: {
   diagnostics: Diagnostic[];
+  livenessSkipped: boolean;
   onReportBug: () => void;
   onSuggestFeature: () => void;
 }) {
@@ -194,6 +197,7 @@ function StatusBarContainer({
   return (
     <StatusBar
       diagnostics={diagnostics}
+      livenessSkipped={livenessSkipped}
       total={result?.resourceTotals.total}
       player={result?.resourceTotals.player}
       neutral={result?.resourceTotals.neutral}
@@ -438,10 +442,27 @@ function AppContent() {
   // the parse result. useMemo keeps the array's identity stable between
   // renders, so CodePane's marker effect only reruns when the list changes.
   const dismissal = useDiagnosticDismissal();
-  const visibleDiagnostics = useMemo(
-    () => dismissal.visible(parsed.diagnostics, doc.filePath),
-    [dismissal, parsed.diagnostics, doc.filePath],
+  // The name liveness marks (RMS0320 to RMS0323) come in their own message
+  // after the parse (useParsedDocument.ts) and are merged here, where a list is
+  // read, and only while they were computed for the text this list is for. A
+  // stale mark would sit on the wrong line, so a mismatch drops them.
+  const { liveness } = parsed;
+  const codeDiagnostics = useMemo(
+    () =>
+      withLivenessMarks(parsed.diagnostics, parsed.diagnosticsSource, liveness),
+    [parsed.diagnostics, parsed.diagnosticsSource, liveness],
   );
+  const visibleDiagnostics = useMemo(
+    () => dismissal.visible(codeDiagnostics, doc.filePath),
+    [dismissal, codeDiagnostics, doc.filePath],
+  );
+  // Breakdown reads the tree, so its marks must match the tree's text, which
+  // can be older than diagnosticsSource on a big document.
+  const breakdownLiveness = livenessMarksFor(liveness, parsed.source);
+  const livenessSkipped =
+    liveness !== null &&
+    liveness.status === "overflow" &&
+    liveness.source === parsed.diagnosticsSource;
   // One selection anchor shared by both panes,
   // lifted here (rather than living inside BreakdownPane, which unmounts
   // on every tab switch) specifically so it survives Breakdown <-> Code.
@@ -571,6 +592,7 @@ function AppContent() {
                               hasFile={doc.filePath !== null}
                               source={parsed.source}
                               parseResult={parsed.parseResult}
+                              livenessDiagnostics={breakdownLiveness}
                               applyTextEdits={doc.applyTextEdits}
                               reparseNow={parsed.reparseNow}
                               selection={selection}
@@ -641,6 +663,7 @@ function AppContent() {
               />
               <StatusBarContainer
                 diagnostics={visibleDiagnostics}
+                livenessSkipped={livenessSkipped}
                 onReportBug={reportBug}
                 onSuggestFeature={suggestFeature}
               />

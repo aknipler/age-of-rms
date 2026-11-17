@@ -4,7 +4,11 @@ import {
   useDiagnosticHover,
 } from "../../components/DiagnosticTooltip";
 import { DismissDiagnosticButtons } from "../../components/DismissDiagnosticButtons";
+import { HelpTip } from "../../components/HelpTip";
 import { isDismissible } from "../../parser/diagnostics";
+import { lineNumberOfOffset } from "../../parser/lineIndex";
+import { useBreakdownContext } from "../BreakdownContext";
+import tooltipStyles from "../../components/DiagnosticTooltip.module.css";
 import styles from "./cards.module.css";
 
 const SEVERITY_LABEL: Record<DiagnosticSeverity, string> = {
@@ -52,6 +56,48 @@ function summarize(diagnostics: readonly Diagnostic[]): string {
   return `${diagnostics.length} issues in this card (${parts.join(", ")}).`;
 }
 
+/**
+ * One "Line N" button per place a lone diagnostic refers to (a name's
+ * definitions). It selects the card at that place through the shared
+ * selection, the way a click on the card would, and stays on this tab. The
+ * Code tab shows the same places as links under the message
+ * (`relatedInformation`, src/editor/relatedInformation.ts).
+ */
+function RelatedPlaceButtons({
+  related,
+}: {
+  related: NonNullable<Diagnostic["related"]>;
+}) {
+  const { revealCardAt, parseResult } = useBreakdownContext();
+  return (
+    <div className={tooltipStyles.actions}>
+      {related.map((place) => {
+        const line = lineNumberOfOffset(
+          parseResult.lineOffsets,
+          place.span.start,
+        );
+        return (
+          <HelpTip id="diagnostics.related.goTo" key={place.span.start}>
+            <button
+              type="button"
+              className={tooltipStyles.actionButton}
+              onClick={(event) => {
+                // The badge sits inside the card it marks, and a click anywhere
+                // in a card selects that card. Without this the card's own
+                // handler runs after ours and moves the selection back.
+                event.stopPropagation();
+                revealCardAt(place.span.start);
+              }}
+            >
+              Line {line}
+            </button>
+          </HelpTip>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Sec.3.1/Sec.5, badges reuse the parser's own diagnostics, mapped by span containment; Breakdown invents no validation of its own. */
 export function ProblemBadge({
   diagnostics,
@@ -73,6 +119,12 @@ export function ProblemBadge({
     diagnostics.length === 1 && isDismissible(diagnostics[0].code)
       ? diagnostics[0].code
       : undefined;
+  // The same rule for the places a message points at: with several
+  // diagnostics there is no single message for a button to belong to.
+  const related =
+    diagnostics.length === 1 && (diagnostics[0].related?.length ?? 0) > 0
+      ? diagnostics[0].related
+      : undefined;
 
   return (
     <span className={styles.problemBadgeWrapper} {...diagHover.handlers}>
@@ -82,8 +134,11 @@ export function ProblemBadge({
           severity={severity}
           side={diagHover.side}
           actions={
-            dismissible ? (
-              <DismissDiagnosticButtons code={dismissible} />
+            dismissible || related ? (
+              <>
+                {related && <RelatedPlaceButtons related={related} />}
+                {dismissible && <DismissDiagnosticButtons code={dismissible} />}
+              </>
             ) : undefined
           }
         />

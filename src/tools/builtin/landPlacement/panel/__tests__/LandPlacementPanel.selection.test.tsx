@@ -542,3 +542,39 @@ describe("Land Placement shape editor", () => {
     expect(screen.queryByText(warning)).toBeNull();
   });
 });
+
+describe("Land Placement panel, shapes follow the seed", () => {
+  it("the checkbox starts checked, unchecking it keeps the panel up, and the held line shows when a param is not in the script", async () => {
+    render(<Harness shown />);
+    await settled();
+    const box = screen.getByRole("checkbox", { name: /Shapes follow seed/ });
+    expect((box as HTMLInputElement).checked).toBe(true);
+    // The script was written for this model, so every random value is in it.
+    expect(screen.queryByText(/not in the script yet/)).toBeNull();
+
+    // Change the ring's rotation range without applying.
+    fireEvent.change(screen.getByDisplayValue("359"), {
+      target: { value: "300" },
+    });
+    await settled();
+    expect(screen.queryByText(/not in the script yet/)).not.toBeNull();
+
+    fireEvent.click(box);
+    await settled();
+    expect((box as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByText(/not in the script yet/)).toBeNull();
+  });
+
+  it("the seed box commits a typed whole number", async () => {
+    render(<Harness shown />);
+    await settled();
+    const input = screen.getByRole("spinbutton", { name: "Seed" });
+    fireEvent.change(input, { target: { value: "4242" } });
+    fireEvent.blur(input);
+    await settled();
+    expect(
+      (screen.getByRole("spinbutton", { name: "Seed" }) as HTMLInputElement)
+        .value,
+    ).toBe("4242");
+  });
+});

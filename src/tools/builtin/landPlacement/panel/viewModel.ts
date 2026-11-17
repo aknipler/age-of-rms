@@ -19,6 +19,7 @@ import {
   checkLandAttachment,
 } from "../landCommand";
 import type { Anchor, LandRole, Placement, ShapeGroup } from "../model";
+import { effectiveRepeatIndex } from "../model";
 import { groupForMember } from "./modelOps";
 
 // ---------------------------------------------------------------------------
@@ -421,7 +422,7 @@ export function computePlacementAttachment(
       roleNames,
       xName: quantity.xName,
       yName: quantity.yName,
-      repeatIndex: placement.repeatIndex,
+      repeatIndex: effectiveRepeatIndex(placement),
     }).filter((e) => e.attribute === "land_position");
     const attached = commands.some(
       (land) =>

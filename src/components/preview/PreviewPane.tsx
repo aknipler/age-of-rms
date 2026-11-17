@@ -296,8 +296,13 @@ export function PreviewPane() {
   // Built here rather than in PreviewCanvas so hover and selection read the
   // same index; the canvas no longer describes tiles at all (tileInfo.ts).
   const objectsByTile = useMemo(
-    () => indexObjectsByTile(result?.objects ?? [], result?.dim ?? 0),
-    [result?.objects, result?.dim],
+    () =>
+      indexObjectsByTile(
+        result?.objects ?? [],
+        result?.dim ?? 0,
+        result?.terrainObjects,
+      ),
+    [result?.objects, result?.dim, result?.terrainObjects],
   );
   const marksByTile = useMemo(
     () => indexMarksByTile(result?.failureMarks ?? [], result?.dim ?? 0),

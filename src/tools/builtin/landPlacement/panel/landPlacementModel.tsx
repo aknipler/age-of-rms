@@ -28,6 +28,7 @@ export const EMPTY_MODEL: AlpModel = Object.freeze({
   placements: [],
   roles: [],
   randomParams: [],
+  constants: [],
   groups: [],
 });
 

@@ -6,7 +6,7 @@
 
 import type { Expr } from "../../../../../tools-api/index";
 import type { ParseResult } from "../../../../parser/types";
-import { expandShapeGroup } from "../expand";
+import { chainMemberKeyAt, expandShapeGroup } from "../expand";
 import { reExpand } from "../reExpand";
 import { jitterUnitsForKind } from "../prologue";
 import type { EmissionOk } from "../emitModel";
@@ -23,7 +23,7 @@ import {
   type RoleOverrides,
   type ShapeGroup,
 } from "../model";
-import { rndPlaceholder } from "./formulaField";
+import { isExprNode, rndPlaceholder } from "./formulaField";
 
 let counter = 0;
 /**
@@ -39,6 +39,7 @@ export function takenIds(model: AlpModel): Set<string> {
   const ids = new Set<string>();
   for (const r of model.roles) ids.add(r.id);
   for (const p of model.randomParams) ids.add(p.id);
+  for (const c of model.constants) ids.add(c.id);
   for (const p of model.placements) ids.add(p.id);
   for (const g of model.groups) {
     ids.add(g.id);
@@ -283,6 +284,7 @@ export function forEachModelExpr(
       if (e) visit(e);
     }
   };
+  for (const c of model.constants) visit(c.value);
   for (const r of model.roles) roleFields(r);
   for (const p of model.placements) {
     offset(p.offset);
@@ -983,6 +985,83 @@ function mapSlot(
   return group.pattern.map((s) => (s.id === slotId ? f(s) : s));
 }
 
+/**
+ * Which template an expanded chain copy came from, worked out from the copy's
+ * position in `group.chainMembers` and never from its id text, since the
+ * merge rule may rename a copy. Undefined for any placement that is not a
+ * chain copy.
+ */
+export function chainTemplateOf(
+  model: AlpModel,
+  placementId: string,
+): { groupId: string; slotId: string; templateId: string } | undefined {
+  for (const group of model.groups) {
+    const k = group.chainMembers?.indexOf(placementId) ?? -1;
+    if (k < 0) continue;
+    const key = chainMemberKeyAt(k, group.pattern);
+    return {
+      groupId: group.id,
+      slotId: key.slotId,
+      templateId: key.templateId,
+    };
+  }
+  return undefined;
+}
+
+/**
+ * The model edit a finished drag makes. A plain drag of a chain copy edits its
+ * TEMPLATE, so every copy on every repeat moves together, and the dragged
+ * copy rejoins its siblings if it had been nudged. Ctrl moves only that copy
+ * (`applyDragToPlacement`, which sets `nudged`), and every other placement
+ * behaves as it always did. Returns the model unchanged when the template
+ * edit is refused.
+ */
+export function applyPlacementDrag(
+  model: AlpModel,
+  placementId: string,
+  offset: Placement["offset"],
+  ctrl: boolean,
+  parse: ParseResult,
+  emission: EmissionOk | null,
+): AlpModel {
+  const template = ctrl ? undefined : chainTemplateOf(model, placementId);
+  if (template === undefined)
+    return applyDragToPlacement(model, placementId, offset);
+  // Clear the dragged copy's nudge first, so the merge recomputes it from the
+  // new template offset like its siblings instead of keeping its own.
+  const unnudged: AlpModel = {
+    ...model,
+    placements: model.placements.map((p) => {
+      if (p.id !== placementId) return p;
+      const { nudged: _nudged, ...rest } = p;
+      void _nudged;
+      return rest;
+    }),
+  };
+  const result = updateChainTemplate(
+    unnudged,
+    template.groupId,
+    template.slotId,
+    template.templateId,
+    { offset },
+    parse,
+    emission,
+  );
+  return result ? result.model : model;
+}
+
+/** `rootId` and every template below it, by following `parent`. */
+export function chainSubtreeIds(
+  chain: readonly ChainTemplate[],
+  rootId: string,
+): Set<string> {
+  const ids = new Set([rootId]);
+  // `chain` lists a parent before its children, so one pass finds them all.
+  for (const t of chain)
+    if (t.parent !== undefined && ids.has(t.parent)) ids.add(t.id);
+  return ids;
+}
+
 export function addChainTemplate(
   model: AlpModel,
   groupId: string,
@@ -990,15 +1069,24 @@ export function addChainTemplate(
   roleId: string,
   parse: ParseResult,
   emission: EmissionOk | null,
+  /** Hang the new template off this one (another template of the same slot) instead of off the slot's member. */
+  parentTemplateId?: string,
 ): ReturnType<typeof applyGroupEdit> {
   const group = model.groups.find((g) => g.id === groupId);
-  if (!group || !group.pattern.some((s) => s.id === slotId)) return null;
+  const slot = group?.pattern.find((s) => s.id === slotId);
+  if (!group || !slot) return null;
+  if (
+    parentTemplateId !== undefined &&
+    !(slot.chain ?? []).some((t) => t.id === parentTemplateId)
+  )
+    return null;
   const id = freshId("chain", takenIds(model));
   const template: ChainTemplate = {
     id,
     role: roleId,
     label: id,
     frame: "radial",
+    ...(parentTemplateId !== undefined ? { parent: parentTemplateId } : {}),
     offset: {
       kind: "polar",
       r: { k: "num", v: 14 }, // Bulls_Eyes' own RADIUS_AUX_LANDS, a sensible first value
@@ -1009,10 +1097,26 @@ export function addChainTemplate(
     model,
     groupId,
     {
-      pattern: mapSlot(group, slotId, (s) => ({
-        ...s,
-        chain: [...(s.chain ?? []), template],
-      })),
+      pattern: mapSlot(group, slotId, (s) => {
+        const chain = s.chain ?? [];
+        if (parentTemplateId === undefined)
+          return { ...s, chain: [...chain, template] };
+        // Straight after the last template of the parent's subtree, which
+        // keeps every parent ahead of its children.
+        const subtree = chainSubtreeIds(chain, parentTemplateId);
+        let last = chain.findIndex((t) => t.id === parentTemplateId);
+        chain.forEach((t, i) => {
+          if (subtree.has(t.id)) last = Math.max(last, i);
+        });
+        return {
+          ...s,
+          chain: [
+            ...chain.slice(0, last + 1),
+            template,
+            ...chain.slice(last + 1),
+          ],
+        };
+      }),
     },
     parse,
     emission,
@@ -1046,7 +1150,7 @@ export function updateChainTemplate(
   );
 }
 
-/** Removes a template; its expanded children depart through the release rule (Sec.5.4), never silently. */
+/** Removes a template and every template nested under it. Their expanded copies depart through the release rule (Sec.5.4), never silently. */
 export function removeChainTemplate(
   model: AlpModel,
   groupId: string,
@@ -1062,7 +1166,8 @@ export function removeChainTemplate(
     groupId,
     {
       pattern: mapSlot(group, slotId, (s) => {
-        const chain = (s.chain ?? []).filter((t) => t.id !== templateId);
+        const gone = chainSubtreeIds(s.chain ?? [], templateId);
+        const chain = (s.chain ?? []).filter((t) => !gone.has(t.id));
         // Drop the key entirely when empty, for the byte-identical gate.
         const rest: PatternSlot = { ...s };
         delete rest.chain;
@@ -1072,4 +1177,98 @@ export function removeChainTemplate(
     parse,
     emission,
   );
+}
+
+// --- Panel constants (land-placement-constants-chains-drag-brief.md item 1) ---
+
+/** `NEW_CONST`, then `NEW_CONST_2` and so on while the name is taken by a panel or script constant. */
+export function uniqueConstantName(
+  model: AlpModel,
+  stem: string,
+  scriptNames: ReadonlySet<string> = new Set(),
+): string {
+  const taken = new Set(model.constants.map((c) => c.name));
+  let name = stem;
+  for (let n = 2; taken.has(name) || scriptNames.has(name); n++)
+    name = `${stem}_${n}`;
+  return name;
+}
+
+/** Appends a constant. The id comes from `freshId` against the whole model, so it is unique among every other id. */
+export function addPanelConstant(
+  model: AlpModel,
+  name: string,
+  value: number,
+): { model: AlpModel; constantId: string } {
+  const id = freshId("const", takenIds(model));
+  return {
+    model: {
+      ...model,
+      constants: [
+        ...model.constants,
+        { id, name, value: { k: "num", v: value } },
+      ],
+    },
+    constantId: id,
+  };
+}
+
+export function updatePanelConstantValue(
+  model: AlpModel,
+  id: string,
+  value: Expr,
+): AlpModel {
+  return {
+    ...model,
+    constants: model.constants.map((c) => (c.id === id ? { ...c, value } : c)),
+  };
+}
+
+/** Rewrites every `sym(from)` leaf anywhere under `value` to `sym(to)`. A structural walk, so no field is missed. */
+function renameSyms<T>(value: T, from: string, to: string): T {
+  if (Array.isArray(value))
+    return value.map((v) => renameSyms(v, from, to)) as T;
+  if (value === null || typeof value !== "object") return value;
+  if (isExprNode(value)) {
+    switch (value.k) {
+      case "sym":
+        return (value.name === from ? { k: "sym", name: to } : value) as T;
+      case "neg":
+      case "sin":
+      case "cos":
+        return { ...value, e: renameSyms(value.e, from, to) } as T;
+      case "bin":
+        return {
+          ...value,
+          l: renameSyms(value.l, from, to),
+          r: renameSyms(value.r, from, to),
+        } as T;
+      default:
+        return value;
+    }
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value)) out[k] = renameSyms(v, from, to);
+  return out as T;
+}
+
+/** Renames a constant and every formula that names it. An empty or unchanged name leaves the model alone. */
+export function renamePanelConstant(
+  model: AlpModel,
+  id: string,
+  newName: string,
+): AlpModel {
+  const target = model.constants.find((c) => c.id === id);
+  const name = newName.trim();
+  if (!target || name === "" || name === target.name) return model;
+  const renamed = renameSyms(model, target.name, name);
+  return {
+    ...renamed,
+    constants: renamed.constants.map((c) => (c.id === id ? { ...c, name } : c)),
+  };
+}
+
+/** Removes a constant even while formulas use it. Those names then show as unknown, like any other. */
+export function removePanelConstant(model: AlpModel, id: string): AlpModel {
+  return { ...model, constants: model.constants.filter((c) => c.id !== id) };
 }

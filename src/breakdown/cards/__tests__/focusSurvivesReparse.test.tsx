@@ -112,6 +112,7 @@ function Harness({
     registerFocusable,
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     editInCode: () => {},
     moveItem: () => {},

@@ -170,6 +170,7 @@ describe("P5 — the fence's @alp-model must parse (Sec.6.1)", () => {
       placements: [],
       roles: [],
       randomParams: [],
+      constants: [],
       groups: [],
     });
   });

@@ -59,7 +59,14 @@ function threePlacementModel(): AlpModel {
       offset: { kind: "polar", r: num(10), theta: num(0) },
     },
   ];
-  return { v: 1, placements, roles: [], randomParams: [], groups: [] };
+  return {
+    v: 1,
+    placements,
+    roles: [],
+    randomParams: [],
+    constants: [],
+    groups: [],
+  };
 }
 
 function emit(model: AlpModel): EmissionOk {
@@ -201,6 +208,7 @@ describe("computeRimDragReparent (item 5)", () => {
       placements: [...groupPlacements, p2],
       roles: [ROLE_P],
       randomParams: [],
+      constants: [],
       groups: [finishedGroup],
     };
 
@@ -251,6 +259,7 @@ describe("computeRimDragReparent (item 5)", () => {
       placements: groupPlacements,
       roles: [ROLE_P],
       randomParams: [],
+      constants: [],
       groups: [{ ...group, members }],
     };
     const scriptSymbols = new Map([["ROTATION_PLAYER", 45]]);

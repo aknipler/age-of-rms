@@ -17,6 +17,7 @@ import { buildLanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import type { PreviewReferenceData } from "../../preview/generator/index";
 import type { ObjectConstant } from "../../preview/generator/objects";
+import type { ObjectDataFile } from "../../preview/generator/deObjectData";
 import { resolveMapDim } from "../../preview/generator/mapDimensions";
 import { DEFAULT_TEAMS } from "../../generationSettings/generationSettingsConstants";
 import type { ParseResult } from "../../parser/types";
@@ -30,6 +31,7 @@ import {
   objectConstantsFromPublished,
   previewSettingsFromContext,
   runPreviewFromContext,
+  toolPreviewReferenceData,
 } from "../previewBridge";
 
 const lang = loadLanguage();
@@ -353,5 +355,81 @@ describe("objectConstantsFromPublished (Sec.7.2 item 2)", () => {
     expect(out.some((c) => c.category === "object" && c.constId !== null)).toBe(
       true,
     );
+  });
+});
+
+// A tool's map has to be the preview's map, or a checker report or a balance
+// figure describes a map the user never sees. Until 2026-11-17 the tools
+// generated with seven fields of each constant row and no object data, so
+// the land and cliff stages skipped the terrains' decoration draws and the
+// object stage was the older model.
+describe("toolPreviewReferenceData", () => {
+  const WORLD = `
+<PLAYER_SETUP>
+  random_placement
+<LAND_GENERATION>
+  base_terrain GRASS
+  create_player_lands { terrain_type DIRT land_percent 30 base_size 8 }
+<CLIFF_GENERATION>
+  min_number_of_cliffs 3
+  max_number_of_cliffs 4
+<TERRAIN_GENERATION>
+  create_terrain FOREST { base_terrain GRASS number_of_clumps 6 land_percent 12 }
+<OBJECTS_GENERATION>
+  create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+  create_object GOLD { number_of_objects 7 group_placement_radius 2 set_tight_grouping set_gaia_object_only }
+`;
+
+  const workerRefDb = (): PreviewReferenceData => {
+    const raw = JSON.parse(
+      readFileSync(
+        join(REPO_ROOT, "reference", "data", "game-constants.json"),
+        "utf8",
+      ),
+    ) as {
+      constants: ObjectConstant[];
+      terrainRestrictions?: PreviewReferenceData["terrainRestrictions"];
+    };
+    return {
+      language,
+      constants: raw.constants,
+      terrainRestrictions: raw.terrainRestrictions,
+      objectData: JSON.parse(
+        readFileSync(
+          join(REPO_ROOT, "reference", "data", "object-data.json"),
+          "utf8",
+        ),
+      ) as ObjectDataFile,
+    };
+  };
+
+  it("generates the map the preview worker generates, object for object", () => {
+    const ctx: ToolContext<ParseResult> = {
+      ...context({ playerCount: 2 }),
+      parseResult: parseRms(WORLD, lang),
+      source: WORLD,
+      referenceData: {
+        language: lang,
+        gameConstants: constants as unknown as PublishedGameConstants,
+      },
+    };
+    const opts = { seed: 11, collectSnapshots: true };
+    const tool = runPreviewFromContext(
+      ctx,
+      toolPreviewReferenceData(ctx.referenceData!),
+      opts,
+    );
+    const worker = runPreviewFromContext(ctx, workerRefDb(), opts);
+    expect(tool.ok && worker.ok).toBe(true);
+    if (!tool.ok || !worker.ok) return;
+    // The fixture has to exercise what used to be dropped, or both sides
+    // agree for a reason that proves nothing.
+    expect(worker.result.terrainObjects?.kind.length).toBeGreaterThan(0);
+    expect(worker.result.cliffPieces.length).toBeGreaterThan(0);
+    expect(tool.result.deObjects).toEqual(worker.result.deObjects);
+    expect(tool.result.snapshots?.at(-1)?.terrain).toEqual(
+      worker.result.snapshots?.at(-1)?.terrain,
+    );
+    expect(tool.result.objects).toEqual(worker.result.objects);
   });
 });

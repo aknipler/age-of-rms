@@ -143,6 +143,14 @@ export function drawPreview(
   if (scene.base) {
     drawTerrain(ctx, viewport, scene.base);
     drawMapEdge(ctx, viewport, scene.base.snapshot.dim);
+    // Under the scripted objects, so a gold pile in a forest is never hidden
+    // by the trees around it.
+    drawTerrainObjects(
+      ctx,
+      viewport,
+      scene.base.result,
+      scene.base.hiddenObjects,
+    );
     drawObjects(ctx, viewport, scene.base.result, scene.base.hiddenObjects);
     drawPlayers(ctx, viewport, scene.base.result);
     // Last of the base-layer content, so a mark is never hidden by the very
@@ -482,6 +490,58 @@ function drawObjects(
   }
 }
 
+/**
+ * The trees and decorations terrains spawn (`PreviewResult.terrainObjects`).
+ *
+ * Squares rather than the scripted objects' circles, and smaller, for two
+ * reasons. A forest holds one per tile or close to it, so a full size dot
+ * would turn every forest into a carpet of glyphs and hide the scripted
+ * objects among them. And a forested Giant map holds tens of thousands, so
+ * each colour goes into ONE path of `rect`s and is filled once. A `fill()`
+ * per object, as `drawObjects` does, is fine for a few hundred and costs a
+ * frame's whole budget at this count, on every pan and zoom.
+ */
+function drawTerrainObjects(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  result: PreviewWireResult,
+  hidden?: ReadonlySet<string>,
+): void {
+  const layer = result.terrainObjects;
+  if (layer === undefined || layer.kind.length === 0) return;
+  const size = Math.max(0.9, Math.min(3, viewport.halfWidth * 0.45));
+  const half = size / 2;
+  // One path per colour, not per kind, so forty tree types sharing the wood
+  // colour still fill once. A kind's colour is an index into `colors`, and
+  // -1 marks a kind the Obj. List hides.
+  const colors: string[] = [];
+  const colorOf = layer.kinds.map((k) => {
+    if (hidden !== undefined && hidden.has(k.objectRef)) return -1;
+    const color = cssColor(categoryColor(k.category));
+    const at = colors.indexOf(color);
+    if (at >= 0) return at;
+    colors.push(color);
+    return colors.length - 1;
+  });
+  // A pass over every object per colour. There are two or three colours, so
+  // this beats sorting the objects, and it needs nothing beyond the plain
+  // path calls (Path2D is missing from the test DOM).
+  colors.forEach((color, c) => {
+    ctx.beginPath();
+    for (let i = 0; i < layer.kind.length; i++) {
+      if (colorOf[layer.kind[i]] !== c) continue;
+      // `latticeToScreen`, not `tileToScreen`: these positions are already
+      // continuous (10.5 is the middle of tile 10), so adding the half tile
+      // again would draw every tree off its own tile.
+      const point = latticeToScreen(viewport, layer.x[i], layer.y[i]);
+      if (offCanvas(point.x, point.y, viewport, size)) continue;
+      ctx.rect(point.x - half, point.y - half, size, size);
+    }
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+}
+
 function drawPlayers(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
@@ -601,7 +661,24 @@ function drawOverlay(
         const p = tileToScreen(viewport, shape.x, shape.y);
         const r = circleScreenRadius(viewport, shape.x, shape.y, shape.rTiles);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        if (shape.square) {
+          // The four corners go through the projection one by one, so the
+          // square stays a tile space square whatever the viewport does.
+          const h = shape.rTiles;
+          [
+            [shape.x - h, shape.y - h],
+            [shape.x + h, shape.y - h],
+            [shape.x + h, shape.y + h],
+            [shape.x - h, shape.y + h],
+          ].forEach(([cx, cy], i) => {
+            const c = tileToScreen(viewport, cx, cy);
+            if (i === 0) ctx.moveTo(c.x, c.y);
+            else ctx.lineTo(c.x, c.y);
+          });
+          ctx.closePath();
+        } else {
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        }
         if (shape.fill) {
           ctx.fillStyle = color;
           ctx.fill();

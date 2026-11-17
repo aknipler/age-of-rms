@@ -16,7 +16,7 @@ Never coded before? Scared of code? Create maps by clicking buttons in the Break
 
 Code is the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
-The preview's land generation, elevation, cliff, terrain and connection sections are tile-for-tile with the engine at the same seed. Objects are a close approximation being improved upon. Scripts that use `#include_drs` read the game's own include files from your install.
+The preview matches DE exactly, at the same seed. Scripts that use `#include_drs` read the game's own include files from your install.
 
 ## Status
 
@@ -72,7 +72,7 @@ The code is GPL-3.0. See `LICENSE`.
 
 The reference data in `reference/data/game-constants.json` is derived from Age of Empires II: Definitive Edition's own data files, and the object and terrain names in it are Microsoft's text. Those rows are included under Microsoft's Game Content Usage Rules, a license that is personal and cannot be passed on, so you hold it yourself by owning the game. The GPL-3.0 grant over this repository does not reach them. `NOTICE` sets out what the data is, where each part came from and what it asks of contributors.
 
-Age of RMS will always be free, with no advertising and no paid tier (which is good because the Game Content Usage Rules require it). Under the Usage Rules, art, audio, binary game files and Microsoft's own written documentation stay out of this repository.
+Age of RMS will always be free, with no advertising and no paid tier (also required by the Game Content Usage Rules). Under the Usage Rules, art, audio, binary game files and Microsoft's own written documentation stay out of this repository.
 
 ## Credits
 
@@ -80,7 +80,7 @@ Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Gui
 
 [genie-rms](https://github.com/genie-js/genie-rms) by Renée Kooi, an open source reimplementation of the original game's map generator, was a useful resource for how the map preview grows lands. It builds on reverse engineering of the original game by Yvan Burrie, JustTesting123 and others.
 
-[rms-check](https://github.com/Divy1211/rms-check) by Divy1211 is the source of the liveness model that works out under which conditions a `#const` is defined, and of the test scripts that check it.
+[rms-check](https://github.com/Divy1211/rms-check) by Divy1211 for the liveness model reference, and the test scripts that check it.
 
 [AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE) gave the first leads to how Definitive Edition draws its random numbers. Every rule the preview uses was then tested against maps the game generated, and the code is written from those tests.
 

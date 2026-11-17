@@ -2248,8 +2248,9 @@
         }
       ],
       "description": "Minimum distance in tiles to keep from cliffs. Use at least 2 to leave a gap. DE only.",
+      "repeatable": true,
       "verified": true,
-      "notes": "Description checked against the guide's own entry (guide:2577) on 2026-10-25."
+      "notes": "Description checked against the guide's own entry (guide:2577) on 2026-10-25. Repeatable since 2026-11-17: DE adds every one of these three zone attributes to one list, and the last decides whether the list is avoided or required (DE study, de-objects-cg-dz.md 6.4, Menindee's GOLD writes avoid_forest_zone twice)."
     },
     {
       "name": "avoid_forest_zone",
@@ -2265,8 +2266,9 @@
       ],
       "mutexWith": ["place_on_forest_zone"],
       "description": "Minimum distance in tiles to keep from trees, including stragglers. Forest terrain itself is not checked. DE only.",
+      "repeatable": true,
       "verified": true,
-      "notes": "Description checked against the guide's own entry (guide:2559) on 2026-10-25."
+      "notes": "Description checked against the guide's own entry (guide:2559) on 2026-10-25. Repeatable since 2026-11-17: DE adds every one of these three zone attributes to one list, and the last decides whether the list is avoided or required (DE study, de-objects-cg-dz.md 6.4, Menindee's GOLD writes avoid_forest_zone twice)."
     },
     {
       "name": "avoid_other_land_zones",
@@ -2952,8 +2954,9 @@
       "tokenIdSource": "equivalencies-2026-11-02",
       "mutexWith": ["avoid_forest_zone"],
       "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).",
+      "repeatable": true,
       "verified": true,
-      "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use."
+      "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use. Repeatable since 2026-11-17: DE adds every one of these three zone attributes to one list, and the last decides whether the list is avoided or required (DE study, de-objects-cg-dz.md 6.4, Menindee's GOLD writes avoid_forest_zone twice)."
     },
     {
       "name": "place_on_specific_land_id",

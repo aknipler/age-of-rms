@@ -27,8 +27,12 @@ import type { LanguageData } from "../parser/language";
 import type { Diagnostic, ParseResult } from "../parser/types";
 import {
   EARLY_DIAGNOSTICS_MIN_TOKENS,
+  LIVENESS_IDLE_MS,
   type ParseDiagnosticsMessage,
+  type ParseLivenessMessage,
 } from "./parseResponses";
+import { createLivenessScheduler } from "./livenessPass";
+import { livenessDiagnostics } from "../parser/liveness/report";
 
 // Double-cast rather than a direct `as LanguageData`: the JSON's
 // TS-inferred literal type (from resolveJsonModule) doesn't necessarily
@@ -121,7 +125,8 @@ export interface ParseResultMessage {
  * main thread's handler (createParseResponseRouter) is made by the compiler
  * to tell the two apart before it reads a field only one of them has.
  */
-export type ParseResponseMessage = ParseDiagnosticsMessage | ParseResultMessage;
+export type ParseResponseMessage =
+  ParseDiagnosticsMessage | ParseResultMessage | ParseLivenessMessage;
 
 // The one place this worker keeps state between messages. Replaced, never
 // mutated, by receiveIncludes.
@@ -133,9 +138,60 @@ let includeState: IncludeState = emptyIncludeState((text) =>
   }),
 );
 
+/**
+ * Everything the liveness pass needs, captured when it was requested. The
+ * include state is replaced and never mutated, so holding the reference holds
+ * the files as they were for this parse, even if an includes message arrives
+ * before the timer fires (that message cancels the job anyway).
+ */
+interface LivenessJob {
+  parse: ParseResult;
+  existing: Diagnostic[];
+  state: IncludeState;
+  includesUnread: boolean;
+}
+
+// The name liveness analysis (src/parser/liveness/) is too slow for the typing
+// path, 47 to 66 of 243 scripts took over 50 ms, so it runs here as a second
+// pass after the result is posted, once the worker has been idle for
+// LIVENESS_IDLE_MS. A message that reaches the worker first cancels it. Once
+// it starts it runs to the end, which is the cost the owner accepted.
+const liveness = createLivenessScheduler<
+  LivenessJob,
+  Omit<ParseLivenessMessage, "kind" | "requestId">,
+  ReturnType<typeof setTimeout>
+>({
+  delayMs: LIVENESS_IDLE_MS,
+  schedule: (fn, ms) => setTimeout(fn, ms),
+  cancel: (handle) => clearTimeout(handle),
+  run: ({ parse, existing, state, includesUnread }) => {
+    const startedAt = performance.now();
+    const { status, diagnostics } = livenessDiagnostics({
+      parse,
+      language: languageData,
+      builtinConstants: BUILTIN_CONSTANTS,
+      includeParse: (key) => state.cache.get(key)?.parse,
+      includesUnread,
+      existing,
+    });
+    return { status, diagnostics, ms: performance.now() - startedAt };
+  },
+  post: (requestId, reply) => {
+    const message: ParseLivenessMessage = {
+      kind: "liveness",
+      requestId,
+      ...reply,
+    };
+    self.postMessage(message);
+  },
+});
+
 self.onmessage = (
   event: MessageEvent<ParseRequestMessage | IncludesMessage>,
 ) => {
+  // Any message makes a waiting liveness job stale: a parse request is newer
+  // text, and an includes message changes what the job would read.
+  liveness.cancel();
   // A discriminated union tells the two apart. A parse request has no `kind`,
   // so the `in` check narrows it before either field is read.
   if ("kind" in event.data && event.data.kind === "includes") {
@@ -154,13 +210,14 @@ self.onmessage = (
   // comment runs on, and a word valued 70 closes one, so the text after it
   // runs as code. The AST has to say so either way. Built from reference data
   // here rather than inside the parser, which holds no RMS vocabulary.
+  const includeOptions = parseOptionsFor(includeState, source);
   const result = parseRms(source, languageData, {
     commentOpenAliases: COMMENT_OPEN_ALIASES,
     commentCloseAliases: COMMENT_CLOSE_ALIASES,
     builtinConstants: BUILTIN_CONSTANTS,
     // The names the script's include files define, and whether any file was
     // not read. Both come from the cache, so a keystroke parses nothing new.
-    ...parseOptionsFor(includeState, source),
+    ...includeOptions,
   });
   const parsedAt = performance.now();
   // The semantic pass (docs/parser-design.md Sec.8) runs here, in the worker,
@@ -217,4 +274,11 @@ self.onmessage = (
     parseResult: { ...result, diagnostics: allDiagnostics, includeIndex },
   };
   self.postMessage(response);
+
+  liveness.request(requestId, {
+    parse: result,
+    existing: allDiagnostics,
+    state: includeState,
+    includesUnread: includeOptions.includesUnread,
+  });
 };

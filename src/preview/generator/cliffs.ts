@@ -43,6 +43,7 @@ import type {
   TileGrid,
 } from "./types";
 import { resumeDeStream, type DeStream, type DeStreamState } from "./deRandom";
+import type { TerrainObjectWorld } from "./terrainObjects";
 import { NO_LAYER, type TerrainConstantForMasks } from "./grid";
 import { cleanTerrainAgainst, type CleanupListener } from "./lands";
 import { pushFailure } from "./placement";
@@ -442,6 +443,7 @@ function repairWater(
   box: readonly [number, number, number, number],
   marker: number,
   stream: DeStream,
+  hook?: CliffObjectHook,
 ): void {
   const { dim, terrain, layer } = grid;
   const cls = (i: number): number => classOf(table, terrain[i]);
@@ -478,10 +480,13 @@ function repairWater(
           for (const o of REWRITE_ORDER) {
             if (!water[o]) continue;
             const j = (y + NEIGH8[o][1]) * dim + x + NEIGH8[o][0];
+            const prev = terrain[j];
             terrain[j] = marker;
             layer[j] = NO_LAYER;
-            for (let d = decorationDrawsOf(table, marker); d > 0; d--)
-              stream.raw();
+            if (hook) hook.world.refresh(stream, j, prev, terrain, hook.pieces);
+            else
+              for (let d = decorationDrawsOf(table, marker); d > 0; d--)
+                stream.raw();
           }
           changes++;
         }
@@ -523,8 +528,11 @@ function repairWater(
             : (c & CLASS_WATER) === 0 && nearWater;
       if (!paint) continue;
       layer[i] = NO_LAYER;
+      const prev = terrain[i];
       terrain[i] =
         c & (CLASS_SHALLOWS | CLASS_FROZEN | CLASS_SHORE) ? ICY_SHORE : BEACH;
+      if (hook && prev !== terrain[i])
+        hook.world.refresh(stream, i, prev, terrain, hook.pieces);
     }
 }
 
@@ -578,6 +586,7 @@ export function applyCliffs(
   constants: readonly TerrainConstantForMasks[],
   origins: readonly LandOrigin[],
   streamState: DeStreamState,
+  world?: TerrainObjectWorld,
 ): CliffsResult {
   const lineTiles = new Map<number, number>();
   const commands = instantiated.sections.get("CLIFF_GENERATION");
@@ -706,6 +715,12 @@ export function applyCliffs(
   }
 
   const pieces = new Pieces(stream, STYLE_BASE[settings.cliffType], cw);
+  const hook: CliffObjectHook | undefined = world
+    ? {
+        world,
+        pieces: () => [...pieces.at.values()].map((entry) => entry.piece),
+      }
+    : undefined;
   let placed = 0;
   for (let attempt = 0; attempt < count; attempt++) {
     const length = rangeDraw(stream, settings.minLength, settings.maxLength);
@@ -759,7 +774,7 @@ export function applyCliffs(
       cur = next;
     }
     path.reverse();
-    paintPath(path, cw, grid, table, stream, pieces, lineTiles);
+    paintPath(path, cw, grid, table, stream, pieces, lineTiles, hook);
     for (const c of path)
       clear(c % cw, Math.floor(c / cw), settings.minDistanceCliffs);
   }
@@ -773,6 +788,17 @@ export function applyCliffs(
   };
 }
 
+/**
+ * The terrain object world and the live cliff pieces, when the object stage
+ * runs (Sec.6.6, rev 12). Each tile that spends decoration draws then makes
+ * real objects, after taking off the objects its old terrain made or its new
+ * terrain refuses. Without it the same draws are spent and nothing is made.
+ */
+interface CliffObjectHook {
+  world: TerrainObjectWorld;
+  pieces: () => CliffPiece[];
+}
+
 /** Paints a reversed walk, segment by segment (5.4), and joins its pieces (5.5). */
 function paintPath(
   path: readonly number[],
@@ -782,6 +808,7 @@ function paintPath(
   stream: DeStream,
   pieces: Pieces,
   lineTiles: Map<number, number>,
+  hook?: CliffObjectHook,
 ): void {
   const { dim, terrain, layer } = grid;
   let incoming: number | undefined;
@@ -806,22 +833,29 @@ function paintPath(
     for (let step = 0; step < (k === 0 ? 1 : 4); step++) {
       const i = (fy + dy * step) * dim + fx + dx * step;
       if (!lineTiles.has(i)) lineTiles.set(i, terrain[i]);
-      if (terrain[i] !== REPAIR_MARKER)
-        for (let n = decorationDrawsOf(table, terrain[i]); n > 0; n--)
-          stream.raw();
+      if (terrain[i] !== REPAIR_MARKER) {
+        if (hook)
+          hook.world.refresh(stream, i, terrain[i], terrain, hook.pieces);
+        else
+          for (let n = decorationDrawsOf(table, terrain[i]); n > 0; n--)
+            stream.raw();
+      }
     }
     const box = [x0 - 3, y0 - 3, x1 + 3, y1 + 3] as const;
     // 2 to 4. Repair with marker 70, paint the line, repair with marker 16.
-    repairWater(grid, table, box, REPAIR_MARKER, stream);
+    repairWater(grid, table, box, REPAIR_MARKER, stream, hook);
     for (let y = y0; y <= y1; y++)
       for (let x = x0; x <= x1; x++) {
         if (x >= dim || y >= dim) continue;
         const i = y * dim + x;
+        const prev = terrain[i];
         terrain[i] = CLIFF_LINE_TERRAIN;
         layer[i] = NO_LAYER;
         grid.cliff[i] = 1;
+        if (hook && prev !== CLIFF_LINE_TERRAIN)
+          hook.world.refresh(stream, i, prev, terrain, hook.pieces);
       }
-    repairWater(grid, table, box, CLIFF_LINE_TERRAIN, stream);
+    repairWater(grid, table, box, CLIFF_LINE_TERRAIN, stream, hook);
     // 5. The piece joining this node to the one before.
     if (k !== 0) incoming = pieces.join(fcx, fcy, tcx, tcy, incoming);
   }

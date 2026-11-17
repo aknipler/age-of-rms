@@ -22,6 +22,7 @@
 
 import type { LanguageData } from "../language";
 import { includeKey, includePathsIn } from "../includeIndex";
+import { lineNumberOfOffset } from "../lineIndex";
 import type { Item, ParseResult, Token } from "../types";
 import type { AtomTable } from "./atoms";
 import type { Bdd, BddNode } from "./bdd";
@@ -50,6 +51,8 @@ export interface WalkUse {
   def: BddNode;
   /** The open script's definition tokens above this one. Definitions in include files have no token here. */
   definitionTokens: number[];
+  /** The include keys holding a definition of the name above this token, each once, in the order they were met. */
+  includeDefinitions: string[];
 }
 
 /** One `if`, `elseif` or `else` branch of the open script. */
@@ -62,6 +65,17 @@ export interface WalkBranch {
   guard: BddNode;
   /** The guard around the whole chain. */
   enclosingGuard: BddNode;
+  /**
+   * The chain part of the guard: this branch's own condition and the negation
+   * of every earlier condition of its chain, without the guard around the
+   * chain. A branch that is dead only because its chain already covered every
+   * case has `local` impossible by itself.
+   */
+  local: BddNode;
+  /** Def(condition) where the `if` reads it. Absent with the condition. */
+  conditionDef?: BddNode;
+  /** The condition words of this chain up to and including this branch, and of every chain around it, outermost first. */
+  conditionNames: string[];
 }
 
 export interface WalkResult {
@@ -71,6 +85,8 @@ export interface WalkResult {
   switches: Set<string>;
   /** Def(n) after the last token, for every name the open script defines. */
   endDefs: Map<string, BddNode>;
+  /** For each switch, the token of its first definition that no `if` or `start_random` encloses. */
+  switchTokens: Map<string, number>;
 }
 
 const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/g;
@@ -151,6 +167,8 @@ interface IfFrame {
   /** The negation of every condition of the chain so far. */
   negs: Guard;
   chain: number;
+  /** The condition words of this chain so far, for the messages of a dead branch. */
+  conditions: string[];
 }
 
 interface RandomFrame {
@@ -197,6 +215,9 @@ export function walkLiveness(
   const defGuard = new Map<string, BddNode>();
   const defTokens = new Map<string, number[]>();
   const switches = new Set<string>();
+  const switchTokens = new Map<string, number>();
+  /** The include files holding a definition of each name, by name. */
+  const includeDefs = new Map<string, string[]>();
   const uses: WalkUse[] = [];
   const branches: WalkBranch[] = [];
   let nextChain = 0;
@@ -222,21 +243,38 @@ export function walkLiveness(
     if (freeNames?.has(name)) return lazy(() => atoms.free(name));
     if (builtinConstants.has(name)) return TRUE_GUARD;
     const seen = defGuard.get(name) ?? bdd.FALSE;
-    if (labelNames.has(name))
+    if (labelNames.has(name)) {
+      // Source order is what names a size atom after the script's own spelling.
+      atoms.noteRead(name);
       return lazy(() => bdd.or(atoms.label(name), seen));
+    }
     if (!definedAnywhere.has(name)) return lazy(() => atoms.free(name));
     return constant(seen);
   }
   const defOf = (name: string): BddNode => defAt(name).node();
 
-  function recordDef(name: string, token: number | undefined, top: boolean) {
+  function recordDef(
+    name: string,
+    token: number | undefined,
+    top: boolean,
+    includeFile: string | undefined,
+  ) {
     const g = G.node();
     defGuard.set(name, bdd.or(defGuard.get(name) ?? bdd.FALSE, g));
-    if (g === bdd.TRUE) switches.add(name);
+    if (g === bdd.TRUE) {
+      switches.add(name);
+      if (top && token !== undefined && !switchTokens.has(name))
+        switchTokens.set(name, token);
+    }
     if (top && token !== undefined) {
       const list = defTokens.get(name) ?? [];
       list.push(token);
       defTokens.set(name, list);
+    }
+    if (!top && includeFile !== undefined) {
+      const list = includeDefs.get(name) ?? [];
+      if (!list.includes(includeFile)) list.push(includeFile);
+      includeDefs.set(name, list);
     }
   }
 
@@ -261,6 +299,7 @@ export function walkLiveness(
         guard: G.node(),
         def: defOf(name),
         definitionTokens: [...(defTokens.get(name) ?? [])],
+        includeDefinitions: [...(includeDefs.get(name) ?? [])],
       });
     }
   }
@@ -290,9 +329,11 @@ export function walkLiveness(
       keyword: number,
       condition: number | undefined,
       def: Guard | undefined,
+      conditionName: string | undefined,
     ): void => {
       const around = lazyAnd(frame.outer, frame.negs);
       const guard = def === undefined ? around : lazyAnd(around, def);
+      if (conditionName !== undefined) frame.conditions.push(conditionName);
       // A branch of the open script is always reported on, so its guard is built.
       if (top)
         branches.push({
@@ -301,6 +342,14 @@ export function walkLiveness(
           chainIndex: frame.chain,
           guard: guard.node(),
           enclosingGuard: frame.outer.node(),
+          local: (def === undefined
+            ? frame.negs
+            : lazyAnd(frame.negs, def)
+          ).node(),
+          conditionDef: def?.node(),
+          conditionNames: frames.flatMap((f) =>
+            f.kind === "if" ? f.conditions : [],
+          ),
         });
       G = guard;
       // After an `else` nothing more can run, as the game's filter has it.
@@ -331,6 +380,7 @@ export function walkLiveness(
               outer: G,
               negs: TRUE_GUARD,
               chain: nextChain++,
+              conditions: [],
             };
             frames.push(frame);
             // A bare `if` has no condition and the game never runs it. It is
@@ -339,19 +389,19 @@ export function walkLiveness(
               G = FALSE_GUARD;
               continue;
             }
-            branch(frame, at, conditionIndex, def);
+            branch(frame, at, conditionIndex, def, next.text);
             continue;
           }
           const frame = frames[frames.length - 1];
           if (frame?.kind !== "if") continue;
           // A bare `elseif` acts as `else` (preview-design Sec.3 rule 2).
-          branch(frame, at, conditionIndex, def);
+          branch(frame, at, conditionIndex, def, bare ? undefined : next.text);
           continue;
         }
         case "else": {
           const frame = frames[frames.length - 1];
           if (frame?.kind !== "if") continue;
-          branch(frame, at, undefined, undefined);
+          branch(frame, at, undefined, undefined, undefined);
           continue;
         }
         case "endif": {
@@ -362,7 +412,14 @@ export function walkLiveness(
           continue;
         }
         case "start_random":
-          frames.push({ kind: "random", outer: G, block: atoms.openBlock() });
+          frames.push({
+            kind: "random",
+            outer: G,
+            block: atoms.openBlock(
+              lineNumberOfOffset(file.lineOffsets, t.start),
+              top ? undefined : open[open.length - 1],
+            ),
+          });
           continue;
         case "percent_chance": {
           const next = tokens[k + 1];
@@ -421,7 +478,7 @@ export function walkLiveness(
         k++;
         const nameIndex = index[k];
         if (t.text === "#define") {
-          recordDef(name.text, nameIndex, top);
+          recordDef(name.text, nameIndex, top, open[open.length - 1]);
           continue;
         }
         // The value is one token, or a parenthesised expression of several.
@@ -436,7 +493,7 @@ export function walkLiveness(
           k = last;
         }
         // Recorded after the value is read, so `#const A A` does not define A for itself.
-        recordDef(name.text, nameIndex, top);
+        recordDef(name.text, nameIndex, top, open[open.length - 1]);
         continue;
       }
 
@@ -454,5 +511,5 @@ export function walkLiveness(
   for (const s of parse.symbols)
     if (!endDefs.has(s.name)) endDefs.set(s.name, defOf(s.name));
 
-  return { uses, branches, switches, endDefs };
+  return { uses, branches, switches, endDefs, switchTokens };
 }

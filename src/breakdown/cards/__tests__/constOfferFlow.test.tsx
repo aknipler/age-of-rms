@@ -99,6 +99,7 @@ function Harness({ initialSource }: { initialSource: string }) {
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     editInCode: () => {},
     moveItem: () => {},

@@ -1,0 +1,13 @@
+effect_percent GAIA_SET_ATTRIBUTE GOLD ATTR_RADIUS_1 150
+effect_percent GAIA_SET_ATTRIBUTE GOLD ATTR_RADIUS_2 150
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object GOLD { set_gaia_object_only number_of_objects 4 number_of_groups 6 set_tight_grouping min_distance_to_players 12 temp_min_distance_group_placement 8 }
+create_object DEER { number_of_objects 3 number_of_groups 6 set_loose_grouping set_gaia_object_only min_distance_to_players 15 }
+create_object GOLD { number_of_objects 3 number_of_groups 4 set_tight_grouping set_gaia_object_only min_distance_to_players 15 temp_min_distance_group_placement 10 }
+create_object FORAGE { number_of_objects 1 number_of_groups 20 set_gaia_object_only min_distance_to_players 12 }

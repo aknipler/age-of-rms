@@ -93,6 +93,7 @@ function Harness({
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     selectedItem: undefined,
     comments: [],

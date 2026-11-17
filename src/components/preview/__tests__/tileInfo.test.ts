@@ -96,6 +96,24 @@ describe("indexObjectsByTile", () => {
     );
     expect(index.get(0)?.map((o) => o.objectRef)).toEqual(["GOLD", "STONE"]);
   });
+
+  // Terrain objects carry continuous positions (2.5 is the middle of tile
+  // 2), so the index floors them. Unfloored, 1.5 * 3 + 2.5 is no tile's key
+  // and a forest tile would read as holding nothing.
+  it("adds terrain objects on their own tile, ahead of the scripted ones", () => {
+    const index = indexObjectsByTile([object({ x: 2, y: 1 })], 3, {
+      kind: new Uint16Array([0]),
+      x: new Float32Array([2.5]),
+      y: new Float32Array([1.5]),
+      kinds: [
+        { id: 411, objectRef: "OAK_FOREST_TREE", category: "resource-wood" },
+      ],
+    });
+    expect(index.get(1 * 3 + 2)?.map((o) => o.objectRef)).toEqual([
+      "OAK_FOREST_TREE",
+      "GOLD",
+    ]);
+  });
 });
 
 describe("describeTile", () => {

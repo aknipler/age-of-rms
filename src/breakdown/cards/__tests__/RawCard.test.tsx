@@ -74,6 +74,7 @@ function renderOrphan(source: string, editInCode: (span: Span) => void) {
     registerFocusable: () => {},
     isSelected: () => false,
     selectCard: () => {},
+    revealCardAt: () => {},
     clearSelection: () => {},
     editInCode,
     moveItem: () => {},

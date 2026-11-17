@@ -58,6 +58,7 @@ function perPlayerRing(): { model: AlpModel; groupId: string } {
     placements: [],
     roles: [role()],
     randomParams: [],
+    constants: [],
     groups: [],
   };
   const { model, groupId } = addRing(base, "player");
@@ -226,6 +227,7 @@ describe("jitter model ops", () => {
       placements: [],
       roles: [role()],
       randomParams: [],
+      constants: [],
       groups: [],
     };
     const { model, groupId } = addRing(base, "player");

@@ -83,6 +83,7 @@ function perPlayerArc(
     placements: [],
     roles: [role()],
     randomParams: [],
+    constants: [],
     groups: [],
   };
   const ring = addRing(base, "player");
@@ -518,6 +519,7 @@ function perPlayerLine(opts: { radius?: number; slots?: number } = {}): {
     placements: [],
     roles: [role()],
     randomParams: [],
+    constants: [],
     groups: [],
   };
   const ring = addRing(base, "player");
@@ -964,6 +966,7 @@ function perPlayerShape(
     placements: [],
     roles: [role()],
     randomParams: [],
+    constants: [],
     groups: [],
   };
   const ring = addRing(base, "player");

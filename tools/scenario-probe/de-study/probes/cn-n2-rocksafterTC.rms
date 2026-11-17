@@ -1,0 +1,9 @@
+#const PANDA_ROCK 2082
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DIRT number_of_tiles 0 base_size 10 }
+<OBJECTS_GENERATION>
+create_object TOWN_CENTER { set_place_for_every_player max_distance_to_players 0 }
+create_object PANDA_ROCK { set_gaia_object_only number_of_objects 6 min_distance_to_players 10 temp_min_distance_group_placement 6 }

@@ -3010,10 +3010,13 @@ def main() -> int:
     parser.add_argument("--classes", action="store_true", help="Update ONLY the unit-class data, read from empires2_x2_p1.dat: one objectClass row per genie unit class (with the unit ids in it) plus a classId on every object entry. Rewrites no other field. Verifies the class-to-constant offset against random_map.def first and refuses to write if it disagrees.")
     parser.add_argument("--roster", action="store_true", help="CREATE an object row for every live gaia unit, read from empires2_x2_p1.dat (CREATION_PLAN 4.10) — the only other mode that adds rows rather than filling fields on rows that already exist. Rows are keyed by constId with rmsConstant null where the unit has no name, since unit 1546 has no #const at all. Never overwrites an existing row, and prints every descriptiveName where DE's own display text disagrees with what the file says.")
     parser.add_argument("--misc-constants", action="store_true", help="CREATE rows for the AI map type / civilization / water definition / color correction / cliff type / assign-to / effect action / effect flag / ModifyTech / PlayerData / ResourceAmount / magic-number families random_map.def keeps in sections this tool otherwise skips, plus includes/constants.inc as a second source. Needs no dat — these ids are never joined against it, since they collide across families and against terrain/object ids the same way the rest of the file's namespaces do. Never overwrites an existing row.")
+    parser.add_argument("--object-data", action="store_true", help="Write reference/data/object-data.json, the object data the preview's object stage reads (placement and collision sizes, restrictions, graphics' angles and flags, civilizations, annexes), from empires2_x2_p1.dat. Writes no other file.")
+    parser.add_argument("--object-data-output", type=Path, default=REPO_ROOT / "reference" / "data" / "object-data.json", help="Where --object-data writes (default: reference/data/object-data.json).")
+    parser.add_argument("--check-pack", type=Path, default=None, help="With --object-data, compare every field with a content pack (AoE2RMSIDE's de_content_<build>.json) and print the disagreements.")
     parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --terrain-units, --classes, --roster or --misc-constants to see the diff before taking it.")
     args = parser.parse_args()
 
-    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.terrain_generation), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants)]) > 1:
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.terrain_generation), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants), bool(args.object_data)]) > 1:
         print("The narrow modes (--ids-only, --colors-only, --terrain-table, --terrain-units, --terrain-generation, --classes, --storages, --attributes, --roster, --misc-constants) are mutually exclusive.", file=sys.stderr)
         return 1
 
@@ -3083,6 +3086,13 @@ def main() -> int:
                 print(f"No {field} resolved (left unchanged): {', '.join(missing)}")
         print("\nNext: run `npm run validate:reference` from the repo root and review the diff before committing.")
         return 0
+
+    if args.object_data:
+        from object_data import run_object_data
+
+        loaded = load_dat()
+        gates = REPO_ROOT / "tools" / "scenario-probe" / "de-study" / "data" / "wall_gates.json"
+        return run_object_data(loaded.dat if loaded else None, args.object_data_output, gates, args.check_pack, args.dry_run)
 
     if args.terrain_table:
         return run_terrain_table(install_path, args.output, load_dat(), args.dry_run)

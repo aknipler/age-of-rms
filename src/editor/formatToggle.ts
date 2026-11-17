@@ -32,6 +32,9 @@
  * represented it internally.
  */
 
+import languageData from "../../reference/data/language.json";
+import type { LanguageData } from "../parser/language";
+import { parseRms } from "../parser/parser";
 import { lineOfOffset } from "../parser/lineIndex";
 import type {
   CommandNode,
@@ -47,6 +50,13 @@ import {
   formatScript,
   type SourceEdit,
 } from "../tools/builtin/formatter/index";
+import {
+  detectIndentUnit,
+  detectLineEnding,
+  type FormatOptions,
+} from "../tools/builtin/formatter/options";
+
+const LANGUAGE = languageData as unknown as LanguageData;
 
 export interface ToggleLayoutResult {
   edits: SourceEdit[];
@@ -184,6 +194,77 @@ function targetedNodes(parse: ParseResult, range: Span): CommandNode[] {
 }
 
 /**
+ * Lays out ONE command by itself. The node's own text, dedented, goes through
+ * the formatter as a one command script with the document's own indent unit
+ * and line ending, and the result is indented back to where the node sits.
+ * The shape decision is the formatter's own, so the layout rules stay in one
+ * place.
+ *
+ * Returns the edit, `null` when the formatter could not change the node (an
+ * unclosed block, a multi-line comment inside it), and `undefined` when the
+ * node cannot be treated alone at all (a command named through a #const alias
+ * does not parse as a command on its own), so the caller can fall back.
+ */
+function toggleNodeAlone(
+  parse: ParseResult,
+  node: CommandNode,
+  isInline: boolean,
+  name: string,
+): SourceEdit | null | undefined {
+  const { source } = parse;
+  const eol = detectLineEnding(source);
+  const lineStart = source.lastIndexOf("\n", node.span.start - 1) + 1;
+  const lead = source.slice(lineStart, node.span.start);
+  // A node that shares its line with something before it has no indent of its
+  // own to restore.
+  const base = /^[ \t]*$/.test(lead) ? lead : "";
+  const lines = source.slice(node.span.start, node.span.end).split(/\r?\n/);
+  const dedented = lines.map((line, i) =>
+    i > 0 && base !== "" && line.startsWith(base)
+      ? line.slice(base.length)
+      : line,
+  );
+  const header = "<LAND_GENERATION>";
+  const snippet = header + eol + dedented.join(eol) + eol;
+  const snippetParse = parseRms(snippet, LANGUAGE);
+  const inner = snippetParse.script.sections[0]?.items[0];
+  if (
+    inner === undefined ||
+    inner.kind !== "command" ||
+    (inner as CommandNode).def?.name !== node.def?.name ||
+    (inner as CommandNode).block === undefined
+  )
+    return undefined;
+
+  const unit = detectIndentUnit(source, parse.tokens);
+  const style: FormatOptions["indentStyle"] =
+    unit === "\t"
+      ? "tab"
+      : unit === "  "
+        ? "2 spaces"
+        : unit === "    "
+          ? "4 spaces"
+          : "preserve";
+  const result = formatScript(snippetParse, {
+    ...DEFAULT_FORMAT_OPTIONS,
+    indentStyle: style,
+    alwaysExpand: isInline ? [name] : [],
+    alwaysInline: isInline ? [] : [name],
+  });
+  if (!result.verified) return null;
+  const formatted = result.text
+    .slice(header.length + eol.length)
+    .replace(/(\r?\n)+$/, "");
+  const reindented = formatted
+    .split(/\r?\n/)
+    .map((line, i) => (i > 0 && line !== "" ? base + line : line))
+    .join(eol);
+  const original = source.slice(node.span.start, node.span.end);
+  if (reindented === original) return null;
+  return { start: node.span.start, end: node.span.end, newText: reindented };
+}
+
+/**
  * Toggles every command block the given range touches between one-line and
  * one-attribute-per-line, each independently of the others' current shape.
  * `range.start === range.end` (a plain cursor, no drag) toggles the one
@@ -211,6 +292,22 @@ export function toggleCommandLayoutInRange(
       continue;
     }
     const name = resolvedName(parse, node);
+    // Preferred, the node alone. Whole document formatting also re-lays out
+    // anything else the formatter would normalise (blank lines before a
+    // section, indentation that is not on its unit) and flips every other
+    // command of the same name sitting in the opposite shape, so on a real
+    // script its output differed from the source far outside the node and
+    // the guard below declined every toggle.
+    const alone = toggleNodeAlone(parse, node, isInline, name);
+    if (alone !== undefined) {
+      if (alone !== null) {
+        edits.push(alone);
+        toggledCount++;
+      } else {
+        skippedCount++;
+      }
+      continue;
+    }
     const options = {
       ...DEFAULT_FORMAT_OPTIONS,
       alwaysExpand: isInline ? [name] : [],
@@ -230,18 +327,9 @@ export function toggleCommandLayoutInRange(
       continue;
     }
     if (edit.start < node.span.start || edit.end > node.span.end) {
-      // The formatter's job outside this node's own shape is still "keep
-      // this INDENTED CONSISTENTLY", not "keep byte-identical". An already-
-      // expanded sibling elsewhere whose actual indentation happens not to
-      // match what the shared indent unit computes to gets normalized as a
-      // side effect of ANY run, whether or not that sibling's own shape
-      // changed (measured: a hand-built fixture with one flush-left
-      // already-expanded block and no other indentation evidence in the
-      // file). A hotkey whose whole promise is "only the command(s) you
-      // targeted" cannot ship an edit that reaches past them, so it declines
-      // rather than silently reformatting something the user never asked
-      // about. The tightest possible diff (`trimmedEdit`) already proves
-      // there was nowhere narrower to land.
+      // Last resort for a command the snippet path cannot parse, a name that
+      // only resolves through a script's own #const alias. The whole document
+      // run must then change nothing outside the node, or this declines.
       skippedCount++;
       continue;
     }

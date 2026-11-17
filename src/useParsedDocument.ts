@@ -17,6 +17,7 @@ import { PERF_TRACE, perfLog } from "./perfTrace";
 import {
   createParseResponseRouter,
   debounceMsFor,
+  type ParseLivenessMessage,
 } from "./editor/parseResponses";
 
 // docs/breakdown-design.md Sec.6.2: "one parse, in the worker". This
@@ -62,6 +63,21 @@ export interface ParsedDocumentState {
    * so squiggles land as soon as the diagnostics do.
    */
   diagnosticsSource: string;
+  /**
+   * The name liveness marks (docs/name-liveness-slice-b-brief.md B6), which
+   * arrive in their own message about 300 ms after the worker goes idle. They
+   * live beside the parse result and never inside it, so a liveness reply does
+   * not give Breakdown a new `parseResult` and re-render the card tree.
+   * `source` is the text they were computed for. Readers merge them into a
+   * diagnostics list only while it matches the text that list is for. A newly
+   * applied result resets this to null, so marks for older text never meet
+   * newer text. null until a reply arrives.
+   */
+  liveness: {
+    source: string;
+    status: ParseLivenessMessage["status"];
+    diagnostics: Diagnostic[];
+  } | null;
 }
 
 const EMPTY_STATE: ParsedDocumentState = {
@@ -69,6 +85,7 @@ const EMPTY_STATE: ParsedDocumentState = {
   parseResult: null,
   diagnostics: [],
   diagnosticsSource: "",
+  liveness: null,
 };
 
 export interface ParsedDocumentApi extends ParsedDocumentState {
@@ -99,6 +116,11 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
   // reparseNow superseded it), and must be dropped rather than applied
   // out of order.
   const latestRequestIdRef = useRef(0);
+  // The request whose result is on screen, and the text it was for. A liveness
+  // reply belongs to the screen only if it answers THIS request, and it takes
+  // this text as its source. A ref, not state, for the same reason as the id
+  // above: the reply handler reads it between renders.
+  const appliedRef = useRef<{ requestId: number; source: string } | null>(null);
   const sourceByRequestIdRef = useRef(new Map<number, string>());
   // The requests reparseNow sent, which the reply handler applies even when
   // `content` has not caught up with their text yet (see isCurrent below).
@@ -198,12 +220,35 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
         }
         sourceByRequestId.delete(requestId);
         exactRequestIds.delete(requestId);
+        appliedRef.current = { requestId, source };
         setState({
           source,
           diagnostics,
           diagnosticsSource: source,
           parseResult,
+          // Marks for the older text would sit on the wrong lines.
+          liveness: null,
         });
+      },
+      // The liveness pass answers a request whose result was applied some
+      // time ago, so isCurrent cannot judge it (the hook forgets a request's
+      // source once its result lands). It applies when it answers the request
+      // on screen AND that request is still the newest sent. A newer request in
+      // flight means the text is about to change, and its own pass will follow.
+      onLiveness: ({ requestId, status, diagnostics }) => {
+        const applied = appliedRef.current;
+        if (
+          applied === null ||
+          applied.requestId !== requestId ||
+          requestId !== latestRequestIdRef.current
+        ) {
+          perfLog(`liveness #${requestId} out of date, dropped`);
+          return;
+        }
+        setState((previous) => ({
+          ...previous,
+          liveness: { source: applied.source, status, diagnostics },
+        }));
       },
       onSkippedResult: (requestId) => {
         forgetDropped(requestId);

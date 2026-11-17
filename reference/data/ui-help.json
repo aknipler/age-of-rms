@@ -129,6 +129,10 @@
       "text": "Shown when the map preview is drawing less than the whole script: \"Pinned line N\" means Current view is cut at a pin you set, \"Current line N\" means it's following your cursor instead. Switch to Final, or pin further down, to see the whole map."
     },
     {
+      "id": "statusBar.livenessSkipped",
+      "text": "This script is too complex for the check that finds names read where they may not be defined, so that check says nothing here. Every other check still runs."
+    },
+    {
       "id": "statusBar.problems",
       "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. The triangle is red when there is at least one error, yellow when the worst is a warning, and blue when there is only information. Click a squiggle in the editor to see the full message."
     },
@@ -745,12 +749,20 @@
       "text": "Warnings you turned off everywhere with \"Don't show me this again\". Each stays hidden in every file until you turn it back on here."
     },
     {
+      "id": "settings.diagnostics.switchBranches",
+      "text": "Shows a note on each branch that never runs because a flag like DEBUG_MODE is always defined at the top of the script. Turn it off if you use such flags on purpose."
+    },
+    {
       "id": "settings.diagnostics.turnBackOn",
       "text": "Shows this warning again, in every file where it applies."
     },
     {
       "id": "settings.diagnostics.hiddenInFiles",
       "text": "Warnings you hid with Ok, which hides a warning in that one file only. Show them again brings back every one of them, in every file."
+    },
+    {
+      "id": "diagnostics.related.goTo",
+      "text": "Selects the card on that line, where the name is defined."
     },
     {
       "id": "diagnostics.dismiss.ok",
@@ -993,6 +1005,10 @@
       "text": "Picks which tool runs. Switching tools while one is running cancels it first. Only one tool runs at a time."
     },
     {
+      "id": "tools.panelError.retry",
+      "text": "Draws the tool again. If nothing has changed since the error, it stops again."
+    },
+    {
       "id": "tools.run",
       "text": "Runs the selected tool against the open script. If you just typed, the script is re-parsed first so the tool never reads stale code."
     },
@@ -1026,7 +1042,15 @@
     },
     {
       "id": "landPlacement.seed",
-      "text": "The seed the panel's own preview is drawn from, separate from Breakdown and Code's seed, so switching tabs never resets it. Re-roll to see a different arrangement at the pinned seed."
+      "text": "The seed the panel's own map is generated from, separate from Breakdown and Code's seed, so switching tabs never resets it. Type a whole number and press Enter to use that seed."
+    },
+    {
+      "id": "landPlacement.reroll",
+      "text": "Picks a new random seed for the map under the canvas."
+    },
+    {
+      "id": "landPlacement.followSeed",
+      "text": "When on, shapes draw with the random values this seed rolls, so they sit on the lands below. When off, each random value draws at the middle of its range and the shapes stay put on Re-roll."
     },
     {
       "id": "landPlacement.newRole",
@@ -1142,11 +1166,47 @@
     },
     {
       "id": "landPlacement.chainOffset",
-      "text": "How far from its member and at what angle this chained land sits, in the member's own frame. A formula or a random parameter is allowed. Dragging one copy on the map nudges only that copy; editing here restates every un-nudged copy."
+      "text": "How far from its member and at what angle this chained land sits, in the member's own frame. A formula or a random parameter is allowed. Dragging a copy on the map moves every copy, and Ctrl+drag moves just that one. Editing here restates every copy that was not moved alone."
     },
     {
       "id": "landPlacement.chainRemove",
-      "text": "Removes this chained land from the pattern. Copies that have been dragged, have a child of their own, or are referenced elsewhere in the script are kept as ordinary lands rather than deleted, and the strip says which."
+      "text": "Removes this chained land and any lands chained off it from the pattern. Copies that have been dragged, have a child of their own, or are referenced elsewhere in the script are kept as ordinary lands rather than deleted, and the strip says which."
+    },
+    {
+      "id": "landPlacement.chainAddNested",
+      "text": "Adds a land hanging off this chained land, one per copy."
+    },
+    {
+      "id": "landPlacement.constants",
+      "text": "Named numbers this layout uses. Panel constants are written into the fenced block when you Apply. Script constants are defined elsewhere in the script, and a plain number there can be edited here."
+    },
+    {
+      "id": "landPlacement.constAdd",
+      "text": "Adds a panel constant named NEW_CONST with the value 0."
+    },
+    {
+      "id": "landPlacement.constName",
+      "text": "The name written as #const. Renaming updates every formula that uses it. Letters, digits and underscores only."
+    },
+    {
+      "id": "landPlacement.constValue",
+      "text": "The value. It may use script constants, random parameters and constants above this one."
+    },
+    {
+      "id": "landPlacement.constRemove",
+      "text": "Removes this constant. Formulas that still use the name then show a warning."
+    },
+    {
+      "id": "landPlacement.constScriptValue",
+      "text": "Changes the number on this constant's own line in the script. Nothing else in the script changes, and undo restores it."
+    },
+    {
+      "id": "landPlacement.constCreate",
+      "text": "Defines this name as a panel constant, written into the fenced block on Apply."
+    },
+    {
+      "id": "landPlacement.constCreateValue",
+      "text": "The number the new constant starts with. Enter creates it and Esc cancels."
     },
     {
       "id": "landPlacement.randomParams",
@@ -1303,6 +1363,10 @@
     {
       "id": "tutorial.announcementShowMe",
       "text": "Starts a short tour of what's new, spotlighting the new controls."
+    },
+    {
+      "id": "tutorial.announcementFinish",
+      "text": "Closes this announcement. You can still find it from Help ▸ What's new."
     },
     {
       "id": "tutorial.announcementNotNow",
