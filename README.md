@@ -20,7 +20,7 @@ The preview matches DE exactly, at the same seed. Scripts that use `#include_drs
 
 ## Status
 
-Open Beta. The editor, the parser, the map preview (if you have any discrepancies with DE, please send in a bug report) and Advanced Tools are all built (tools are beta). The tutorials in the app's Help menu teach it step by step, and the [user guide](docs/user-guide.md) is a reference for hotkeys, settings and how far to trust the preview.
+Open Beta. The editor, the parser, the map preview (if you have any discrepancies with DE, please send in a bug report) and Advanced Tools are all built (tools are beta). The tutorials in the app's Help menu teach it step by step, and the [user guide](docs/user-guide.md) is a reference for hotkeys and settings.
 
 ## Installing
 
