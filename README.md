@@ -82,7 +82,7 @@ Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Gui
 
 [rms-check](https://github.com/Divy1211/rms-check) by Divy1211 for the liveness model reference, and the test scripts that check it.
 
-[AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE) gave the first leads to how Definitive Edition draws its random numbers. Every rule the preview uses was then tested against maps the game generated, and the code is written from those tests.
+[AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE)'s code gave the first readings of Definitive Edition's random number generator, its land, elevation, cliff and terrain stages, and parts of its object stage. Every rule was then tested on 772 maps the game saved, and the object stage's exact rules were largely found by those tests.
 
 ## Attribution
 

@@ -15216,7 +15216,7 @@ Rev 12 takes up the owner's DE study of the object stage (`tools/scenario-probe/
 
 What was built, by file.
 
-- `reference/data/object-data.json` and `reference/schemas/object-data.schema.json`, written by `tools/extract-constants --object-data` (new `object_data.py`) from the dat. `--check-pack PATH` compares it with AoE2RMSIDE's content pack and found 0 disagreements. The dat also gives every graphic's frame count, which the study had for two graphics only. `validate:reference` checks the schema.
+- `reference/data/object-data.json` and `reference/schemas/object-data.schema.json`, written by `tools/extract-constants --object-data` (new `object_data.py`) from the dat. A check against the content pack the DE study used found 0 disagreements. That check left the repo on 2026-11-18, since age-of-rms does not read or compare against AoE2RMSIDE, and lives with the study's offline files. The dat also gives every graphic's frame count, which the study had for two graphics only. `validate:reference` checks the schema.
 - `deObjectData.ts` (`ObjectCatalog`), `terrainObjects.ts`, `deObjectStage.ts`, `deObjects.ts` and `pathSearch.ts`, a line for line port of the route search.
 - `lands.ts` and `cliffs.ts`. The land cleanup and the cliff refresh now make the real terrain objects where they used to only spend the draws.
 - `index.ts`. With `PreviewReferenceData.objectData` the DE stage runs on the game's stream and fills `objects`, `players`, the reports and `PreviewResult.deObjects`. Without it the older `objects.ts` stage runs. `PreviewSettings.civilizations` and `PreviewOptions.objectTrace` are new.
@@ -15247,6 +15247,31 @@ To debug a mismatch, trace per command on both sides (`PreviewOptions.objectTrac
 Checked in the browser pane with mocked Tauri IPC on TL Black Forest, Tiny, 2 players. The canvas drew 1,047 squares (842 green grass and 205 PINETREE) in two fills, unticking PINETREE in the Obj. List left 842, and Balance Summary ran on the DE stage in 1.1 s at 2 runs. Not checked in `npm run tauri dev`. Full `npm test` after it, 5946 of 5946 green in 589 s, floor passed.
 
 **Not done.** Sec.15 item 64 lists what no saved map has tested (other civilizations, 3 to 8 players, maps above Tiny, farms, `min_connected_tiles`, walls bending round trees or water). Run the app over large maps before trusting the 40 s.
+
+## 2026-11-18 AoE2RMSIDE comparisons out of the repo
+
+The owner's rule: age-of-rms does not compare against, clone or read AoE2RMSIDE. Comparisons belong in offline dev files outside the repo. Credit lines (README, the Credits tab, the 0.8 What's New) stay.
+
+- `tools/extract-constants --check-pack` read AoE2RMSIDE's content pack and compared it with the object data. It shipped in the 0.12.0 commit and is removed, with `check_against_pack` in `object_data.py`. The check lives on with the study's offline files and still reports 0 disagreements. Extractor suite 177 passed.
+- `tools/scenario-probe/de-study/evidence/aoe2rmside-discrepancies.md`, a comparison written for AoE2RMSIDE's author, is removed. The study keeps its original.
+- `object_data.py`'s docstring and two comments in `deObjectData.ts` said the rules were checked against the pack. They now cite the object gate. The de-study README, the spec's rev 12 changelog and the rev 12 build-log entry drop the option.
+
+Still open with the owner. The `edgeMargin` table in `deObjectData.ts` was taken from the pack. `pathSearch.ts` ports the study's `path_search.py`, which restates AoE2RMSIDE's route search and was then confirmed on DE's maps. The de-study evidence write-ups cite AoE2RMSIDE throughout, and `docs/diagnostics-latency-report.md` Sec.6 describes its repository.
+
+## 2026-11-18 The DE study's evidence and data leave the repo
+
+On the owner's decision, `tools/scenario-probe/de-study/evidence/` (45 files, the write-ups, run sheets, predictions and results log) and `data/` left the repo, since they read and compare against AoE2RMSIDE throughout. They are kept with the study's offline files, 47 of the 48 identical to the study's own copies. The probes and saved maps stay, since the DE gates read them.
+
+- `wall_gates.json` is the one data file the repo uses (`extract-constants --object-data` builds the object data from it), so it moved to `tools/extract-constants/`. `--object-data --dry-run` reads it and gives the same 2,693 objects, and the extractor suite passes 177.
+- Every path into the two folders was rewritten to name the write-up and say it is kept with the study (`connections.ts`, `terrains.ts`, `terrainClass.ts`, `pathSearch.ts`, `export_de_fixture.py`, the spec's Sec.6.4, 6.5 and 6.6, CLAUDE.md's repo map, the de-study README). The `.prettierignore` entries for both folders are gone.
+
+**A consequence worth knowing.** Spec Sec.6.6 says the object write-ups are the rules and does not restate them, and Sec.6.4 and 6.5 lean on the terrain and connection write-ups the same way. Those write-ups are no longer in the repo, and the folder that holds them is expected to be deleted. The code and the DE gates still pin the behaviour, but the prose behind it is outside the repo.
+
+**Later the same day, the six write-ups came back** (`de-land-stage.md`, `de-elevation-cliffs.md`, `de-terrain-stage.md`, `de-connections-objects.md`, `de-findings-cg-cj.md`, `de-objects-cg-dz.md`, about 240 KB), on the owner's word that the write-ups belong in the repo, so the spec's references hold again and the paths above went back to what was committed. Section 13 of `de-objects-cg-dz.md`, the comparison with AoE2RMSIDE, is replaced by a one-line stub so the later section numbers the spec cites stay put. The run sheets, predictions, results log and data files stay out, to keep the repo light. `.prettierignore` keeps `evidence/` out of Prettier again.
+
+**Credit, the same day.** On the owner's decision that credit should be accurate without underselling the study, each write-up's AoE2RMSIDE credit paragraph now says what it gave (the first reading of named algorithms) and what the study did (the maps that tested each rule and the rules the maps settled). Asides that set a rule against AoE2RMSIDE's are rephrased as plain DE facts. The _Restated_ status tag, which named where a rule came from, is replaced by evidence tags: a rule with its own maps keeps _Confirmed_ or _Found after_, and the rest are _Agrees with every map_ (every saved map agrees, no map isolates the rule). The origin is in the credit paragraphs. The README's credit line names the stages AoE2RMSIDE's code first described and says every rule was tested on 772 saved maps.
+
+Still taken from AoE2RMSIDE, open with the owner: the `edgeMargin` table in `deObjectData.ts`, the wall gate table (its note says it was taken from AoE2RMSIDE's wall routine and checked on 19 DE wall maps), `COMPOSITE_TERRAINS` in `terrainClass.ts` (from the study's content data, the same pack), and `pathSearch.ts`'s route search.
 
 ## preview-design rev 11 changelog, moved 2026-11-17
 

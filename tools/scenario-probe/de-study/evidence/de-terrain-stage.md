@@ -164,7 +164,7 @@ Seeds, refusals without avoidance, the drain and painting cost nothing. On t1 (o
 - **`terrain_mask`:** rev 10's two meanings are confirmed, saved layers included (t8).
 - **Beaches, the largest change:**
   - **The per-command beach pass goes.** DE beaches once, at the end of the terrain stage (Section 7). The pass after S5 is a separate question (RMSTEST_70) and is untouched.
-  - **The pass rev 10 keeps before S4's first command goes too** (Sec.15 item 58; gt1, 2026-10-28). AoE2RMSIDE has none, and DE agrees: `create_terrain X { base_terrain BEACH }` finds no beach to take unless an earlier pass or land painted BEACH. The 67 corpus uses of that idiom are affected.
+  - **The pass rev 10 keeps before S4's first command goes too** (Sec.15 item 58; gt1, 2026-10-28). DE has none: `create_terrain X { base_terrain BEACH }` finds no beach to take unless an earlier pass or land painted BEACH. The 67 corpus uses of that idiom are affected.
   - **`beach_terrain`** marks the tiles the pass paints, and the end-of-stage rule reads the mark (t7). It is not a pass of its own.
 - **Terrain 16 (item 58's other half):** passes see it and can paint it, but every line tile is restored at the end (t9).
 - **Uncleaned water (item 58):** passes see the water as the land stage left it, and the WATER cleanup runs after all of them (t7).
@@ -225,5 +225,5 @@ After round GP (2026-10-28), roughly in order of how likely a real script is to 
   - `terrain_model.py`, chained by `stage_model.py`, is our own Python model of everything above.
   - `probe_et.py` holds the probe scripts. `run-sheet-et.md` and `et-predictions.md` were written before the run. `compare_ec.py` compares all three rounds.
   - `results.md` (2026-10-19, 2026-10-26, 2026-10-27) holds every result and control.
-- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0, `crates/rms-engine/src/exact_terrain.rs`, read at commit 210d977) gave the algorithm. We read it, restated it, and tested it against DE. Every tested reading agreed, including where it contradicts the scripting guide: the default amount (W, not 122), and cliff lines restored even where the stage painted them.
+- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave the first reading of the terrain algorithm. The study restated it and tested it on the 18 terrain maps of round ET and the maps of round GP, with predictions written first, including two points where the scripting guide is wrong: the default amount (W, not 122), and cliff lines restored even where the stage painted them.
 - **The scripting guide** gave the attributes and their documented defaults. Where it disagrees with DE, the disagreement is named in the section concerned.

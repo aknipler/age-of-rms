@@ -75,7 +75,7 @@ order.
 5. **`#const`.**
    - **`#const NAME rnd(a,b)` draws once, where it is defined**; every use reads that value. Drawing again at
      every use made Bulls_Eyes much worse.
-   - **The first definition of a name wins.** This is AoE2RMSIDE's rule. Replacing with the last changed nothing on
+   - **The first definition of a name wins.** Replacing with the last changed nothing on
      the corpus, because the repeats there sit in exclusive branches, so it is not decided.
    - `#const` draws even when it redefines nothing.
 6. **`rnd(a, b)`** = `a + draw(b − a + 1)`, drawn where it is read.
@@ -97,8 +97,8 @@ order.
 8. **Fractions are kept where the command reads a fraction.**
    - **`land_position` percents keep their fraction** (30.3, 50.45 and 70.8; rounding or truncating fails, CH P).
    - **So does `land_percent`** (Bulls_Eyes' 0.9; truncated or rounded is worse).
-9. **Undefined names.** A terrain name that is not defined reads as 0. *Found after*, together with AoE2RMSIDE's
-   fallback: Bazi's PLACEHOLDER_TERRAIN_A and _B are never defined, so its long placeholder sequences paint 0 over
+9. **Undefined names.** A terrain name that is not defined reads as 0. *Found after*:
+   Bazi's PLACEHOLDER_TERRAIN_A and _B are never defined, so its long placeholder sequences paint 0 over
    0, spending their draws, and Bazi matches.
 
 ## 3. Player setup and lands
@@ -108,7 +108,7 @@ order.
    - *Found after* on Bazi, whose two player lands have no `terrain_type`. With the base terrain (41) on their
      origin tiles, the clump growth of the whole terrain stage drifted (terrains 19 and 21 swapped on about 1,400
      tiles, layers on about 4,000).
-   - With terrain 0 the land slice, all six terrain-stage cuts and both full maps match. AoE2RMSIDE does the same.
+   - With terrain 0 the land slice, all six terrain-stage cuts and both full maps match.
 2. **A land assigned to a player who is not in the game is not created** (as before; Section 4 of the land
    write-up).
 3. **Several `create_land` commands assigned to the same player each take their own place on the ring**, as extra
@@ -206,8 +206,7 @@ Tools: `tests/terrain_all.py` checks terrain, elevation and layer on every saved
 
 ## 8. Not tested
 
-Attributes of these sections that no probe and no corpus script uses (checked against AoE2RMSIDE's list of 153 script
-words, 2026-11-01):
+Attributes of these sections that no probe and no corpus script uses (2026-11-01):
 - **Player setup:** `nomad_resources`, `force_nomad_treaty`, `set_gaia_civilization`, `guard_state`,
   `terrain_state`, `weather_type`. Only in corpus scripts, so passed through but not isolated: `ai_info_map_type`
   and `water_definition`.
@@ -222,8 +221,7 @@ Untested combinations and settings, from the earlier write-ups and still open:
 - **Terrain:** a mask without `base_terrain`; scaling together with a percentage; the marker-16 water repair (no
   layout fires it); a randomized decoration entry at weight 1000.
 - **Elevation and cliffs:** spacing of 256 or more; cliff min > max.
-- **Parser:** a repeated `#const` whose second definition is live (Section 2.5); `#include_drs` of a missing file
-  (AoE2RMSIDE reads it as nothing).
+- **Parser:** a repeated `#const` whose second definition is live (Section 2.5); `#include_drs` of a missing file.
 - **Connections:** connection commands and attributes no saved map uses; a repaint with the same terrain (invisible
   in a finished map).
 
@@ -241,6 +239,6 @@ Untested combinations and settings, from the earlier write-ups and still open:
   CG-clean, CH, CI and CJ, and the frozen predictions `*_predictions.pkl`.
 - **The owner:** the editor's carry-over of effects, and the `place_on_specific_land_id` rule (for the objects
   write-up).
-- **AoE2RMSIDE** (commit 210d977), read through summaries and cached engine files, not copied: its parser rules
-  (Section 2) and its default land terrain. Where it disagrees with DE (a name inside `rnd()`, among others), DE's
-  maps decided.
+- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave the first reading of the parser rules (Section 2) and the
+  default land terrain. The 178 maps of rounds CG to CJ tested them and found the rest of this write-up, such as a
+  name inside `rnd()`.

@@ -4,11 +4,9 @@
 from here. The preview's object stage (docs/preview-design.md Sec.6.6, rev 12)
 reads it, and nothing else does.
 
-Every field is a raw dat field or a rule over a few of them. The rules were
-found by checking every object against the content pack the DE study used
-(AoE2RMSIDE's `de_content_54800.json`, build 101.103.54800), and `--check-pack`
-repeats that check for a maintainer who has the pack. The rules, all exact on
-the pack's 2,602 objects:
+Every field is a raw dat field or a rule over a few of them. The preview's
+object gate (`src/preview/__tests__/deObjectMaps.test.ts`) holds the stage
+built on them to every object of 339 maps DE saved. The rules:
 
 - placement half-size is the dat's `clearance_size`, collision half-size its
   `collision_size_x/y`, vertical extent `collision_size_z`;
@@ -153,58 +151,13 @@ def format_object_data(data: dict) -> str:
 
 
 def load_wall_gates(path: Path) -> dict:
-    """The gate table from the DE study's archive: wall id -> four [gate, unused] pairs."""
+    """The gate table beside this file (`wall_gates.json`): wall id -> four [gate, unused] pairs."""
     raw = json.loads(path.read_text(encoding="utf-8"))
     return {"rows": raw["rows"], "byWallObject": raw["byWallObject"], "default": raw.get("default")}
 
 
-def check_against_pack(data: dict, pack_path: Path) -> list[str]:
-    """Every field the object stage reads, compared with the content pack. Returns the disagreements."""
-    pack = json.loads(pack_path.read_text(encoding="utf-8"))
-    bits = lambda v: struct.unpack("<I", struct.pack("<f", v))[0]
-    mine = {r["id"]: r for r in data["objects"]}
-    out: list[str] = []
-    for o in pack["objects"]:
-        r = mine.get(o["id"])
-        if r is None:
-            out.append(f"{o['id']}: missing")
-            continue
-        geo = o["placementGeometry"]
-        pairs = [
-            ("class", o["classId"], r["cls"]),
-            ("type", o.get("constructorType"), r["type"]),
-            ("graphic", o.get("standingGraphicId"), r.get("g")),
-            ("collision", (geo["collisionHalfWidthF32Bits"], geo["collisionHalfHeightF32Bits"]), tuple(bits(v) for v in r["c"])),
-            ("placement", (geo["placementHalfWidthF32Bits"], geo["placementHalfHeightF32Bits"]), tuple(bits(v) for v in r["p"])),
-            ("canBeBuiltOn", bool(o.get("canBeBuiltOn")), bool(r.get("cbo"))),
-            ("slope", (o.get("placementRules") or o["placementRuleVariants"][0]["rules"]).get("slopeMode", 0), r.get("slope", 0)),
-            ("vertical", (o.get("pathing") or {}).get("verticalExtentF32Bits"), bits(r["z"])),
-            ("centre", sorted(o.get("placementCenterTerrainIds") or []), sorted(r.get("ctr", []))),
-            ("side", sorted(o.get("placementSideTerrainIds") or []), sorted(r.get("side", []))),
-            ("civs", sorted(o.get("availableCivilizations") or []), sorted(r.get("civs", list(range(data["civilizationCount"]))))),
-        ]
-        for name, want, got in pairs:
-            if want != got:
-                out.append(f"{o['id']} {name}: pack {want}, dat {got}")
-    graphics = data["graphics"]
-    for g in pack["graphics"]:
-        row = graphics.get(str(g["id"]), [g.get("angleCount", 1), 0, 1])
-        want = (g.get("angleCount", 0) if g.get("angleCount", 0) > 1 else None, bool(g.get("randomAngle")), bool(g.get("randomFacet")))
-        got = (row[0] if row[0] > 1 else None, bool(row[1] & 2), bool(row[1] & 4))
-        if want != got:
-            out.append(f"graphic {g['id']}: pack {want}, dat {got}")
-    for rr in pack["restrictions"]:
-        costs = data["restrictions"][rr["id"]]
-        if rr.get("traversalCostF32Bits") is not None and [bits(v) for v in costs][: len(rr["traversalCostF32Bits"])] != rr["traversalCostF32Bits"]:
-            out.append(f"restriction {rr['id']}: costs differ")
-        allowed = sorted(rr.get("allowedTerrainIds", []))
-        if allowed != [t for t, v in enumerate(costs) if v > 0]:
-            out.append(f"restriction {rr['id']}: allowed terrains differ")
-    return out
-
-
-def run_object_data(dat, output: Path, wall_gates_path: Path, pack_path: Path | None, dry_run: bool) -> int:
-    """`--object-data`: writes the file, or with `--check-pack` compares it with the pack first."""
+def run_object_data(dat, output: Path, wall_gates_path: Path, dry_run: bool) -> int:
+    """`--object-data`: writes the file."""
     import sys
 
     if dat is None:
@@ -212,11 +165,6 @@ def run_object_data(dat, output: Path, wall_gates_path: Path, pack_path: Path | 
         return 1
     data = build_object_data(dat, load_wall_gates(wall_gates_path), date.today().isoformat())
     print(f"  objects: {len(data['objects'])}, graphics kept: {len(data['graphics'])}, restrictions: {len(data['restrictions'])}")
-    if pack_path is not None:
-        problems = check_against_pack(data, pack_path)
-        print(f"  disagreements with {pack_path.name}: {len(problems)}")
-        for line in problems[:40]:
-            print(f"      {line}")
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0

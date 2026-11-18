@@ -1,11 +1,10 @@
 # Local-only, deliberately untracked; never reformat it.
 CLAUDE.md
 
-# The DE study's written evidence, archived as it was written
+# The DE study's stage write-ups, archived as they were written
 # (tools/scenario-probe/de-study/README.md). Reformatting would change the
-# record it exists to keep.
+# record they exist to keep.
 tools/scenario-probe/de-study/evidence
-tools/scenario-probe/de-study/data
 
 # Written by tools/extract-constants --object-data with one row per object,
 # graphic and restriction, so a diff after a game patch names each object that

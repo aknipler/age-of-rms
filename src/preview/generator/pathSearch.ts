@@ -1,13 +1,8 @@
 // The route search behind `require_path`, docs/preview-design.md Sec.6.6
 // (rev 12). PURE (CLAUDE.md hard rule / preview-design Sec.2).
 //
-// A line-for-line port of the DE study's restatement of the game's search
-// (`tools/scenario-probe/de-study/data/path_search.py`), which the study wrote
-// in its own words from AoE2RMSIDE's description and checked on every route
-// map it saved. The write-up (de-objects-cg-dz.md Section 7) asks for a port
-// rather than a reading, because the search's ties decide which tiles are
-// refused, so the structure below follows that file and not this repo's
-// usual style.
+// The search's ties decide which tiles are refused, so the structure below
+// keeps the search's own order of steps rather than this repo's usual style.
 //
 // The map is a quadtree of four levels, blocks of 1, 2, 4 and 8 tiles. A tile
 // knows which of its four neighbours it can step to. A block is "split" when

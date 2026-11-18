@@ -5,23 +5,24 @@ The evidence behind `docs/preview-design.md` rev 9 and rev 10, and behind the re
 generated in the scenario editor at a typed seed, the map was saved, and every tile and object was read back and
 compared with a prediction written before the run. That found the game's random number generator, the order of its
 draws, and the rules of the land, elevation, cliff and terrain stages, tile for tile, and most of the connection and
-object stages. The study lived in a folder outside this repo, which is expected to be deleted, so its probes, its saved
-maps and its written evidence are kept here. The preview's DE gates (`src/preview/__tests__/de*Maps.test.ts`) hold the
+object stages. The study lived in a folder outside this repo, which is expected to be deleted, so its probes and its
+saved maps are kept here, with the six stage write-ups in `evidence/`. The run sheets, predictions, results log and
+small data files left the repo on 2026-11-18 to keep it light and are kept with the study, so the run sheet and
+results names below are theirs. The preview's DE gates (`src/preview/__tests__/de*Maps.test.ts`) hold the
 preview to the land maps and the maps of rounds EC and EC2.
 
 All of it is DE build 101.103.54800.
 
 ## What is here
 
-| Folder       | Holds                                                                                                                                        |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `probes/`    | The 342 probe scripts, as DE ran them (the `cg-x-*` ones are the corpus copies round CG ran).                                                |
-| `scenarios/` | 772 maps DE generated from them and the editor saved.                                                                                        |
-| `evidence/`  | The stage write-ups and notes, the run sheets, the predictions written before each round, the results log (`results.md`) and the open cases. |
-| `data/`      | Small data files the object stage needs that are not in `reference/data/` (see "Building the object stage" below).                           |
+| Folder       | Holds                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| `probes/`    | The 342 probe scripts, as DE ran them (the `cg-x-*` ones are the corpus copies round CG ran). |
+| `scenarios/` | 772 maps DE generated from them and the editor saved.                                         |
+| `evidence/`  | The six stage write-ups.                                                                      |
 
-The write-ups are `evidence/de-land-stage.md`, `evidence/de-elevation-cliffs.md`, `evidence/de-terrain-stage.md` and
-`evidence/de-connections-objects.md`. They state each rule with the maps that tested it and what was left untested.
+The write-ups are `evidence/de-land-stage.md`, `de-elevation-cliffs.md`, `de-terrain-stage.md`,
+`de-connections-objects.md`, `de-findings-cg-cj.md` and `de-objects-cg-dz.md`. They state each rule with the maps that tested it and what was left untested.
 `results.md` is the run-by-run log, including the readings each map rejected and by how much. The connections-and-objects
 write-up is the newest: it has not yet been re-implemented from its text the way the other three were, and its
 Section 9 lists object attributes that are only measured.
@@ -49,43 +50,33 @@ Section 9 lists object attributes that are only measured.
 
 ## Building the object stage (2026-11-17)
 
-**The object stage is solved and written up, and preview-design rev 12 (2026-11-17) took it up** (`src/preview/generator/deObjects.ts` and the files it names, gated by `deObjectMaps.test.ts` on the maps below). `tools/extract-constants --object-data` now writes the object data from the dat, and `--check-pack` compares it with the content pack. All 30 corpus maps (15 real
+**The object stage is solved and written up, and preview-design rev 12 (2026-11-17) took it up** (`src/preview/generator/deObjects.ts` and the files it names, gated by `deObjectMaps.test.ts` on the maps below). `tools/extract-constants --object-data` now writes the object data from the dat. All 30 corpus maps (15 real
 scripts at two seeds) are reproduced by the study's model in every tile, object, decoration and stored frame, and
 every probe round matches. Read, in this order:
 
-1. `evidence/de-connections-objects.md` (2026-10-28): the connection stage, and the object stage's base (terrain
+1. `de-connections-objects.md` (2026-10-28): the connection stage, and the object stage's base (terrain
    objects, candidates, groups, facings).
-2. `evidence/de-findings-cg-cj.md` (2026-11-01): composites and layers, which the object stage reads.
-3. **`evidence/de-objects-cg-dz.md` (2026-11-17): everything found since, and where it overrides item 1** (its
+2. `de-findings-cg-cj.md` (2026-11-01): composites and layers, which the object stage reads.
+3. **`de-objects-cg-dz.md` (2026-11-17): everything found since, and where it overrides item 1** (its
    Section 14 lists each replaced sentence). Its Section 16 orders the work for the preview, Section 18 states the
    object's own checks exactly, Section 19 lists the object data the stage reads.
 
 It has been re-implemented from its own text and reproduces all 30 corpus maps and 65 probe maps, so it can be
 implemented as written.
 
-**Data the preview does not have yet: `tools/extract-constants` will need extending.** The study read object data
-from AoE2RMSIDE's content pack for this build (`de_content_54800.json`, Apache 2.0, not copied here). The preview
-should not depend on it: extend `tools/extract-constants` to read the fields listed in Section 19 of the write-up
-from `empires2_x2_p1.dat` into `reference/data/`. Per object: placement and collision half-sizes, footprint,
+**Object data: `tools/extract-constants --object-data`** reads the fields listed in Section 19 of the write-up
+from `empires2_x2_p1.dat` into `reference/data/object-data.json`. Per object: placement and collision half-sizes, footprint,
 placement rules and slope mode, collision and obstruction flags, hit points, restriction, position family, movement
 speed, edge margin, pathing action and extents, first resource slot, foundation, construction attachments, available
 civilizations, single-request count, centre and side terrain lists, standing graphic and creation draws. Per graphic:
 angle count and the random-facet and random-angle flags. Also the replacement rules, the restrictions' allowed,
-blocked and cost tables, and the terrains' placement classes. Before trusting the extracted values, check them
-against the pack's for every object: a field read differently shows first in the creation draws and stored facets
-(write-up 2.1). `data/` holds what is not in the dat or not a plain field:
-
-- `de_hidden_in_editor.json`: the ids the dat hides in the editor (the status-0 rule);
-- `wall_gates.json`: the gate object per wall and run direction;
-- `path_search.py`: our restatement of the game's route search behind `require_path` (our own code, written from
-  AoE2RMSIDE's description of it), to port line for line; the write-up's Section 7 says how it is called.
+blocked and cost tables, and the terrains' placement classes. A field read differently shows first in the creation
+draws and stored facets (write-up 2.1). The gate object per wall and run direction, which is not a dat field, is
+`tools/extract-constants/wall_gates.json`.
 
 **Reference maps for a DE object gate:** every `cg-x-*` map at seeds 1004/1005 (the corpus), and the probe maps of
 rounds CH to DZ. Each must be compared object for object, including rotation, frame and status; the write-up's
 Section 2.3 says what the file stores.
-
-**AoE2RMSIDE.** `evidence/aoe2rmside-discrepancies.md` lists every point where DE and AoE2RMSIDE disagree, written as
-future tests for its author.
 
 ## What the preview has not taken up yet
 
@@ -96,7 +87,7 @@ items 60 to 63 say which do not and why). Still to take up: the object stage (`d
 to 9) and the object findings of rounds CG to CJ, which are not written up yet. The rest of this section is the list as
 it stood before rev 11.
 
-**Rounds CG to CJ (2026-10-28 to 11-01): `evidence/de-findings-cg-cj.md`** has every finding for whole real
+**Rounds CG to CJ (2026-10-28 to 11-01): `de-findings-cg-cj.md`** has every finding for whole real
 scripts up to the connections (parser, lands, elevation, cliffs, composites, layers, connections), with Section 6
 listing what changes in the preview. Objects are not written up yet. Terrain, elevation and layer are exact on all
 178 saved maps of those rounds (`terrain_all.py` in the study's `tests/`). **The scenario editor carries state from
@@ -165,7 +156,7 @@ once Sec.6.4 is revised. The CO maps also test connections and objects, which th
 
 ## What was not kept
 
-The study's Python tools are not here, except `data/path_search.py`. The evidence names them (`land_model.py`, `stage_model.py`,
+The study's Python tools are not here. The evidence names them (`land_model.py`, `stage_model.py`,
 `connection_model.py`, `object_model.py`, `writeup_check.py`, `compare_ec.py` and others), so read those names as
 history. They were the study's own model of the game, which the preview has since replaced and which the DE gates
 check. The prediction pickles, the caches, and the study's notes on disassembling the game's executable were not kept

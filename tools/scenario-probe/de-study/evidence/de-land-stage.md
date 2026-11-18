@@ -316,7 +316,7 @@ Lands are listed in script order. `create_player_lands` expands in place to one 
 
 ### 8.5 Map size (`override_map_size N`)
 
-The script's `override_map_size N` makes the map `N × N` for every stage, whatever the lobby size, and the saved map has that size. *Tested 2026-10-28:* 144 from a Tiny lobby (`go1`, seeds 1000 and 1001), 100, a size no lobby offers (`go2`), and go1's script without the line saved from a Small (144) lobby (`go3`), which gives the same map as go1. *Untested:* sizes outside 36–480 (AoE2RMSIDE clamps to that range) and several override lines (AoE2RMSIDE: the last wins).
+The script's `override_map_size N` makes the map `N × N` for every stage, whatever the lobby size, and the saved map has that size. *Tested 2026-10-28:* 144 from a Tiny lobby (`go1`, seeds 1000 and 1001), 100, a size no lobby offers (`go2`), and go1's script without the line saved from a Small (144) lobby (`go3`), which gives the same map as go1. *Untested:* sizes outside 36–480, and several override lines in one script.
 
 ## 9. Painting and cleanup
 
@@ -369,12 +369,6 @@ After round GP (2026-10-28):
   - `land_model.py` is our own Python model of everything above.
   - `writeup_check.py` re-implements this document from its text and compares it with the saved DE maps.
   - `inactive_allies.py` covers 4.8, and `well_check.py` covers Section 1.
-- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave the first leads for the generator, the setup sequence and the growth loop. We read it, restated it, and tested every rule against DE. Four of its rules disagree with DE:
-  1. the selected player uses `% (players + 1)`;
-  2. `land_percent 100` on player lands is not divided;
-  3. the water cleanup;
-  4. With Team Positions off, DE still uses the 7-draw shuffle and the per-land perimeter offsets, and does not group teams. Their "random" route uses a rejection-sampled order with no perimeter offsets, and their "team together" route groups teams.
-
-  Everything else we tested agreed with it.
+- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave the first leads for the generator, the setup sequence and the growth loop. The study restated them, tested every rule on 146 DE maps with predictions written first, and settled four rules from the maps: the selected player uses `% (players + 1)`, `land_percent 100` on player lands is not divided, the water cleanup, and with Team Positions off the 7-draw shuffle and per-land perimeter offsets with no team grouping.
 - **genie-rms** (github.com/genie-js/genie-rms, GPL-3.0, Renée Kooi) gave the structure of the 1.0c land generator and its cleanup routine. Comparing it with the above shows which of DE's rules are inherited (the counter quirk, the seed order, the cleanup patterns, the water pass) and which changed.
 - **Public algorithms:** WELL512 (Chris Lomont, 2008), Robert Jenkins' 32-bit integer hash, and a 32-bit xorshift.

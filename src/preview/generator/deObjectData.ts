@@ -4,9 +4,9 @@
 // `reference/data/object-data.json` holds the dat's raw fields, written by
 // `tools/extract-constants --object-data`. This file turns a raw row into the
 // `ObjectDef` the stage tests against, with the script's effects applied.
-// The rules that turn raw fields into the stage's terms were checked on every
-// one of the 2,602 objects of the content pack the DE study used, and agree
-// on all of them unless a comment says otherwise:
+// The rules that turn raw fields into the stage's terms come from the DE
+// study's write-ups, and the object gate (`deObjectMaps.test.ts`) holds them
+// to every object of 339 maps DE saved:
 //
 //   - placement family: "terrain" below constructor type 70, "collision" at
 //     70, "occupancy" at 80;
@@ -160,9 +160,7 @@ interface GraphicRow {
 }
 
 /**
- * The derived creation draws (write-up 2.1). The flags and the facet count
- * agree with the content pack on every object. The fixed facet agrees on all
- * but three objects whose standing graphic has no angles, and it only decides
+ * The derived creation draws (write-up 2.1). The fixed facet only decides
  * what the file stores.
  */
 export function deriveCreation(

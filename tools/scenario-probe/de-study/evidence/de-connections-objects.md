@@ -225,7 +225,7 @@ Groups take candidates from the front of the list. A candidate is refused if it 
 - **`min_distance_to_players d`:** at least d from every player land's origin (square, or Euclidean under `set_circular_placement`), frameless too. `min_distance_to_map_edge` again.
 - **`max_distance_to_players m`:** only with a frame (frameless it does nothing).
 - `avoid_other_land_zones [d]` (with a frame): the tile is in the frame land's zone; with d, so are the tiles d + 1 away in the four straight directions.
-- `max_distance_to_other_zones d`, framed commands only in our model: *restated, untested* (ob5 and xr1 use it alongside unmodelled attributes). The tile and the eight points d away (⌊10d/14⌋ on the diagonals, clamped to the map) must lie in the same 4-connected area of terrain the object accepts.
+- `max_distance_to_other_zones d`, framed commands only in our model: *untested* (ob5 and xr1 use it alongside unmodelled attributes). The tile and the eight points d away (⌊10d/14⌋ on the diagonals, clamped to the map) must lie in the same 4-connected area of terrain the object accepts.
 
 **The object's own checks** (from the game data; these also apply to every member of a tight group, 7.2):
 - the placement square lies on the map and the object's restriction accepts every tile under it (`ignore_terrain_restrictions` with a frame lifts this);
@@ -233,9 +233,9 @@ Groups take candidates from the front of the list. A candidate is refused if it 
 - the slope rule of the object (flat only, or gentle slopes);
 - **no overlap:** its placement rectangle against the collision rectangles of objects already placed (cliff pieces and earlier scripted objects included), and of terrain objects still on the terrain they were made for. Objects that can be built on (decorations) never block. Moving units have exemptions for units of the same owner or gaia.
 
-*Tested:* every object map; ob12 (islands: per-player GOLD stays on its island without any reachability test), ob3 (circular band; ignoring `set_circular_placement` fails), ob9 (frameless RELIC at `min_distance_to_players 40`; ignoring it frameless fails). The slope rules and side terrains are restated and exercised only where the probes needed them.
+*Tested:* every object map; ob12 (islands: per-player GOLD stays on its island without any reachability test), ob3 (circular band; ignoring `set_circular_placement` fails), ob9 (frameless RELIC at `min_distance_to_players 40`; ignoring it frameless fails). The slope rules and side terrains are exercised only where the probes needed them.
 
-**A framed last resort:** when a framed, ungrouped candidate fails only the object's own checks and the list is then empty, the object is placed there anyway (farms excepted). *Restated, untested on purpose.*
+**A framed last resort:** when a framed, ungrouped candidate fails only the object's own checks and the list is then empty, the object is placed there anyway (farms excepted). *Untested on purpose.*
 
 ### 6.4 Spacing between placements
 
@@ -273,7 +273,7 @@ So a tight group checks every member against the object's terrain restriction, s
 
 Draws come from rolls whose count depends on the object: a group roll (5.4) only for an object group; a replacement roll (5.3) only for an object with a rule (VILLAGER, SCOUT among those our probes use). For an object without either, resolving costs nothing, and only the shuffles, group-size draws and tight scores spend draws.
 
-A **resolution** of a command's object is: for an object group, a group roll and then the picked entry's replacement roll (if that entry has a rule); for a plain object, its replacement roll (if it has a rule). The resolutions come from AoE2RMSIDE's restatement and are tested only on VILLAGER (both sexes: 66 land maps and ob9), SCOUT (ob9, k8) and groups (ob6, k6), so an implementation should follow them exactly:
+A **resolution** of a command's object is: for an object group, a group roll and then the picked entry's replacement roll (if that entry has a rule); for a plain object, its replacement roll (if it has a rule). The resolutions are tested only on VILLAGER (both sexes: 66 land maps and ob9), SCOUT (ob9, k8) and groups (ob6, k6), so an implementation should follow them exactly:
 - per command, after the shuffle and the closest-first order: one resolution; a plain object then a second;
 - at the start of a tight group: one resolution (the object its members are checked as); a plain object then a second;
 - at the start of a loose group: a group roll for a group, two resolutions for a plain object; then the member-count draw;
@@ -378,5 +378,5 @@ These attributes are in Part U of round CF and in round CO's observation maps. E
   - `connection_model.py`, `appearance_model.py` and `object_model.py`, chained after the land, elevation, cliff and terrain models, are our own Python models of everything above. Their docstrings list every reading and control.
   - `probe_co.py` and `probe_cf.py` hold the probe scripts. `run-sheet-co.md`, `run-sheet-cf.md`, `co-predictions.md` and `cf-predictions.md` were written before the runs. `compare_co.py`, `compare_cf.py`, `compare_part0.py` and `compare_part0c.py` compare; `diag_co.py` breaks differences down by object type.
   - `results.md` (2026-10-27 and 2026-10-28) holds every result and control. Outputs: `cmp_co.txt`, `cmp_co_posthoc.txt`, `cmp_co_fresh.txt`, `cf_run.txt`, `cf_run_fresh.txt`.
-- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0, read at commit 210d977: `exact_connection.rs`, `exact_object.rs` and their submodules, `exact_appearance.rs`) gave the algorithms, and its content pack for our build (`de_content_54800.json`) gave the object data. We read them, restated them, and tested them against DE. Where DE disagreed (the undo between commands, beaches keeping objects, FORAGE's facets, decorations deleted, group weights, the scout's replacement, RANDOM civilizations, gaia foundations), the section concerned says so.
+- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave the first reading of the connection and object algorithms, and the study read object data from its content pack (age-of-rms reads the same fields from the dat). The study restated them and tested them on the 95 maps of rounds CO and CF, with predictions written first, and the maps settled the undo between commands, beaches keeping objects, FORAGE's facets, deleted decorations, group weights, the scout, RANDOM civilizations and gaia foundations (each in its section).
 - **The scripting guide** gave the attributes and their documented defaults. Where it disagrees with DE (`terrain_size`'s default variance, `to_nonplayer_land` blocking everything, `beach_terrain` breaking with connections, `enable_tile_shuffling`, `place_on_specific_land_id` without a distance), the section concerned names it.

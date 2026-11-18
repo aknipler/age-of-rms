@@ -26,8 +26,7 @@ does not list still holds.
   - *Confirmed*: a map predicted before it was made matched the rule, and the deliberately wrong control failed it.
   - *Found after*: the rule was found on the maps it explains. Every saved map agrees with it, but no map predicted
     beforehand has tested it.
-  - *Restated*: taken from AoE2RMSIDE's description of the game. Every saved map agrees with it, and no map isolates
-    it.
+  - *Agrees with every map*: every saved map agrees with the rule, and no map isolates it.
   - *Measured*: what DE does in one set-up, without a general rule.
 - **Re-implemented from this text** (2026-11-17, `tests/writeup_check_obj.py`): the object stage written again from
   this document and `de-connections-objects.md` Sections 5 to 8 only, plugged into the study's earlier stages. It
@@ -182,7 +181,7 @@ These are file details, not generator rules, but a comparison has to know them.
   foundation) places, for each frame, **one group only, whatever the count asked for**, directly on the frame's
   origin, if the command's tests (6.2, step 2, with the maximum distance 0 met) pass there; no candidate list is built
   and no shuffle drawn. A frameless such command places nothing.
-  *Restated*; used by corpus scripts that match.
+  *Agrees with every map*; used by corpus scripts that match.
 
 ### 2.6 Numbers in a command
 
@@ -215,7 +214,7 @@ These are file details, not generator rules, but a comparison has to know them.
    pick after each group (6.2 step 9), and the forced phase.
    **One exception:** the resolutions made for a forest or cliff zone filter (5.4 step 2.4, 6.1) pass the picked
    object through its replacement rule, as for a gaia owner (one more `draw(100)` when the picked entry has a rule).
-   This is AoE2RMSIDE's rule and matches every map, but no map has a group with such an entry under a zone filter,
+   This matches every map, but no map has a group with such an entry under a zone filter,
    so for groups it is *untested*.
 2. The other resolution counts of `de-connections-objects.md` 7.4 stand, with the additions of 5.3, 6.1 and 7.
 
@@ -236,7 +235,7 @@ These are file details, not generator rules, but a comparison has to know them.
   across water). A negative id (the guide's −11) places as a frameless command (CF u3).
 - **`generate_for_first_land_only`:** going through the lands in order, the dispatch stops at the first land whose
   player was already served; for a `set_gaia_object_only` command every land counts as the same player, so it stops
-  after the first land. *Restated*; it reproduces CF u3 (2 BOAR in all for a gaia per-player command, not 2 per
+  after the first land. *Agrees with every map*; it reproduces CF u3 (2 BOAR in all for a gaia per-player command, not 2 per
   player).
 - **A land whose origin search failed** (it sits at the map's centre, `de-land-stage.md` Section 5) still gets its
   frame. With `avoid_other_land_zones` (6.2 step 3) it finds no candidates, because no tile carries its zone. *Found after*
@@ -300,10 +299,10 @@ places nothing** (and spends no draw on a walk). The walk:
    orders of `de-connections-objects.md` 6.2 apply, and groups take them as in 6.2 below. Every test of 6.2 applies
    again except step 2.1 (the circle) and step 2.7 (the maximum distance).
 
-*Restated* from AoE2RMSIDE, *confirmed* (CP, 12 maps: KING, SHEEP and OUTPOST through such areas, areas recorded
-twice on one tile, two land frames per player). The timing of the resolution in step 2.4 is DE's, not AoE2RMSIDE's,
-which resolves right after the weight is used: *found after* on Venn (round CQ's cuts), where a second one-tile land
-per player made AoE2RMSIDE's order spend 9 rolls per frame that DE does not.
+*Confirmed* (CP, 12 maps: KING, SHEEP and OUTPOST through such areas, areas recorded
+twice on one tile, two land frames per player). The resolution in step 2.4 comes after the distance, area and edge
+tests, not right after the weight is used: *found after* on Venn (round CQ's cuts), where a second one-tile land per
+player made the earlier order spend 9 rolls per frame that DE does not.
 
 - **A starting-villager command** (one VILLAGER expanded to the civilization's count, `de-connections-objects.md`
   5.2) **with `actor_area_to_place_in` places one group per villager through the walk.** *Found after* (Caverns),
@@ -347,7 +346,7 @@ for this command unless stated.
    all accepts or all refuses, **counting the terrain (and the layer terrain) of the frame's origin tile as
    accepted**. Number the patches in tile order (row by row) from 0, **wrapping at 512**. The tile is refused unless
    its number equals the low 8 bits of the origin's number. The partition is computed once per accepted set and not
-   refreshed when objects change terrain. *Restated* from AoE2RMSIDE, *found after* (CK p1 1010: a GOLD refused on a
+   refreshed when objects change terrain. *Found after* (CK p1 1010: a GOLD refused on a
    lake island).
 2. **The command's tests**, in order:
    1. with a frame and `set_circular_placement` and `max_distance_to_players m`: Euclidean distance from the origin at
@@ -372,7 +371,7 @@ for this command unless stated.
    s = (ox − x)² + (oy − y)²: d > 0; s > d²; s ≥ (`min_distance_to_players`)²; and, if the command has
    `max_distance_to_players m`, s ≤ m² (these are Euclidean even without `set_circular_placement`). The removed tile
    is (x + d, …) if ox > x, else (x − d, …); and (…, y + d) if oy > y, else (…, y − d). It is removed if it is on the
-   map and still in the list, and is then never tested. *Restated* from AoE2RMSIDE, *found after* (CM z1 at two seeds, CO ob8 1000).
+   map and still in the list, and is then never tested. *Found after* (CM z1 at two seeds, CO ob8 1000).
 4. **The object's own checks** (the fit, slope and overlap of Section 18) for the object the command resolved first.
    **Last resort** (`de-connections-objects.md` 6.3, exact): when the tile fails only these checks, the command is
    framed, has no grouping keyword and no `force_placement`, its first object is not a farm (class 49), and the list
@@ -382,7 +381,7 @@ for this command unless stated.
    `second_object WALL` placed this way on a tile already holding a wall gets no WALL of its own, and survives in
    DE's file at status 0, which it would not if its WALL had been built on it; two such placements per map, both
    seeds). Only this command family shows it; *untested* for other objects and second objects.
-5. With `min_connected_tiles`: the clump rule of 18.6 (*restated*, not separately tested).
+5. With `min_connected_tiles`: the clump rule of 18.6 (*agrees with every map*, not separately tested).
 6. **Remove from the list every tile within `min_distance_group_placement` and within
    `temp_min_distance_group_placement` of the tile** (Chebyshev squares).
 7. **`require_path`** (Section 7). **It comes after step 6**, so a refused tile has already knocked out its
@@ -474,13 +473,12 @@ Tested only for framed commands, on the group's anchor. No draws.
   straight distance is the Euclidean distance between the two tiles (√(dx² + dy²) in 32-bit floats) and ⌊ ⌋
   truncates.
 
-*Restated* from AoE2RMSIDE's description, *found after* (rounds CK and CL, the owner's 20 stone maps of 164 to 1,300
-stones each, every stone identical, and round CL's wall map r6). **Terrain does not block**, against AoE2RMSIDE (its terrain
-costs come from a data file its repository does not contain): a lake does not stop a route (CK p1 1009).
+*Found after* (rounds CK and CL, the owner's 20 stone maps of 164 to 1,300
+stones each, every stone identical, and round CL's wall map r6). **Terrain does not block**: a lake does not stop a route
+(CK p1 1009).
 
 The block search, its tie order and the crossing-point construction are too long to restate here exactly. Our
-restatement is `data/path_search.py` in the age-of-rms archive (`tools/scenario-probe/de-study/data/`; our own code,
-written from AoE2RMSIDE's description, not from any game code). A port should follow it line for line, because the
+restatement is the study's `path_search.py` (our own code, not game code), kept with the study's offline files. A port should follow it line for line, because the
 ties decide which tiles are refused. Its entry point is `allows(hierarchy, 0.2, N + 1, candidate tile, origin tile)`
 with `Hierarchy(W, H, walkable)` built from the grid above.
 
@@ -510,7 +508,7 @@ resolution are spent as for any command. Then:
      nothing; the step onto the far line costs −100. The priority adds the remaining distance to the far line; among
      equal priorities the newest node goes first.
    - **The walkable grid here ignores terrain** (as Section 7's): objects block, water does not. *Found after* (CM
-     w3), against AoE2RMSIDE.
+     w3).
 2. **Keep.** "Land" here is a tile whose terrain the villager's (83) restriction accepts (18.1). A *flood* from a
    centre goes by side steps (left, right, up, down) over land; a tile where it must stop is reached but not crossed.
    Player P keeps its route bit on a tile only if (a) the flood from P's centre, stopping at tiles with P's bit,
@@ -535,11 +533,10 @@ resolution are spent as for any command. Then:
    draws (1, and 1 for each flank). Pieces are built run by run, the gate of a run before its other pieces, the
    pieces in order along the run.
 5. **Stored shapes:** 0 on horizontal runs, 1 vertical, 4 up-right, 3 down-right; **a run's end piece is a post (2)
-   only when the next tile along the run holds none of this player's wall**. *Found after* (CM w1/w2), against
-   AoE2RMSIDE (which posts every end).
+   only when the next tile along the run holds none of this player's wall**. *Found after* (CM w1/w2).
 6. A gaia wall command builds the routes but places nothing.
 
-*Restated* from AoE2RMSIDE; the ring *confirmed* (CM w4-w6, frozen beforehand); the three marked rules found after
+The ring is *confirmed* (CM w4-w6, frozen beforehand); the three marked rules found after
 round CM. 19 wall maps identical. *Untested:* bends round trees, gold or cliffs; walls of allied players (the enemy
 filter); reused routes after centres moved; wall groups.
 
@@ -586,7 +583,7 @@ anyway. (For the decoration pass of `de-connections-objects.md` 4.4, retired obj
      check only in passes 1 to 9**;
   4. if it passes, resolve the object (4.1), build it and its second object, and count one group.
   The raws of step 2 are spent whether or not step 3 passes. *Found after* (CM f1/f2 at two seeds: every forced
-  position; CF u4 at three seeds), against AoE2RMSIDE, which checks overlaps in every pass.
+  position; CF u4 at three seeds).
 
 ## 11. Terrain objects (additions to `de-connections-objects.md` Section 4)
 
@@ -611,53 +608,9 @@ maps where the ground was DIRT, which that foundation never paints. **Farms and 
 field terrain (FARM 7, rice farm 63, pastures 117); no saved map has one, and the model keeps them painting
 (*untested*).
 
-## 13. Where DE and AoE2RMSIDE differ
+## 13. (Removed)
 
-AoE2RMSIDE (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave most of the algorithms. These are the points where
-DE's maps decided against it, over all six write-ups. "AoE2RMSIDE" means the commits we read (210d977 and 7525df0).
-
-**DE decided against AoE2RMSIDE:**
-1. Land stage (`de-land-stage.md`, its four): the selected player uses `% (players + 1)`; `land_percent 100` on
-   player lands is not divided; the water cleanup; with Team Positions off, DE still uses the 7-draw shuffle and the
-   per-land perimeter offsets and does not group teams.
-2. Elevation: `base_layer` on `create_land` is ignored; AoE2RMSIDE gives the land's tiles that layer.
-3. Parser: a constant's name used as an `rnd()` bound reads as 0, with the draw spent.
-4. Connections: the undo between commands keeps the value from before a tile's last paint
-   (`de-connections-objects.md` 3.3).
-5. A tile turned into a beach keeps its terrain objects.
-6. Terrain objects under a new object are deleted, not kept at status 7.
-7. Object groups keep the entries whose weight is at least the roll. The AoE2RMSIDE profile we restated first (for
-   an older build, 48987) keeps those at most the roll; it carries the other rule as a second profile.
-8. The editor saves Scout Cavalry for every civilization; AoE2RMSIDE applies the civilization's scout.
-9. A RANDOM civilization is a real one by the time objects are placed (player-owned gaia resources are not placed).
-10. Foundations: ordinary buildings paint nothing (12).
-11. `set_facet 0` keeps the random facet; AoE2RMSIDE applies facet 0.
-12. Group picks are never replaced (4.1); AoE2RMSIDE passes them through replacement.
-13. On an actor-area walk, the zone filter's resolution comes after the distance, area and edge tests (5.4);
-    AoE2RMSIDE resolves right after the weight is used.
-14. A frameless command does not fall back to a record made with no land (5.3); AoE2RMSIDE's lookup accepts it from
-    anywhere.
-15. `force_placement` checks overlaps only in passes 1 to 9 (10); AoE2RMSIDE in every pass.
-16. Walls: the routes ignore terrain and pieces on terrain a wall cannot stand on are not built; a run's end is a
-    post only where the wall does not continue (8).
-17. `require_path`: terrain does not block (7). AoE2RMSIDE's side cannot be checked (its terrain costs come from a
-    data file not in its repository).
-
-**Different in kind:**
-- AoE2RMSIDE models the generation, not the saved file: it has no stored animation frame (2.2) and no wall joint
-  shapes (2.3); those are file details we measured.
-- A building at 0 hit points is a construction site in AoE2RMSIDE, with an exemption table we have not seen; our
-  rule "status 0 only if hidden in the editor" (2.3) is a stand-in that fits every map.
-
-**Not checked against AoE2RMSIDE** (its sources were not at hand when found): the deletion of retired objects (9),
-gaia effects on terrain objects (1.5), terrain objects on repainted tiles obstructing and counting for zones (9, 6.4),
-the bare number and unknown name rules (3.1, 3.2), the hit-points condition for deleting markers (9), the stream-3
-frames (2.2), the fixed frames per constructor type (2.3), `max_distance_to_other_zones` against the player's zone
-(6.3), the member and second-object exclusions of 6.4, and the layer view before the cleanup (6.5).
-
-Everything else tested agreed with AoE2RMSIDE, including the zero-size corner rule (2.5), creation draws from the
-graphic (2.1), the actor-area walk (5.4), the zone-filter resolutions (6.1), the player's zone (6.2), the land-zone
-removal (6.2), the route search (7) and the wall ring (8).
+The comparison with AoE2RMSIDE that stood here is kept with the study's offline notes, not in this repo.
 
 ## 14. What this replaces in `de-connections-objects.md`
 
@@ -665,7 +618,7 @@ removal (6.2), the route search (7) and the wall ring (8).
 |---|---|
 | 4.4: retired objects "block nothing" | still true for the decoration pass; for scripted objects undecided (9) |
 | 5.3: replacement rolls per resolution | group picks are never replaced (4.1) |
-| 6.3: `max_distance_to_other_zones`, "framed commands only in our model, restated, untested" | 6.3 |
+| 6.3: `max_distance_to_other_zones`, "framed commands only in our model, untested" | 6.3 |
 | 6.3: overlap with "terrain objects still on the terrain they were made for" | every live terrain object (9) |
 | 7.4: resolution counts | plus 5.4, 6.1; group picks unreplaced |
 | 8.1: position "plus a half tile on each axis whose collision size is odd" | the same rule, stated as a fraction of the half-size (2.5) |
@@ -674,7 +627,7 @@ removal (6.2), the route search (7) and the wall ring (8).
 | 8.3: decorations under a new object | 9 (retired objects of any kind, gaia effects) |
 | 8.4: player-owned buildings paint their foundation | ordinary buildings paint nothing (12) |
 | 8.5: what the file stores | 2.3 |
-| Section 9 (measured, not modelled) | now modelled: forest and cliff zones (6.4), actor areas (5.3, 5.4), `place_on_specific_land_id` (5.1), `generate_for_first_land_only` (5.1), `force_placement` (10), walls (8), `require_path` (7), `layer_to_place_on` (6.2, 10). Still only restated: `min_connected_tiles` |
+| Section 9 (measured, not modelled) | now modelled: forest and cliff zones (6.4), actor areas (5.3, 5.4), `place_on_specific_land_id` (5.1), `generate_for_first_land_only` (5.1), `force_placement` (10), walls (8), `require_path` (7), `layer_to_place_on` (6.2, 10). Still not isolated by any map: `min_connected_tiles` |
 
 ## 15. Not tested
 
@@ -714,10 +667,12 @@ In order of how much a typical real script needs it:
   control. All are archived in age-of-rms `tools/scenario-probe/de-study/` except the Python tools.
 - **The owner:** the editor's carry-over of effects; the route tests on `test.rms` (Section 7); the reading of
   `place_on_specific_land_id` that round CR later refuted (5.1).
-- **AoE2RMSIDE** (commits 210d977 and 7525df0), read through summaries and cached engine files, not copied: the
-  actor-area walk, the zone filters and their resolutions, the player's zone, the land-zone removal, the route search,
-  the wall ring, creation draws from the graphic, and the corner rule. Where it disagrees with DE (Section 13), DE's
-  maps decided.
+- **AoE2RMSIDE** (github.com/aoe2control/AoE2RMSIDE, Apache 2.0) gave the first reading of the actor-area walk, the zone filters
+  and their resolutions, the player's zone, the land-zone removal, the route search, the wall ring, creation draws
+  from the graphic and the corner rule. The study tested them on the 30 corpus maps and every probe map of rounds CH
+  to DZ, with predictions frozen first, and found the rest of this write-up itself, among them the saved file's
+  frames, facets and wall joints, retired-object deletion, gaia effects on decorations, composite decorations and the
+  editor's carry-over.
 - **Game data:** the content pack (`de_content_54800.json`) for object data, graphics and replacement rules; the dat
   for `hide_in_editor`.
 

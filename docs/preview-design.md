@@ -1398,6 +1398,6 @@ A replacement round for the object stage, from measurement. The owner's study (r
 1. **Sec.6.6.** DE's object stage replaces the model and its substream when the object data is loaded, terrain objects included. The older model stays for callers without the data.
 2. **Sec.8.** The game's stream runs through S6, with generators 3 and 6 of the seed's chain beside it.
 
-**Added.** `reference/data/object-data.json` with its schema, written by `tools/extract-constants --object-data` (and `--check-pack`). `deObjectData.ts`, `terrainObjects.ts`, `deObjectStage.ts`, `deObjects.ts`, `pathSearch.ts`. `PreviewResult.deObjects`, `PreviewSettings.civilizations`, `PreviewOptions.objectTrace`. `deObjectMaps.test.ts` and its fixture, written by `tools/scenario-probe/export_de_objects.py`. The preview worker loads the object data.
+**Added.** `reference/data/object-data.json` with its schema, written by `tools/extract-constants --object-data`. `deObjectData.ts`, `terrainObjects.ts`, `deObjectStage.ts`, `deObjects.ts`, `pathSearch.ts`. `PreviewResult.deObjects`, `PreviewSettings.civilizations`, `PreviewOptions.objectTrace`. `deObjectMaps.test.ts` and its fixture, written by `tools/scenario-probe/export_de_objects.py`. The preview worker loads the object data.
 
 **Closed.** Sec.15 item 62. **Opened.** Item 64.

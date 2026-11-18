@@ -3012,7 +3012,6 @@ def main() -> int:
     parser.add_argument("--misc-constants", action="store_true", help="CREATE rows for the AI map type / civilization / water definition / color correction / cliff type / assign-to / effect action / effect flag / ModifyTech / PlayerData / ResourceAmount / magic-number families random_map.def keeps in sections this tool otherwise skips, plus includes/constants.inc as a second source. Needs no dat — these ids are never joined against it, since they collide across families and against terrain/object ids the same way the rest of the file's namespaces do. Never overwrites an existing row.")
     parser.add_argument("--object-data", action="store_true", help="Write reference/data/object-data.json, the object data the preview's object stage reads (placement and collision sizes, restrictions, graphics' angles and flags, civilizations, annexes), from empires2_x2_p1.dat. Writes no other file.")
     parser.add_argument("--object-data-output", type=Path, default=REPO_ROOT / "reference" / "data" / "object-data.json", help="Where --object-data writes (default: reference/data/object-data.json).")
-    parser.add_argument("--check-pack", type=Path, default=None, help="With --object-data, compare every field with a content pack (AoE2RMSIDE's de_content_<build>.json) and print the disagreements.")
     parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --terrain-units, --classes, --roster or --misc-constants to see the diff before taking it.")
     args = parser.parse_args()
 
@@ -3091,8 +3090,8 @@ def main() -> int:
         from object_data import run_object_data
 
         loaded = load_dat()
-        gates = REPO_ROOT / "tools" / "scenario-probe" / "de-study" / "data" / "wall_gates.json"
-        return run_object_data(loaded.dat if loaded else None, args.object_data_output, gates, args.check_pack, args.dry_run)
+        gates = Path(__file__).resolve().parent / "wall_gates.json"
+        return run_object_data(loaded.dat if loaded else None, args.object_data_output, gates, args.dry_run)
 
     if args.terrain_table:
         return run_terrain_table(install_path, args.output, load_dat(), args.dry_run)
