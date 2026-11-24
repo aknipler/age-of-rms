@@ -1,0 +1,43 @@
+/*
+================================================================================
+RMSTEST_85c - SET_ATTRIBUTE TOWN_CENTER ATTR_STANDING_GRAPHIC 3124 (mill)
+Feeds: Sec.14.3. A town centre is object 109 (its back piece) plus three
+annexes (618 main, 619 centre, 620 front). The effect names only 109.
+Generate at Tiny, 2 players, seed 1000. Look closely at each town centre.
+Predictions, the preview draws the first:
+  - A mill where the back piece was, with the main, centre and front pieces still
+    around it.
+  - A mill alone, the annexes gone.
+  - A whole town centre, the effect not taking on 109.
+85b's town centres are the control.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 60
+    base_size 12
+  }
+
+<OBJECTS_GENERATION>
+effect_amount SET_ATTRIBUTE TOWN_CENTER ATTR_STANDING_GRAPHIC 3124
+
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players 0
+}
+
+create_object HOUSE
+{
+  set_place_for_every_player
+  number_of_objects 6
+  min_distance_to_players 8
+  max_distance_to_players 14
+}
+

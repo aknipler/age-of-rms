@@ -12,6 +12,7 @@ import { useCurrentFilePath } from "../../settings/DiagnosticDismissalContext";
 import { usePreviewView, usePreviewViewport } from "./PreviewViewContext";
 import { OverlayCanvas } from "./OverlayCanvas";
 import { GenerationSettingsPanel } from "./GenerationSettingsPanel";
+import { PreviewTimingPanel } from "./PreviewTimingPanel";
 import {
   PreviewObjectList,
   type ObjectListSettings,
@@ -90,7 +91,14 @@ export function PreviewCanvas({
     null,
   );
   const filePath = useCurrentFilePath();
-  const { hiddenNotes, hideNote, restoreNotes } = usePreviewView();
+  const {
+    hiddenNotes,
+    hideNote,
+    restoreNotes,
+    deTextures,
+    colorMode,
+    recordTiming,
+  } = usePreviewView();
   const summary = useMemo(
     () =>
       summarizePreviewResult(result, (id) =>
@@ -115,6 +123,19 @@ export function PreviewCanvas({
     if (settingsOpen)
       setOpenSection((current) => (current === "help" ? null : current));
   }, [settingsOpen]);
+  // Timing turned off while its box is open: close the box, since its greyed
+  // out button can no longer close it.
+  useEffect(() => {
+    if (!recordTiming)
+      setOpenSection((current) => (current === "timing" ? null : current));
+  }, [recordTiming]);
+  // Whether the window was hidden when this result arrived, which slows the
+  // worker several times over (a measured WebView2 effect), so the hourglass
+  // can say so. Read once per result, not per render.
+  const measuredHidden = useMemo(() => {
+    void result;
+    return typeof document !== "undefined" && document.hidden;
+  }, [result]);
   // The Obj. List's search and order. Here rather than inside the list,
   // which unmounts whenever its box closes (PreviewObjectList.tsx).
   const [objectListSettings, setObjectListSettings] =
@@ -135,6 +156,11 @@ export function PreviewCanvas({
       selected={selected}
       onTileClick={onTileClick}
       base={{ result, snapshot, palette, hiddenObjects }}
+      // The minimap button wins over DE textures: it asks for the game's
+      // minimap look, which is the flat diamond.
+      terrainRender={
+        colorMode === "minimap" ? "minimap" : deTextures ? "de" : "flat"
+      }
       helpTipId="preview.canvas"
       showApproximateBadge
       playerCount={playerCount}
@@ -168,6 +194,7 @@ export function PreviewCanvas({
           open={openSection}
           onToggle={toggleSection}
           hiddenObjectCount={hiddenObjects.size}
+          showTiming={recordTiming}
         />
       }
       // Help opens under its own button in the top right corner, the rest
@@ -187,7 +214,12 @@ export function PreviewCanvas({
       }
       topRightPanelWide={settingsOpen}
       bottomPanel={
-        openSection === "objects" ? (
+        openSection === "timing" ? (
+          <PreviewTimingPanel
+            timing={result.timing}
+            measuredHidden={measuredHidden}
+          />
+        ) : openSection === "objects" ? (
           <PreviewObjectList
             settings={objectListSettings}
             onSettingsChange={setObjectListSettings}

@@ -177,6 +177,18 @@ export function caretContext(
       ? lang.attributesByName.get(head)?.arguments
       : lang.commandsByName.get(head)?.arguments;
   const def = args?.[argIndex];
+  // A finished attribute, with every argument it takes already written, does
+  // not own the next word: inside a block that word starts the next
+  // attribute, which is how a one-line command reads
+  // `number_of_objects 5 avoid_actor_area X`. Without this the list stayed
+  // closed anywhere but the first word on a line.
+  if (
+    !def &&
+    enclosingName !== undefined &&
+    lang.attributesByName.has(head) &&
+    argIndex >= (args?.length ?? 0)
+  )
+    return { ...none, slot: { kind: "lineStart", enclosing, section } };
   // A "string" slot holds a file name or a name being defined (#const's
   // first argument), never a name to look up.
   if (!def || def.type === "string") return none;

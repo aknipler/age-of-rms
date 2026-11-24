@@ -41,6 +41,7 @@ import {
   type TerrainConstant,
 } from "../../../../preview/render/palette";
 import type { Viewport } from "../../../../preview/render/projection";
+import { useDeTexturesSetting } from "../../../../components/preview/PreviewViewContext";
 import { resolveMapDim } from "../../../../preview/generator/mapDimensions";
 import { usePanelPreviewResultContext } from "../../../../PreviewResultContext";
 import { buildOverlayShapes } from "../overlay";
@@ -227,6 +228,11 @@ export function LandPlacementCanvas({
     () => createTerrainPalette(terrainConstants, DEFAULT_TERRAIN_COLOR_MODE),
     [],
   );
+  // The app preview's DE textures switch, so the panel's canvas and the
+  // preview always show the same view (docs/preview-de-textures-design.md
+  // Sec.4). The handles and drags need nothing more, since they hit test
+  // through the viewport, which carries the view's squash.
+  const deTextures = useDeTexturesSetting();
   const snapshot = panelPreview?.snapshots?.at(-1);
   const base =
     panelPreview && snapshot
@@ -550,6 +556,7 @@ export function LandPlacementCanvas({
         hitTestDragStart={hitTestDragStart}
         onDrag={onDrag}
         base={base}
+        terrainRender={deTextures ? "de" : "flat"}
         overlayShapes={overlayShapes}
         helpTipId="landPlacement.canvas"
         showApproximateBadge={base !== undefined}

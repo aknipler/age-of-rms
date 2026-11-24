@@ -22,9 +22,10 @@ interface ScriptNameProps {
  * abbreviation with its expansion, which screen readers announce from `title`.
  */
 export function ScriptName({ name }: ScriptNameProps) {
-  const { shortenLongNames } = useAppSettings();
-  const shown = shortenName(name, shortenLongNames);
-  if (!isShortened(name, shortenLongNames)) return <span>{name}</span>;
+  const { shortenLongNames, shortenNameLength } = useAppSettings();
+  const shown = shortenName(name, shortenLongNames, shortenNameLength);
+  if (!isShortened(name, shortenLongNames, shortenNameLength))
+    return <span>{name}</span>;
   return (
     <abbr className={styles.abbreviated} title={name}>
       {shown}

@@ -150,6 +150,61 @@ def format_object_data(data: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def build_object_sprites(dat, run_date: str) -> dict:
+    """Every graphic an object stands as, and every graphic those draw as a
+    delta, with what the preview's sprite pass needs to draw it
+    (docs/preview-de-textures-design.md Sec.12). A row is [file, frames,
+    angles, mirroring, layer, deltas], the file being the SLD's base name in
+    the install's drs/graphics, empty for a graphic with no picture. A delta
+    is [graphic, x, y], -1 meaning the graphic itself, the offsets in sprite
+    pixels. Units' other graphics (walking, attacking) are left out, since a
+    map is only ever drawn standing."""
+    graphics = dat.graphics
+    wanted: list[int] = []
+    seen: set[int] = set()
+    for u in dat.civs[0].units:
+        if u is None:
+            continue
+        for gid in u.standing_graphic:
+            if gid >= 0 and gid not in seen:
+                seen.add(gid)
+                wanted.append(gid)
+    sprites: dict[str, list] = {}
+    while wanted:
+        gid = wanted.pop()
+        g = graphics[gid] if 0 <= gid < len(graphics) else None
+        if g is None:
+            continue
+        name = (g.file_name or "").strip()
+        if name.lower() == "none":
+            name = ""
+        deltas = []
+        for d in g.deltas:
+            deltas.append([int(d.graphic_id), int(d.offset_x), int(d.offset_y)])
+            if d.graphic_id >= 0 and d.graphic_id not in seen:
+                seen.add(d.graphic_id)
+                wanted.append(d.graphic_id)
+        sprites[str(gid)] = [name, int(g.frame_count), int(g.angle_count), int(g.mirroring_mode), int(g.layer), deltas]
+    ordered = {k: sprites[k] for k in sorted(sprites, key=int)}
+    return {
+        "note": (
+            f"Object sprites for the preview's DE textures view, extracted {run_date} by tools/extract-constants "
+            "--object-data from empires2_x2_p1.dat. graphic id -> [file, frames, angles, mirroring, layer, deltas]: "
+            "file is the SLD base name in drs/graphics (empty for none), mirroring is the dat's mirroring mode "
+            "(non zero when the later angles are mirrors of the earlier), layer is the dat's draw layer, deltas are "
+            "[graphic, x, y] drawn in order, -1 being the graphic itself, offsets in sprite pixels. Only graphics "
+            "an object stands as, and their deltas."
+        ),
+        "sprites": ordered,
+    }
+
+
+def format_object_sprites(data: dict) -> str:
+    """One line per graphic, so a diff names what changed."""
+    rows = [f'    "{k}": {json.dumps(v, separators=(",", ":"))}' for k, v in data["sprites"].items()]
+    return "{\n" + f'  "note": {json.dumps(data["note"])},\n' + '  "sprites": {\n' + ",\n".join(rows) + "\n  }\n}\n"
+
+
 def load_wall_gates(path: Path) -> dict:
     """The gate table beside this file (`wall_gates.json`): wall id -> four [gate, unused] pairs."""
     raw = json.loads(path.read_text(encoding="utf-8"))
@@ -170,4 +225,10 @@ def run_object_data(dat, output: Path, wall_gates_path: Path, dry_run: bool) -> 
         return 0
     output.write_text(format_object_data(data), encoding="utf-8", newline="\n")
     print(f"\nWrote {output}")
+    # The sprites beside it, a file of their own, since only the textured view
+    # reads them and the object stage's worker should not carry them.
+    sprites = build_object_sprites(dat, date.today().isoformat())
+    sprites_path = output.with_name("object-sprites.json")
+    sprites_path.write_text(format_object_sprites(sprites), encoding="utf-8", newline="\n")
+    print(f"Wrote {sprites_path} ({len(sprites['sprites'])} graphics)")
     return 0

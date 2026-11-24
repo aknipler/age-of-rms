@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 import type { OverlayShape } from "../../../../tools-api/index";
 import { drawPreview } from "../drawPreview";
-import { fitViewport, tileToScreen } from "../projection";
+import { DE_TILE_ASPECT, fitViewport, tileToScreen } from "../projection";
 
 /** Records every call made to it; enough of CanvasRenderingContext2D's surface for drawPreview/drawOverlay to run against. */
 function createMockCtx() {
@@ -31,6 +31,7 @@ function createMockCtx() {
     moveTo: record("moveTo"),
     lineTo: record("lineTo"),
     arc: record("arc"),
+    ellipse: record("ellipse"),
     rect: record("rect"),
     fill: record("fill"),
     stroke: record("stroke"),
@@ -65,6 +66,12 @@ function createMockCtx() {
 
 const viewport = fitViewport(20, 400, 400);
 
+function ellipseCalls(calls: { method: string; args: unknown[] }[]) {
+  return calls
+    .filter((c) => c.method === "ellipse")
+    .map((c) => c.args as [number, number, number, number]);
+}
+
 function arcCalls(calls: { method: string; args: unknown[] }[]) {
   return calls
     .filter((c) => c.method === "arc")
@@ -92,11 +99,38 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
     ];
     drawPreview(ctx, viewport, { overlayShapes: shapes });
     const expected = tileToScreen(viewport, 10, 10);
-    const arcs = arcCalls(calls);
-    expect(arcs).toHaveLength(1);
-    expect(arcs[0][0]).toBeCloseTo(expected.x);
-    expect(arcs[0][1]).toBeCloseTo(expected.y);
-    expect(arcs[0][2]).toBeGreaterThan(0);
+    const ellipses = ellipseCalls(calls);
+    expect(ellipses).toHaveLength(1);
+    expect(ellipses[0][0]).toBeCloseTo(expected.x);
+    expect(ellipses[0][1]).toBeCloseTo(expected.y);
+    expect(ellipses[0][2]).toBeGreaterThan(0);
+    // The flat view's square tiles keep a circle a circle.
+    expect(ellipses[0][3]).toBeCloseTo(ellipses[0][2]);
+  });
+
+  // docs/preview-de-textures-design.md Sec.3. At the game's 2:1 squash a
+  // tile circle is an ellipse, and every point of the tile circle has to lie
+  // on the ellipse drawn, or a Land Placement circle would stop matching the
+  // land it stands for.
+  it("draws a tile circle as the ellipse it projects to at the DE squash", () => {
+    const squashed = fitViewport(20, 400, 400, 6, DE_TILE_ASPECT);
+    const { ctx, calls } = createMockCtx();
+    drawPreview(ctx, squashed, {
+      overlayShapes: [
+        { kind: "circle", x: 10, y: 10, rTiles: 3, role: "primary" },
+      ],
+    });
+    const [[cx, cy, rx, ry]] = ellipseCalls(calls);
+    expect(ry).toBeCloseTo(rx / 2);
+    for (const angle of [0, 0.4, 1.1, 2.5, 4]) {
+      const p = tileToScreen(
+        squashed,
+        10 + 3 * Math.cos(angle),
+        10 + 3 * Math.sin(angle),
+      );
+      const onEllipse = ((p.x - cx) / rx) ** 2 + ((p.y - cy) / ry) ** 2;
+      expect(onEllipse).toBeCloseTo(1, 6);
+    }
   });
 
   it("fills a circle only when shape.fill is set", () => {
@@ -251,7 +285,9 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
     expect(() =>
       drawPreview(ctx, viewport, { overlayShapes: shapes }),
     ).not.toThrow();
-    expect(arcCalls(calls)).toHaveLength(2);
+    // The point is an arc, the circle an ellipse (one tile circle at any squash).
+    expect(arcCalls(calls)).toHaveLength(1);
+    expect(ellipseCalls(calls)).toHaveLength(1);
     // No base layer means drawImage (the terrain bitmap) is never called.
     expect(calls.some((c) => c.method === "drawImage")).toBe(false);
   });

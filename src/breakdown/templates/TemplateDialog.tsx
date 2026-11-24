@@ -36,6 +36,7 @@ import {
   renderStandardPlayerObjects,
   renderStandardPlayerResources,
   renderStandardWaterResources,
+  TEMPLATES,
   templatesFor,
   treeOptions,
   type NamedOption,
@@ -89,8 +90,12 @@ const TerrainRowsContext = createContext<
 >(null);
 
 interface TemplateDialogProps {
-  /** Which tab opened the dialog. Each offers its own templates. */
-  section: TemplateSection;
+  /**
+   * Which section opened the dialog, which picks its templates. "ANY" lists
+   * every template, for the Code tab's menu entry used outside a template
+   * section, where the person chooses where the text goes.
+   */
+  section: TemplateSection | "ANY";
   script: TemplateScriptContext;
   /** game-constants.json rows, for the forest terrain and tree lists. */
   constants: readonly TemplateConstant[];
@@ -118,7 +123,7 @@ export function TemplateDialog({
   onClose,
   onInsert,
 }: TemplateDialogProps) {
-  const templates = templatesFor(section);
+  const templates = section === "ANY" ? TEMPLATES : templatesFor(section);
   const [selected, setSelected] = useState<TemplateId>(templates[0].id);
   const [t1, setT1] = useState<T1Options>(T1_DEFAULTS);
   const [t2, setT2] = useState<T2Options>(T2_DEFAULTS);
@@ -236,13 +241,14 @@ export function TemplateDialog({
 
   return (
     <TerrainRowsContext.Provider value={terrainRows}>
-      <div className={dialogStyles.overlay} onMouseDown={onClose}>
+      {/* Not modal: the overlay is the editor pane only and passes clicks
+          through, so the preview and reference tables stay usable. Escape
+          and Cancel close it. */}
+      <div className={styles.paneOverlay}>
         <div
           className={`${dialogStyles.dialog} ${styles.wide}`}
           role="dialog"
-          aria-modal="true"
           aria-label="Add a template"
-          onMouseDown={(event) => event.stopPropagation()}
         >
           <h2 className={dialogStyles.title}>Add Template</h2>
 
@@ -409,85 +415,105 @@ function T2Fields({
   options: T2Options;
   onChange: (next: T2Options) => void;
 }) {
+  // Three rows: where it goes and the on/off choices, then every dropdown,
+  // then every amount.
   return (
     <>
-      <HelpTip id="template.t2.seasonal">
-        <label className={dialogStyles.optionRow}>
-          <input
-            type="checkbox"
-            checked={options.seasonal}
-            onChange={(e) =>
-              onChange({ ...options, seasonal: e.target.checked })
-            }
-          />
-          Seasonal variation
-        </label>
-      </HelpTip>
-      <NoneSelect
-        helpId="template.t2.berryType"
-        label="Berry type"
-        value={options.berryType}
-        options={BERRY_OPTIONS}
-        seasonal={options.seasonal}
-        seasonalLabel="BERRIES"
-        onChange={(v) => onChange({ ...options, berryType: v })}
-      />
-      <NoneSelect
-        helpId="template.t2.wildlife"
-        label="Herdable"
-        value={options.herdable}
-        options={HERDABLE_OPTIONS}
-        seasonal={options.seasonal}
-        seasonalLabel="HERDABLE"
-        onChange={(v) => onChange({ ...options, herdable: v })}
-      />
-      <NoneSelect
-        helpId="template.t2.wildlife"
-        label="Huntable"
-        value={options.huntable}
-        options={HUNTABLE_OPTIONS}
-        seasonal={options.seasonal}
-        seasonalLabel="HUNTABLE"
-        onChange={(v) => onChange({ ...options, huntable: v })}
-      />
-      <NoneSelect
-        helpId="template.t2.wildlife"
-        label="Lurable"
-        value={options.lurable}
-        options={LURABLE_OPTIONS}
-        seasonal={options.seasonal}
-        seasonalLabel="LURABLE"
-        onChange={(v) => onChange({ ...options, lurable: v })}
-      />
-      <PileField
-        helpId="template.t2.largeGold"
-        label="Large gold"
-        value={options.largeGold}
-        onChange={(p) => onChange({ ...options, largeGold: p })}
-      />
-      <PileField
-        helpId="template.t2.smallGold"
-        label="Small gold"
-        value={options.smallGold}
-        onChange={(p) => onChange({ ...options, smallGold: p })}
-      />
-      <PileField
-        helpId="template.t2.largeStone"
-        label="Large stone"
-        value={options.largeStone}
-        onChange={(p) => onChange({ ...options, largeStone: p })}
-      />
-      <PileField
-        helpId="template.t2.smallStone"
-        label="Small stone"
-        value={options.smallStone}
-        onChange={(p) => onChange({ ...options, smallStone: p })}
-      />
-      <TerrainField
-        helpId="template.t2.terrain"
-        value={options.terrainToPlaceOn}
-        onChange={(v) => onChange({ ...options, terrainToPlaceOn: v })}
-      />
+      <div className={styles.controlRow}>
+        <TerrainField
+          helpId="template.t2.terrain"
+          value={options.terrainToPlaceOn}
+          onChange={(v) => onChange({ ...options, terrainToPlaceOn: v })}
+        />
+        <HelpTip id="template.t2.seasonal">
+          <label className={dialogStyles.optionRow}>
+            <input
+              type="checkbox"
+              checked={options.seasonal}
+              onChange={(e) =>
+                onChange({ ...options, seasonal: e.target.checked })
+              }
+            />
+            Seasonal variation
+          </label>
+        </HelpTip>
+        <HelpTip id="template.t2.quickStart">
+          <label className={dialogStyles.optionRow}>
+            <input
+              type="checkbox"
+              checked={options.quickStart}
+              onChange={(e) =>
+                onChange({ ...options, quickStart: e.target.checked })
+              }
+            />
+            Quick-start herd
+          </label>
+        </HelpTip>
+      </div>
+      <div className={styles.controlRow}>
+        <NoneSelect
+          helpId="template.t2.berryType"
+          label="Berry type"
+          value={options.berryType}
+          options={BERRY_OPTIONS}
+          seasonal={options.seasonal}
+          seasonalLabel="BERRIES"
+          onChange={(v) => onChange({ ...options, berryType: v })}
+        />
+        <NoneSelect
+          helpId="template.t2.wildlife"
+          label="Herdable"
+          value={options.herdable}
+          options={HERDABLE_OPTIONS}
+          seasonal={options.seasonal}
+          seasonalLabel="HERDABLE"
+          onChange={(v) => onChange({ ...options, herdable: v })}
+        />
+        <NoneSelect
+          helpId="template.t2.wildlife"
+          label="Huntable"
+          value={options.huntable}
+          options={HUNTABLE_OPTIONS}
+          seasonal={options.seasonal}
+          seasonalLabel="HUNTABLE"
+          onChange={(v) => onChange({ ...options, huntable: v })}
+        />
+        <NoneSelect
+          helpId="template.t2.wildlife"
+          label="Lurable"
+          value={options.lurable}
+          options={LURABLE_OPTIONS}
+          seasonal={options.seasonal}
+          seasonalLabel="LURABLE"
+          onChange={(v) => onChange({ ...options, lurable: v })}
+        />
+      </div>
+      <div className={styles.controlRow}>
+        <PileField
+          helpId="template.t2.largeGold"
+          label="Large gold"
+          value={options.largeGold}
+          onChange={(p) => onChange({ ...options, largeGold: p })}
+        />
+        <PileField
+          helpId="template.t2.smallGold"
+          label="Small gold"
+          value={options.smallGold}
+          onChange={(p) => onChange({ ...options, smallGold: p })}
+        />
+        <PileField
+          helpId="template.t2.largeStone"
+          label="Large stone"
+          value={options.largeStone}
+          onChange={(p) => onChange({ ...options, largeStone: p })}
+        />
+        <PileField
+          helpId="template.t2.smallStone"
+          label="Small stone"
+          value={options.smallStone}
+          onChange={(p) => onChange({ ...options, smallStone: p })}
+        />
+      </div>
     </>
   );
 }

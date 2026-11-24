@@ -95,6 +95,22 @@ export interface PublishedGameConstant {
    */
   placementClass?: number;
   /**
+   * Terrain entries only. The dat's Terrain.terrain_dimensions (tools/extract-constants --terrain-render), 10 for most terrains, 6 for farms and pastures, 3 for their construction stages and 15 for the gravel and rock wet beaches. Not the texture repeat, which DE was measured to keep at 10 tiles for every terrain, these included, so the preview's textured view does not read it (docs/preview-de-textures-design.md Sec.10.7). Absent means the row was never read from the dat.
+   */
+  textureTiles?: number;
+  /**
+   * Terrain entries only. The dat's Terrain.blend_priority (tools/extract-constants --terrain-render). Where two terrains meet, the one with the higher value spreads over the other's tile. Read by the preview's textured view (docs/preview-de-textures-design.md Sec.10).
+   */
+  blendPriority?: number;
+  /**
+   * Terrain entries only. The dat's Terrain.blend_type (tools/extract-constants --terrain-render), the terrain's family for blending (0 land, 1 farm, 2 beach, 3 water, 4 shallows, 5 road, 6 ice, 7 snow). The two terrains' families pick the blend atlas. Read by the preview's textured view (docs/preview-de-textures-design.md Sec.10).
+   */
+  blendType?: number;
+  /**
+   * Terrain entries only. The dat's Terrain.overlay_mask_name (tools/extract-constants --terrain-render), a greyscale PNG in the install's terrain/masks folder that a tile layered with this terrain is drawn through. Absent when the dat names none. Read by the preview's textured view (docs/preview-de-textures-design.md Sec.10).
+   */
+  overlayMask?: string;
+  /**
    * Terrain entries only. Every used terrain_unit slot of this terrain in the dat, cosmetic ones included, in slot order (tools/extract-constants --terrain-generation). Unlike autoTreeUnits nothing is dropped, because what the preview needs from a slot is the number of random draws the game spends on it, and a slot spends draws whether or not its unit carries wood. Each time a cliff line crosses a tile, or the land stage's cleanup restores a tile to the base terrain, the game spends that terrain's decoration draws (docs/preview-design.md Sec.6.1 growth rule 11, Sec.6.3 rule 6, Sec.12 item 10). An empty array is a measurement of no decorations. Absent means the row was never read.
    */
   decorations?: {

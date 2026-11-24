@@ -82,3 +82,35 @@ export function templateSpotAt(
     target: above ? { after: above } : { before: items[0] },
   };
 }
+
+/**
+ * Rewrites the placeholder tabs a template is built from (one leading tab per
+ * indent level, see templates.ts) into the Settings > Code indent unit, so
+ * the inserted text follows the tab size the person chose and not the step
+ * the insert code would detect in the file. The insert path only reindents
+ * leading tabs, so text with none passes through unchanged.
+ *
+ * `caretOffset` sits at a line start (reindentBlock's contract), so the text
+ * is converted in two halves and the caret moves with the first.
+ */
+export function applyIndentSetting(
+  text: string,
+  caretOffset: number,
+  tabSize: number,
+  insertSpaces: boolean,
+): { text: string; caretOffset: number } {
+  const unit = insertSpaces ? " ".repeat(tabSize) : "\t";
+  const convert = (t: string): string =>
+    t
+      .split("\n")
+      .map((line) => {
+        const m = /^\t+/.exec(line);
+        return m ? unit.repeat(m[0].length) + line.slice(m[0].length) : line;
+      })
+      .join("\n");
+  const before = convert(text.slice(0, caretOffset));
+  return {
+    text: before + convert(text.slice(caretOffset)),
+    caretOffset: before.length,
+  };
+}

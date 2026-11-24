@@ -1413,3 +1413,22 @@ describe("validate with resolved includes (docs/include-resolution-design.md Sec
     expect(only(source, "RMS0300")[0].severity).toBe("info");
   });
 });
+
+describe("RMS0315 on the find_closest family", () => {
+  it("flags find_closest_to_map_center with no land partner", () => {
+    const found = only(
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 find_closest_to_map_center }\n",
+      "RMS0315",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("place_on_specific_land_id");
+  });
+
+  it("stays quiet when the block has set_place_for_every_player", () => {
+    expect(
+      codes(
+        "<OBJECTS_GENERATION>\ncreate_object GOLD { set_place_for_every_player find_closest_to_map_center }\n",
+      ),
+    ).not.toContain("RMS0315");
+  });
+});

@@ -10,6 +10,8 @@ import {
   type Viewport,
 } from "./projection";
 import type { TerrainBitmap } from "./terrainBitmap";
+import { spriteKey, type SpriteImage, type SpritePart } from "./objectSprites";
+import { drawMinimapLayer, type MinimapLayer } from "./minimapLayer";
 
 // The canvas half of the renderer. Everything that touches a 2D context lives
 // here; the maths, the colours and the bitmap are pure modules next door.
@@ -85,6 +87,13 @@ export interface PreviewBaseLayer {
   /** Output of createBitmapCanvas for that snapshot. */
   terrain: HTMLCanvasElement;
   /**
+   * The textured view's terrain, already drawn in screen space at the
+   * canvas's backing size (texturedTerrainGl.ts). When present it is drawn
+   * instead of `terrain`, with no projection transform, since the GPU has
+   * applied the projection itself (docs/preview-de-textures-design.md Sec.7).
+   */
+  screenTerrain?: CanvasImageSource;
+  /**
    * Object names to leave undrawn (the preview's Obj. List).
    *
    * A VIEW filter and nothing more: the objects are still in `result.objects`,
@@ -95,7 +104,63 @@ export interface PreviewBaseLayer {
    * looks like it changed the generation.
    */
   hiddenObjects?: ReadonlySet<string>;
+  /**
+   * Leaves out the circles of objects in the decoration category, which only
+   * terrain objects carry (grass, rocks, flowers). Sprites still draw. A view
+   * filter like `hiddenObjects`, so counts and the readout keep them.
+   */
+  hideDecorations?: boolean;
+  /**
+   * The sprites already drawn by the GPU at the canvas's backing size
+   * (spritesGl.ts). When present it is copied in with one drawImage in place
+   * of `drawSprites`' call per sprite, and only the glyphs draw here.
+   */
+  screenSprites?: CanvasImageSource;
+  /**
+   * The minimap view's objects (minimapLayer.ts). When present they replace
+   * every object glyph and sprite: trees and cliffs fill their tiles, and
+   * resources, relics and players' objects draw as squares.
+   */
+  minimap?: MinimapLayer;
+  /** Leaves out the numbered player circles (`drawPlayers`). */
+  hidePlayers?: boolean;
+  /**
+   * The textured view's object sprites (objectSprites.ts, deSpriteSource.ts).
+   * When present and the zoom is close enough to read them, they are drawn
+   * instead of the object and terrain object glyphs. Farther out a sprite is
+   * a few pixels, and the glyphs say more (docs/preview-de-textures-design.md
+   * Sec.12.3).
+   */
+  sprites?: SpriteLayer;
 }
+
+/** What the sprite pass draws, built once per map and frame set. */
+export interface SpriteLayer {
+  /** Already in draw order (`sortSprites`). */
+  parts: readonly SpritePart[];
+  /** Decoded frames by `spriteKey`. A part whose frame is missing draws nothing. */
+  images: ReadonlyMap<string, SpriteImage>;
+  /** Objects the Obj. List hides, by object id. */
+  hiddenIds?: ReadonlySet<number>;
+  /** A size factor per object, 1 when absent (the Small Trees setting). */
+  scaleOf?: (objectId: number) => number;
+  /**
+   * Objects drawn as their glyph although sprites are on, since their
+   * graphic has no picture or did not load. Nothing is dropped silently.
+   */
+  glyphs: readonly { x: number; y: number; category: string }[];
+}
+
+/**
+ * The half tile width, in CSS pixels, below which the glyphs draw instead of
+ * sprites. At 1 a tile is 2 pixels wide and a tree about 3 tall. Set on
+ * the owner's request (2026-11-25), down from 8, so sprites stay on further
+ * out, which the GPU sprites (spritesGl.ts) make cheap.
+ */
+export const SPRITE_MIN_HALF_WIDTH = 1;
+
+/** Sprite pixels across a tile's diamond in DE's x1 graphics, the dat's 96. */
+const SPRITE_TILE_WIDTH = 96;
 
 export interface PreviewScene {
   /** Absent draws just the background plus `overlayShapes`. See `PreviewBaseLayer`'s own doc. */
@@ -143,16 +208,31 @@ export function drawPreview(
   if (scene.base) {
     drawTerrain(ctx, viewport, scene.base);
     drawMapEdge(ctx, viewport, scene.base.snapshot.dim);
-    // Under the scripted objects, so a gold pile in a forest is never hidden
-    // by the trees around it.
-    drawTerrainObjects(
-      ctx,
-      viewport,
-      scene.base.result,
-      scene.base.hiddenObjects,
-    );
-    drawObjects(ctx, viewport, scene.base.result, scene.base.hiddenObjects);
-    drawPlayers(ctx, viewport, scene.base.result);
+    const sprites = scene.base.sprites;
+    if (scene.base.minimap !== undefined) {
+      drawMinimapLayer(ctx, viewport, scene.base.minimap);
+    } else if (
+      sprites !== undefined &&
+      viewport.halfWidth >= SPRITE_MIN_HALF_WIDTH
+    ) {
+      const gpu = scene.base.screenSprites;
+      if (gpu !== undefined) {
+        ctx.drawImage(gpu, 0, 0, viewport.width, viewport.height);
+        drawSpriteGlyphs(ctx, viewport, sprites, scene.base.hideDecorations);
+      } else drawSprites(ctx, viewport, sprites, scene.base.hideDecorations);
+    } else {
+      // Under the scripted objects, so a gold pile in a forest is never
+      // hidden by the trees around it.
+      drawTerrainObjects(
+        ctx,
+        viewport,
+        scene.base.result,
+        scene.base.hiddenObjects,
+        scene.base.hideDecorations,
+      );
+      drawObjects(ctx, viewport, scene.base.result, scene.base.hiddenObjects);
+    }
+    if (!scene.base.hidePlayers) drawPlayers(ctx, viewport, scene.base.result);
     // Last of the base-layer content, so a mark is never hidden by the very
     // objects or player flag sitting on the land it is complaining about.
     drawFailureMarks(ctx, viewport, scene.base.result);
@@ -207,6 +287,12 @@ function drawTerrain(
   viewport: Viewport,
   base: PreviewBaseLayer,
 ): void {
+  if (base.screenTerrain !== undefined) {
+    // Already projected. Drawn at the CSS size, which the caller's device
+    // pixel ratio transform maps back onto the backing store pixel for pixel.
+    ctx.drawImage(base.screenTerrain, 0, 0, viewport.width, viewport.height);
+    return;
+  }
   const halfHeight = halfHeightOf(viewport);
   ctx.save();
   // Zoomed in, nearest-neighbour keeps tile edges crisp and honest about
@@ -461,14 +547,29 @@ function drawOrientation(
   ctx.restore();
 }
 
+/**
+ * The radius of an object's circle, shared by scripted objects, terrain
+ * objects and the sprites' fallback glyphs so one kind of thing never reads
+ * as smaller than another.
+ */
+function objectRadius(viewport: Viewport): number {
+  return Math.max(1.1, Math.min(5, viewport.halfWidth * 0.75));
+}
+
+/** The category terrain objects that are not resources carry (deObjects.ts). */
+const DECORATION = "decoration";
+
+/** The radius from which a circle gets its dark ring, readable from there on. */
+const OUTLINE_MIN_RADIUS = 2.4;
+
 function drawObjects(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
   result: PreviewWireResult,
   hidden?: ReadonlySet<string>,
 ): void {
-  const radius = Math.max(1.1, Math.min(5, viewport.halfWidth * 0.75));
-  const outlined = radius >= 2.4;
+  const radius = objectRadius(viewport);
+  const outlined = radius >= OUTLINE_MIN_RADIUS;
   for (const object of result.objects) {
     if (hidden !== undefined && hidden.has(object.objectRef)) continue;
     const point = tileToScreen(viewport, object.x, object.y);
@@ -491,32 +592,93 @@ function drawObjects(
 }
 
 /**
- * The trees and decorations terrains spawn (`PreviewResult.terrainObjects`).
+ * Every object as the game draws it. Shadows first, all of them, since a
+ * shadow lies on the ground and never over another object, then the
+ * pictures in draw order. A sprite's hotspot sits on the object's position,
+ * and one sprite pixel is a 96th of a tile's width (the dat's tile).
+ */
+export function drawSprites(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  viewport: Viewport,
+  layer: SpriteLayer,
+  hideDecorations = false,
+): void {
+  const base = (viewport.halfWidth * 2) / SPRITE_TILE_WIDTH;
+  // A frame is at most a few hundred sprite pixels from its hotspot.
+  const margin = 400 * base;
+  for (const pass of ["shadow", "image"] as const) {
+    for (const part of layer.parts) {
+      if (layer.hiddenIds?.has(part.objectId)) continue;
+      const image = layer.images.get(
+        spriteKey(part.file, part.frame, part.owner),
+      );
+      if (image === undefined) continue;
+      const bitmap = pass === "shadow" ? image.shadow : image.image;
+      if (bitmap === null) continue;
+      const point = latticeToScreen(viewport, part.x, part.y);
+      if (offCanvas(point.x, point.y, viewport, margin)) continue;
+      const scale = base * (layer.scaleOf?.(part.objectId) ?? 1);
+      const ox = pass === "shadow" ? image.shadowX : image.x;
+      const oy = pass === "shadow" ? image.shadowY : image.y;
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      // A mirrored angle flips about the hotspot, offsets included.
+      ctx.scale(part.mirrored ? -scale : scale, scale);
+      ctx.drawImage(bitmap, part.dx + ox, part.dy + oy);
+      ctx.restore();
+    }
+  }
+  drawSpriteGlyphs(ctx, viewport, layer, hideDecorations);
+}
+
+/** The circles of objects whose picture did not load, over the sprites. */
+function drawSpriteGlyphs(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  viewport: Viewport,
+  layer: SpriteLayer,
+  hideDecorations = false,
+): void {
+  const radius = objectRadius(viewport);
+  for (const glyph of layer.glyphs) {
+    if (hideDecorations && glyph.category === DECORATION) continue;
+    const point = latticeToScreen(viewport, glyph.x, glyph.y);
+    if (offCanvas(point.x, point.y, viewport, radius)) continue;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = cssColor(categoryColor(glyph.category));
+    ctx.fill();
+  }
+}
+
+/**
+ * The trees and decorations terrains spawn (`PreviewResult.terrainObjects`),
+ * as circles the size of the scripted objects' (`objectRadius`), so a forest
+ * tree reads as the same kind of thing as a placed one.
  *
- * Squares rather than the scripted objects' circles, and smaller, for two
- * reasons. A forest holds one per tile or close to it, so a full size dot
- * would turn every forest into a carpet of glyphs and hide the scripted
- * objects among them. And a forested Giant map holds tens of thousands, so
- * each colour goes into ONE path of `rect`s and is filled once. A `fill()`
- * per object, as `drawObjects` does, is fine for a few hundred and costs a
- * frame's whole budget at this count, on every pan and zoom.
+ * A forested Giant map holds tens of thousands, so each colour goes into ONE
+ * path of circles and is filled once, and ringed once. A `fill()` per
+ * object, as `drawObjects` does, is fine for a few hundred and costs a
+ * frame's whole budget at this count, on every pan and zoom. Drawn before
+ * the scripted objects, so a gold pile in a forest still sits on top.
  */
 function drawTerrainObjects(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
   result: PreviewWireResult,
   hidden?: ReadonlySet<string>,
+  hideDecorations = false,
 ): void {
   const layer = result.terrainObjects;
   if (layer === undefined || layer.kind.length === 0) return;
-  const size = Math.max(0.9, Math.min(3, viewport.halfWidth * 0.45));
-  const half = size / 2;
+  const radius = objectRadius(viewport);
+  const outlined = radius >= OUTLINE_MIN_RADIUS;
   // One path per colour, not per kind, so forty tree types sharing the wood
   // colour still fill once. A kind's colour is an index into `colors`, and
   // -1 marks a kind the Obj. List hides.
   const colors: string[] = [];
   const colorOf = layer.kinds.map((k) => {
     if (hidden !== undefined && hidden.has(k.objectRef)) return -1;
+    if (hideDecorations && k.category === DECORATION) return -1;
     const color = cssColor(categoryColor(k.category));
     const at = colors.indexOf(color);
     if (at >= 0) return at;
@@ -534,11 +696,19 @@ function drawTerrainObjects(
       // continuous (10.5 is the middle of tile 10), so adding the half tile
       // again would draw every tree off its own tile.
       const point = latticeToScreen(viewport, layer.x[i], layer.y[i]);
-      if (offCanvas(point.x, point.y, viewport, size)) continue;
-      ctx.rect(point.x - half, point.y - half, size, size);
+      if (offCanvas(point.x, point.y, viewport, radius)) continue;
+      // A moveTo first, or the path would join each circle to the last
+      // with a straight line, which the fill and ring would both draw.
+      ctx.moveTo(point.x + radius, point.y);
+      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
     }
     ctx.fillStyle = color;
     ctx.fill();
+    if (outlined) {
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
   });
 }
 
@@ -615,23 +785,23 @@ function drawFailureMarks(
 }
 
 /**
- * Screen radius of a tile-space circle of radius `rTiles` centred at
- * (cx, cy). Measured rather than derived from `viewport.halfWidth` alone:
- * the diamond projection is a linear map of tile space, so a tile-space
- * circle becomes a screen circle only because `TILE_ASPECT` (projection.ts)
- * currently makes that map a scaled rotation, true today, and this stays
- * correct without re-deriving the algebra if that ever changes, since it
- * just measures how far the transform sends one tile-length in practice.
+ * Screen radii of a tile space circle of radius `rTiles`. The projection
+ * turns tile space 45 degrees and then squashes it vertically, and a circle
+ * turned is still a circle, so the squash makes it an ellipse with its axes
+ * along the screen's. A tile length along x moves `halfWidth` across and
+ * `halfHeight` down, so the radius across is `rTiles * halfWidth * sqrt 2`
+ * and the radius down is `rTiles * halfHeight * sqrt 2`. With the flat
+ * view's aspect of 1 the two are equal and this is the circle it always drew
+ * (docs/preview-de-textures-design.md Sec.3).
  */
-function circleScreenRadius(
+function circleScreenRadii(
   viewport: Viewport,
-  cx: number,
-  cy: number,
   rTiles: number,
-): number {
-  const centre = tileToScreen(viewport, cx, cy);
-  const edge = tileToScreen(viewport, cx + rTiles, cy);
-  return Math.hypot(edge.x - centre.x, edge.y - centre.y);
+): { rx: number; ry: number } {
+  return {
+    rx: rTiles * viewport.halfWidth * Math.SQRT2,
+    ry: rTiles * halfHeightOf(viewport) * Math.SQRT2,
+  };
 }
 
 /**
@@ -659,7 +829,7 @@ function drawOverlay(
       }
       case "circle": {
         const p = tileToScreen(viewport, shape.x, shape.y);
-        const r = circleScreenRadius(viewport, shape.x, shape.y, shape.rTiles);
+        const { rx, ry } = circleScreenRadii(viewport, shape.rTiles);
         ctx.beginPath();
         if (shape.square) {
           // The four corners go through the projection one by one, so the
@@ -677,7 +847,7 @@ function drawOverlay(
           });
           ctx.closePath();
         } else {
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
         }
         if (shape.fill) {
           ctx.fillStyle = color;

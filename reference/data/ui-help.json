@@ -174,7 +174,7 @@
     },
     {
       "id": "settings.shortenLongNames",
-      "text": "Constant names in RMS run long, and readouts such as the preview's tile panel are narrow. With this on, a name over six characters is drawn as its first three letters followed by an ellipsis, and hovering it shows the whole name. Turn it off to always see names in full, at the cost of more wrapping."
+      "text": "Constant names in RMS run long, and readouts such as the preview's tile panel are narrow. Off by default. With it on, a name longer than the chosen length plus three is drawn as its first letters followed by an ellipsis, and hovering it shows the whole name. Shorten to sets how many letters stay, from 2 to 12."
     },
     {
       "id": "settings.hotkeys.save",
@@ -419,6 +419,10 @@
     {
       "id": "template.t1.quickStart",
       "text": "Swaps the plain villager block for a 9-villager quick start: six on a sheep next to the town center, three on the nearest forest, plus two houses. Placed behind if QUICK_START, with the plain three villagers as the else branch, and a #define QUICK_START is added to the file's header unless it has one."
+    },
+    {
+      "id": "template.t2.quickStart",
+      "text": "Adds a quick-start sheep herd behind if QUICK_START, with the standard herd as the else branch. Off writes only the standard herd. Needs QUICK_START defined, which the objects template's Quick-start option adds."
     },
     {
       "id": "template.t1.advanced",
@@ -930,7 +934,23 @@
     },
     {
       "id": "preview.exportPng",
-      "text": "Saves exactly what the map preview is currently showing as a PNG image: this zoom, this pan, this Current/Final view. Opens a save dialog first, so nothing is written until you pick a location."
+      "text": "Opens the options for saving the map preview as a PNG image. The current Current/Final view is what gets saved."
+    },
+    {
+      "id": "preview.exportAreaVisible",
+      "text": "Saves what the preview shows now, at this zoom and pan."
+    },
+    {
+      "id": "preview.exportAreaMap",
+      "text": "Saves the whole map fitted to the image, whatever the current zoom and pan."
+    },
+    {
+      "id": "preview.exportQuality",
+      "text": "Visible area: Low is half the screen's pixels, Standard matches it, High is 2x, Maximum 4x. Entire map: tiles are drawn 4, 8, 16 or 32 pixels wide. Very large images are reduced to fit."
+    },
+    {
+      "id": "preview.exportSave",
+      "text": "Opens a save dialog. Nothing is written until you pick a location."
     },
     {
       "id": "preview.helpButton",
@@ -946,7 +966,47 @@
     },
     {
       "id": "preview.colorMode",
-      "text": "The four coloured tiles. Which set of terrain colours to draw with, and the tiles show the set in use. Off is Game, which uses the average colour of each terrain's own texture from your install, so snow looks like snow; terrains that share a texture file, such as Forest and Underbrush, share a colour. On is Minimap, which uses the colour class stored in the game's own data, which is flatter and only has twelve colours in it, so every snow terrain comes out grass green, but it does tell forest apart from underbrush."
+      "text": "Shows the map as the game's minimap does, over the DE textures view if that is on. Terrain takes the minimap's twelve colours, trees and cliffs fill their tiles, and only resources, relics and players' objects show, as squares. Off draws every object, with each terrain in the average colour of its texture."
+    },
+    {
+      "id": "preview.smallTrees",
+      "text": "Draws trees at half size in the DE textures view, as the game does with its own Small Trees option on. Match it to your game's setting."
+    },
+    {
+      "id": "preview.terrainBlends",
+      "text": "Blends each terrain softly into its neighbours in the DE textures view, as the game does. Turn it off to see every tile end at its own edge, which shows exactly where one terrain stops."
+    },
+    {
+      "id": "generationSettings.tabGeneration",
+      "text": "Player count, map size and teams the preview generates the map with, as a game lobby sets them."
+    },
+    {
+      "id": "generationSettings.tabPreview",
+      "text": "How the preview draws the map. These change the picture only, never what is generated."
+    },
+    {
+      "id": "preview.timingButton",
+      "text": "How long the last generation took, section by section. Open a section to see its commands, slowest first, with their lines."
+    },
+    {
+      "id": "preview.recordTiming",
+      "text": "Times every generation for the hourglass beside Obj. List. Costs a fraction of a millisecond per command. Off greys the hourglass out."
+    },
+    {
+      "id": "preview.timingSection",
+      "text": "Shows this section's commands, slowest first. A command run once per player shows how many times it ran. Other work is the section's time no single command accounts for, such as land growth's shared steps or the beach pass."
+    },
+    {
+      "id": "preview.hidePlayerCircles",
+      "text": "Hides the numbered circles that mark each player's start, so the objects under them show. The minimap view always hides them."
+    },
+    {
+      "id": "preview.hideDecorations",
+      "text": "Hides the circles of decorations that terrains spawn, such as grass, rocks and flowers, so resources and placed objects stand out. They stay in the counts and the tile readout, and their pictures still draw in the DE textures view."
+    },
+    {
+      "id": "preview.deTextures",
+      "text": "Draws the map the way the game lays it out, twice as wide as it is tall, with each terrain's texture read from your DE install. Off is the flat colour view, which is faster. Hover, selection and the Land Placement handles work in both. Terrains whose texture cannot be read, and every terrain when no install is found, stay in their flat colour."
     },
     {
       "id": "preview.legend",

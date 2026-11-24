@@ -62,23 +62,44 @@ function scene(hidden?: ReadonlySet<string>) {
   };
 }
 
-const rects = (calls: { method: string; args: unknown[] }[]) =>
+const arcs = (calls: { method: string; args: unknown[] }[]) =>
   calls
-    .filter((c) => c.method === "rect")
-    .map((c) => c.args as [number, number, number, number]);
+    .filter((c) => c.method === "arc")
+    .map((c) => c.args as [number, number, number]);
+
+/** A scene with one scripted object at tile 7, 7, to compare sizes against. */
+function sceneWithObject() {
+  const s = scene();
+  (s.base.result as unknown as { objects: unknown[] }).objects = [
+    { x: 7, y: 7, objectRef: "GOLD", category: "resource-gold" },
+  ];
+  return s;
+}
 
 describe("drawTerrainObjects", () => {
-  it("draws one square per terrain object, centred on its own position", () => {
+  it("draws one circle per terrain object, centred on its own position", () => {
     const { ctx, calls } = createMockCtx();
     drawPreview(ctx, viewport, scene());
-    const drawn = rects(calls);
+    const drawn = arcs(calls);
     expect(drawn).toHaveLength(3);
     // The positions are continuous, so no half tile is added on top. With
-    // `tileToScreen` each square would sit half a tile further on.
-    const [x, y, w, h] = drawn[0];
+    // `tileToScreen` each circle would sit half a tile further on.
+    const [x, y] = drawn[0];
     const centre = latticeToScreen(viewport, 3.5, 3.5);
-    expect(x + w / 2).toBeCloseTo(centre.x, 6);
-    expect(y + h / 2).toBeCloseTo(centre.y, 6);
+    expect(x).toBeCloseTo(centre.x, 6);
+    expect(y).toBeCloseTo(centre.y, 6);
+  });
+
+  it("draws a terrain object as large as a scripted one", () => {
+    // At this zoom and closer in, where the old squares were smaller.
+    for (const halfWidth of [2, 6, 20]) {
+      const { ctx, calls } = createMockCtx();
+      drawPreview(ctx, { ...viewport, halfWidth }, sceneWithObject());
+      const radii = new Set(arcs(calls).map((a) => a[2]));
+      // Three terrain objects and one scripted, all one size.
+      expect(arcs(calls)).toHaveLength(4);
+      expect(radii.size).toBe(1);
+    }
   });
 
   it("fills once per colour, not once per object", () => {
@@ -89,9 +110,19 @@ describe("drawTerrainObjects", () => {
     expect(calls.filter((c) => c.method === "fill")).toHaveLength(2);
   });
 
+  it("leaves out decorations when they are hidden, and keeps resources", () => {
+    const { ctx, calls } = createMockCtx();
+    const s = scene();
+    drawPreview(ctx, viewport, {
+      base: { ...s.base, hideDecorations: true },
+    });
+    // The oak trees stay (wood), the one decoration goes.
+    expect(arcs(calls)).toHaveLength(2);
+  });
+
   it("leaves out a kind the Obj. List hides", () => {
     const { ctx, calls } = createMockCtx();
     drawPreview(ctx, viewport, scene(new Set(["OAK_FOREST_TREE"])));
-    expect(rects(calls)).toHaveLength(1);
+    expect(arcs(calls)).toHaveLength(1);
   });
 });

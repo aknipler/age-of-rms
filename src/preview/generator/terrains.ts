@@ -34,6 +34,7 @@
 // was fitted to measured counts and each was wrong in kind. Its history is
 // in docs/build-log.md.
 
+import { timeCommand } from "./generationTiming";
 import type {
   CommandReport,
   InstantiatedCommand,
@@ -618,14 +619,8 @@ export function applyTerrains(
   const lists = new TileLists(LIST_COUNT, n);
   for (const cmd of commands) {
     const pass = readPass(cmd, instantiated, constants, dim);
-    const { seeded, painted, sawBase } = runPass(
-      pass,
-      grid,
-      sloped,
-      origins,
-      lists,
-      beachMark,
-      stream,
+    const { seeded, painted, sawBase } = timeCommand(cmd, () =>
+      runPass(pass, grid, sloped, origins, lists, beachMark, stream),
     );
     const failures: PlacementFailure[] = [];
     const { tiles, clumps, percentage } = pass.amount;

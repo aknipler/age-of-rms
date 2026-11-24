@@ -169,20 +169,36 @@ describe("resolveName", () => {
     );
   });
 
-  it("resolves a constants.inc-only alias, so it never draws a create offer", () => {
-    const aliasOnly = [...stat.rowsByName].find(([, rows]) =>
-      rows.every((r) => r.category === "objectAlias"),
+  it("reads a constants.inc-only alias as unknown to the game, and offers the #const with its number", () => {
+    const aliasOnly = [...stat.rowsByName].find(
+      ([name, rows]) =>
+        name === "WHALE" && rows.every((r) => r.category === "objectAlias"),
     );
-    if (!aliasOnly) throw new Error("data has no alias-only object name");
-    const [name] = aliasOnly;
+    if (!aliasOnly) throw new Error("data has no WHALE alias row");
+    const [name, rows] = aliasOnly;
     expect(resolveName(stat, script, name, at, objectSlot).kind).toBe(
-      "builtin",
+      "constantsIncOnly",
     );
-    expect(unknownNameOffer(stat, script, name, at, objectSlot)).toBeNull();
-    // ...and is not suggested, since it may need an #include to work.
+    // The offer pre-fills the number constants.inc gives the name.
+    expect(unknownNameOffer(stat, script, name, at, objectSlot)).toMatchObject({
+      defaultValue: { value: rows[0].constId },
+    });
+    // Not suggested, since the game only knows it with an include.
     expect(
       suggest(stat, script, name, at, objectSlot).map((s) => s.name),
     ).not.toContain(name);
+  });
+
+  it("reads the alias as defined once the script writes its own #const above the use", () => {
+    const src = [
+      "#const WHALE 2625",
+      "<OBJECTS_GENERATION>",
+      "create_object WHALE",
+    ].join("\n");
+    const s2 = scriptAt(src, "WHALE", 1);
+    expect(resolveName(stat, s2.script, "WHALE", s2.at, objectSlot).kind).toBe(
+      "script",
+    );
   });
 
   it("reads numbers as numbers, inf included", () => {

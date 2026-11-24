@@ -1204,6 +1204,16 @@ before assuming a new resolution mechanism is needed), and whether a "one repeat
 players per repeat" shape is expressible as a variant of the existing pattern/repeat model or
 needs a third axis alongside `perPlayer` and `thetaPerCount`.
 
+#### Future want, Land ID policy on a role like Zone (recorded 2026-11-18, not designed)
+
+A stated want from the owner. A role's `landId` is a single expression today (`LandRole.landId` in
+`model.ts`, emitted as `land_id`). It should take a policy with a dropdown the way `zone` does
+(`ZonePolicy`: fixed, per repeat, random), so a role can choose between a fixed land id, an id
+that steps with the repeat index (N, N+1, N+2 and so on), and the other options that make sense
+for an id. The role panel's Zone control is the model for the dropdown. A design pass has to settle
+which options `land_id` can honestly offer (it has no random flag the way `set_zone_randomly`
+exists) and how a stepped id avoids colliding with ids a script already uses.
+
 #### Future want, a Custom shape kind (recorded 2026-09-28, not designed)
 
 A stated want from the owner, raised beside the per player decision of the same day. A seventh

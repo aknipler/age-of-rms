@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { ToolHost, inProcessRunner } from "./host";
 import { registeredTools } from "./registry";
 
@@ -48,6 +55,19 @@ const SelectedToolCtx = createContext<{
   setSelectedId: (id: string) => void;
 } | null>(null);
 
+/**
+ * The params form's values, one record per tool, lifted above the tab switch
+ * for the same reason as `selectedId`: `ToolsPane` unmounts on every trip to
+ * Code, and a plain `useState` inside it handed the form back at its
+ * defaults. Keyed by tool id, so each tool keeps its own last settings when
+ * the dropdown moves between tools as well. In memory only: it lasts until
+ * the app closes, which is what "the settings I just ran with" needs.
+ */
+const ToolParamsCtx = createContext<{
+  paramsByTool: Readonly<Record<string, Record<string, unknown>>>;
+  setToolParam: (toolId: string, key: string, value: unknown) => void;
+} | null>(null);
+
 export function ToolHostProvider({ children }: { children: ReactNode }) {
   // `useState`'s LAZY INITIALISER, not `useMemo`, same reasoning ToolsPane's
   // own (now-removed) local host carried: React documents a `useMemo` cache
@@ -67,10 +87,30 @@ export function ToolHostProvider({ children }: { children: ReactNode }) {
     () => registeredTools()[0]?.manifest.id ?? "",
   );
 
+  const [paramsByTool, setParamsByTool] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
+  // `useCallback` so the context value below stays referentially stable
+  // between renders that change nothing, or every consumer re-renders.
+  const setToolParam = useCallback(
+    (toolId: string, key: string, value: unknown) =>
+      setParamsByTool((prev) => ({
+        ...prev,
+        [toolId]: { ...prev[toolId], [key]: value },
+      })),
+    [],
+  );
+  const paramsValue = useMemo(
+    () => ({ paramsByTool, setToolParam }),
+    [paramsByTool, setToolParam],
+  );
+
   return (
     <ToolHostCtx.Provider value={host}>
       <SelectedToolCtx.Provider value={{ selectedId, setSelectedId }}>
-        {children}
+        <ToolParamsCtx.Provider value={paramsValue}>
+          {children}
+        </ToolParamsCtx.Provider>
       </SelectedToolCtx.Provider>
     </ToolHostCtx.Provider>
   );
@@ -93,4 +133,22 @@ export function useSelectedTool(): {
   if (ctx === null)
     throw new Error("useSelectedTool must be used within a ToolHostProvider");
   return ctx;
+}
+
+const NO_PARAMS: Record<string, unknown> = {};
+
+/** The remembered params form values for one tool, and the setter for one of them. */
+export function useToolParams(toolId: string): {
+  submitted: Record<string, unknown>;
+  setParam: (key: string, value: unknown) => void;
+} {
+  const ctx = useContext(ToolParamsCtx);
+  if (ctx === null)
+    throw new Error("useToolParams must be used within a ToolHostProvider");
+  const { paramsByTool, setToolParam } = ctx;
+  const setParam = useCallback(
+    (key: string, value: unknown) => setToolParam(toolId, key, value),
+    [setToolParam, toolId],
+  );
+  return { submitted: paramsByTool[toolId] ?? NO_PARAMS, setParam };
 }

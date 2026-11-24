@@ -1,0 +1,55 @@
+/*
+================================================================================
+RMSTEST_85e - control for 85d, no effect line
+Feeds: Sec.14.3. A class as the target: 915 is class 15, trees (constId is
+class + 900). The preview applies a class target to every object of the class.
+Generate at Tiny, 2 players, seed 1000.
+Predictions, the preview draws the first:
+  - Every tree is a hay stack, the placed oaks and pines and the forest's own.
+  - Only the placed trees are hay stacks, the forest keeps its trees.
+  - No tree changes.
+85e is the control.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 60
+    base_size 12
+  }
+
+<TERRAIN_GENERATION>
+  create_terrain FOREST
+  {
+    base_terrain GRASS
+    land_percent 6
+    number_of_clumps 4
+  }
+
+<OBJECTS_GENERATION>
+
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players 0
+}
+
+create_object OAKTREE
+{
+  number_of_objects 40
+  set_gaia_object_only
+  min_distance_to_players 8
+}
+
+create_object PINETREE
+{
+  number_of_objects 40
+  set_gaia_object_only
+  min_distance_to_players 8
+}
+

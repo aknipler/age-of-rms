@@ -270,6 +270,8 @@ export interface PileOptions {
 
 export interface T2Options {
   seasonal: boolean;
+  /** Writes the Bulls_Eyes style quick-start herd behind `if QUICK_START`, with the standard herd as the else branch. */
+  quickStart: boolean;
   berryType: OrNone<BerryType>;
   herdable: OrNone<WildlifeHerdable>;
   huntable: OrNone<WildlifeHuntable>;
@@ -286,6 +288,7 @@ export interface T2Options {
 // large stone and 4 small stone per player, all with set_gaia_object_only.
 export const T2_DEFAULTS: T2Options = {
   seasonal: false,
+  quickStart: false,
   berryType: "FORAGE_BUSH",
   herdable: "SHEEP",
   huntable: "DEER",
@@ -991,10 +994,12 @@ export function renderStandardPlayerResources(
     { name: "max_distance_to_players", value: 19 },
     ...(farHerdName(options) ? claim(AA_HERDABLE, 3) : []),
   ]);
-  // Both starts are in the script and `if QUICK_START` picks one, so a
-  // quick-start player gets Bulls_Eyes' herd and any other player the
-  // standard one. With no QUICK_START in the script the else branch runs,
-  // which is the standard start.
+  // With Quick-start ticked both starts are in the script and
+  // `if QUICK_START` picks one, so a quick-start player gets Bulls_Eyes'
+  // herd and any other player the standard one. With no QUICK_START in the
+  // script the else branch runs, which is the standard start. Unticked, only
+  // the standard herd is written. The quick-start blocks are still built
+  // above either way, so the actor areas claim() records stay the same.
   // All five are undefined together, when Herdable is None.
   const spaced = (blocks: (string | undefined)[]): string[] =>
     blocks
@@ -1004,10 +1009,12 @@ export function renderStandardPlayerResources(
   const herd =
     herdStandard.length === 0
       ? undefined
-      : quickStartBranches(
-          spaced([sheepQuickClose, sheepQuickFar]),
-          herdStandard,
-        ).join("\n");
+      : options.quickStart
+        ? quickStartBranches(
+            spaced([sheepQuickClose, sheepQuickFar]),
+            herdStandard,
+          ).join("\n")
+        : herdStandard.join("\n");
   const deer = animal(huntName(options), [
     { name: "number_of_objects", value: 4 },
     { name: "number_of_groups", value: 1 },

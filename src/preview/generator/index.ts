@@ -26,6 +26,15 @@
 // So this file does exactly one thing: run S0 through S6 once, synchronously,
 // over whatever `parse` it is given, and hand back one PreviewResult.
 
+import {
+  endTiming,
+  markSection,
+  startTiming,
+  timeCall,
+  type GenerationTiming,
+} from "./generationTiming";
+import { lineNumberOfOffset } from "../../parser/lineIndex";
+import { readColorMood } from "./colorMood";
 import type { LanguageIndex } from "../../parser/language";
 import type { ParseResult } from "../../parser/types";
 import { parseOptionsFor } from "./parseOptions";
@@ -299,13 +308,18 @@ export function generatePreview(
   opts: PreviewOptions,
 ): PreviewResult {
   const { language, constants } = refDb;
-  const instantiated = instantiateScript(
-    parse,
-    language,
-    settings,
-    opts.seed,
-    opts.includeFiles,
-    parseOptionsFor(constants),
+  // The hourglass's timings (generationTiming.ts), only when asked, since
+  // tests and tools have no use for them.
+  if (opts.timing) startTiming();
+  const instantiated = timeCall("Reading the script", undefined, () =>
+    instantiateScript(
+      parse,
+      language,
+      settings,
+      opts.seed,
+      opts.includeFiles,
+      parseOptionsFor(constants),
+    ),
   );
 
   const {
@@ -321,9 +335,20 @@ export function generatePreview(
   // wherever their lines stand, so they are read now.
   let catalog: ObjectCatalog | undefined;
   let world: TerrainObjectWorld | undefined;
+  let standingGraphics: PreviewResult["standingGraphics"];
   if (refDb.objectData) {
     catalog = new ObjectCatalog(refDb.objectData, terrainClassTable(constants));
-    catalog.setOverrides(collectEffects(instantiated, constants, catalog));
+    const effects = collectEffects(instantiated, constants, catalog);
+    catalog.setOverrides(effects);
+    // The renderer draws these graphics too (the textured view's sprites).
+    const graphicsOf = (scope: "gaia" | "player") =>
+      [...effects[scope]]
+        .filter(([, o]) => o.graphic !== undefined)
+        .map(([id, o]) => [id, o.graphic as number] as const);
+    standingGraphics = {
+      gaia: graphicsOf("gaia"),
+      player: graphicsOf("player"),
+    };
     world = new TerrainObjectWorld(
       catalog,
       instantiated.dim,
@@ -337,7 +362,12 @@ export function generatePreview(
     : undefined;
   const snapshot = (stage: StageId): void => {
     if (snapshots) snapshots.push(captureSnapshot(stage, grid));
+    // Each stage ends at its snapshot, so the hourglass's sections do too.
+    markSection(stage);
   };
+  // Reading the script, its effects and the object data are the script's own
+  // section, before any stage runs.
+  markSection("S0");
 
   // S1 to S3 run on the game's own random stream, each stage continuing it
   // where the one before left it (Sec.8, rev 10), from S0's parse-time draws
@@ -345,18 +375,24 @@ export function generatePreview(
   // every cliff. Each stage takes the stream as plain data and hands it back
   // the same way, so the order of the draws is visible here in the order of
   // the calls. S4 and later keep their own substreams.
-  const landResult = placeLandOrigins(instantiated, grid, constants);
+  const landResult = timeCall("Land origins", undefined, () =>
+    placeLandOrigins(instantiated, grid, constants),
+  );
   // The land zones the object stage reads (write-up 6.2 step 3) are growth's
   // own one-byte grid, which the cleanup leaves alone in the game.
   let landZone = new Int16Array(grid.terrain.length).fill(0xfe);
-  const grown = growLands(
-    landResult.origins,
-    grid,
-    landResult.reports,
-    landResult.stream,
-    (zones) => {
-      landZone = Int16Array.from(zones);
-    },
+  // Every land grows at once, one tile at a time in turn, so growth is one
+  // row and not one per create_land.
+  const grown = timeCall("Land growth, all lands together", undefined, () =>
+    growLands(
+      landResult.origins,
+      grid,
+      landResult.reports,
+      landResult.stream,
+      (zones) => {
+        landZone = Int16Array.from(zones);
+      },
+    ),
   );
   // Read right after growth and before the cleanup pass below, which also
   // clears `landId`. A land the cleanup erases was not buried by a later
@@ -397,13 +433,15 @@ export function generatePreview(
   );
   snapshot("S2");
 
-  const cliffsResult = applyCliffs(
-    instantiated,
-    grid,
-    constants,
-    landResult.origins,
-    elevationResult.stream,
-    world,
+  const cliffsResult = timeCall("Cliffs", undefined, () =>
+    applyCliffs(
+      instantiated,
+      grid,
+      constants,
+      landResult.origins,
+      elevationResult.stream,
+      world,
+    ),
   );
   snapshot("S3");
 
@@ -627,6 +665,9 @@ export function generatePreview(
     ].filter((n): n is SimulationNote => n !== undefined),
   );
 
+  const timing: GenerationTiming | undefined =
+    endTiming((offset) => lineNumberOfOffset(parse.lineOffsets, offset)) ??
+    undefined;
   return {
     dim: instantiated.dim,
     seedUsed: opts.seed,
@@ -642,6 +683,9 @@ export function generatePreview(
     cliffPieces: cliffsResult.pieces,
     deObjects,
     terrainObjects,
+    standingGraphics,
+    colorMood: readColorMood(instantiated, constants),
+    timing,
   };
 }
 

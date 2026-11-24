@@ -108,7 +108,13 @@ export function usePreviewResult(
   seed: number,
   regenOnEdit = true,
   cutOffset: number | null = null,
+  timing = false,
 ): PreviewResultState {
+  // Read when a request is sent, not a dependency of the request effect: a
+  // ref, so turning the hourglass on or off does not regenerate the map by
+  // itself. The next generation simply comes back timed or not.
+  const timingRef = useRef(timing);
+  timingRef.current = timing;
   // What crosses to the worker is the TEXT, not the parse. See PreviewRequest.
   const source = parseResult?.source ?? null;
   const [result, setResult] = useState<PreviewWireResult | null>(null);
@@ -297,7 +303,12 @@ export function usePreviewResult(
         source,
         cutOffset,
         settings,
-        opts: { seed, collectSnapshots: true, includeFiles },
+        opts: {
+          seed,
+          collectSnapshots: true,
+          includeFiles,
+          timing: timingRef.current,
+        },
       });
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(timeoutId);

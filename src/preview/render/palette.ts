@@ -314,12 +314,23 @@ export function shadeForElevation(
   elevation: number,
   lightNeighbour: number,
 ): Rgb {
+  return scale(color, elevationShadeFactor(elevation, lightNeighbour));
+}
+
+/**
+ * The brightness factor `shadeForElevation` applies, on its own, so the
+ * textured view (texturedTiles.ts) shades a texture by exactly what the flat
+ * view shades a colour by.
+ */
+export function elevationShadeFactor(
+  elevation: number,
+  lightNeighbour: number,
+): number {
   const slope = Math.max(
     -SLOPE_CAP,
     Math.min(SLOPE_CAP, elevation - lightNeighbour),
   );
-  const factor = 1 + elevation * HEIGHT_GAIN + slope * SLOPE_GAIN;
-  return scale(color, factor);
+  return 1 + elevation * HEIGHT_GAIN + slope * SLOPE_GAIN;
 }
 
 export function scale(color: Rgb, factor: number): Rgb {
@@ -427,9 +438,9 @@ export const PLAYER_COLORS: readonly Rgb[] = [
   { r: 60, g: 100, b: 220 }, // 1 blue
   { r: 214, g: 56, b: 48 }, // 2 red
   { r: 60, g: 168, b: 72 }, // 3 green
-  { r: 236, g: 200, b: 60 }, // 4 yellow
+  { r: 215, g: 230, b: 32 }, // 4 yellow, #D7E620 (owner's choice, 2026-11-25)
   { r: 64, g: 198, b: 214 }, // 5 cyan
-  { r: 226, g: 116, b: 214 }, // 6 magenta
+  { r: 238, g: 48, b: 253 }, // 6 magenta, #EE30FD (owner's choice, 2026-11-25)
   { r: 140, g: 140, b: 146 }, // 7 grey
   { r: 236, g: 142, b: 52 }, // 8 orange
 ];

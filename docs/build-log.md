@@ -15273,6 +15273,68 @@ On the owner's decision, `tools/scenario-probe/de-study/evidence/` (45 files, th
 
 Still taken from AoE2RMSIDE, open with the owner: the `edgeMargin` table in `deObjectData.ts`, the wall gate table (its note says it was taken from AoE2RMSIDE's wall routine and checked on 19 DE wall maps), `COMPOSITE_TERRAINS` in `terrainClass.ts` (from the study's content data, the same pack), and `pathSearch.ts`'s route search.
 
+## 2026-11-23 DE textures in the preview, design and tier 1
+
+The owner asked for a button beside the minimap colour button that switches the preview to an isometric view painted with the terrain textures from the user's DE install. Design `docs/preview-de-textures-design.md` rev 1 (CREATION_PLAN A.11) splits the work into four tiers, and tier 1 was built the same day.
+
+**Measured before designing.** The install's 85 terrain textures are top down DDS files in five formats (DXT1 mostly, five BC7, two DXT5, one uncompressed). The dat's `Terrain.terrain_dimensions` is how many tiles one copy of a texture covers, 10 for most terrains, 3 for a farm's construction stages (one 3 by 3 farm), 6 for farms and 15 for wet gravel and rock beaches. Texture size does not follow it. The dat's tile is 96 by 48, exactly 2:1.
+
+**Built.**
+
+1. `Viewport.aspect` (`projection.ts`), with `DE_TILE_ASPECT` and `withAspect`. Every hit test, drag and overlay follows the view with no change of its own. The one place that assumed square tiles, the overlay circle, now draws the ellipse a tile circle projects to.
+2. `textureTiles` on terrain rows, from `tools/extract-constants --terrain-render`, with the schema and generated types. The extractor writes small objects on one line where the file had them expanded, which would have rewritten 3,700 unrelated lines. The file in the repo was written through a fully expanded dump and Prettier instead, so the diff is the 134 new fields and their notes. `TestRoundTripAgainstRepoFile` was already failing on that layout difference before this change and still fails.
+3. `dds.ts` decodes DXT1, DXT3, DXT5 and 32 bit files. Six real textures average within 6 units of the extractor's Pillow measured colours.
+4. `texturedTiles.ts` turns a snapshot into tile bytes with the flat view's own rules (a layer draws its own texture rather than tinting), and `texturedTerrainGl.ts` draws them with WebGL2 into a canvas that `drawPreview` copies in place of the flat bitmap. `textureGrad` on the unwrapped coordinate keeps seams off the repeat boundaries.
+5. `deTextureSource.ts` reads textures through the fs plugin (`fs:allow-read-file` added) and caches one promise per file.
+6. The switch in `PreviewViewContext`, the button and `preview.deTextures` help, and both canvases. The Land Placement canvas reads it through `useDeTexturesSetting`, which is off outside the provider.
+
+**Checked.** 42 affected test files, 589 tests, green. `tsc` clean, eslint no errors, `validate:reference` and `check:generated-types` pass. In the browser pane with mocked Tauri IPC serving the real textures, AD4 - Pag drew textured at 2:1 with no seams, a click selected the tile under the pointer, and switching views kept the zoom and centre. Full `npm test` not run. Run sheet section 62 owed.
+
+## 2026-11-24 DE textures tier 2, blends, BC7, water and hill light
+
+The owner asked for tier 2 of `docs/preview-de-textures-design.md`, undesigned until now, and asked for it exact. Rev 2 adds Sec.10, designed from measurements in DE's scenario editor and built the same day.
+
+**Measured.**
+
+1. The dat's `blend_priority`, `blend_type` and `overlay_mask_name` for every terrain, now `blendPriority`, `blendType` and `overlayMask` on the terrain rows through `--terrain-render`.
+2. The blend atlases' layout, read from their own pixels. An 8 by 8 grid of 64 pixel cells holding 31 blend tiles, each named by which of its sides are white.
+3. How the game uses them. Black painted around one sand tile leaves a faint smudge of sand, which one blend tile per neighbour stacked reproduces and the atlas's own four sided tile does not. A first build used the several sided tiles and was reverted on this comparison.
+4. Water in game is its texture's mean colour within 2 to 6 units for three water types, so no tint.
+5. A hill on sand. Flat 171, the slope facing −x 86, the slope facing +x 165. The dat's `elev_height` is 24 pixels. The light model is fitted to these.
+
+**Built.** `bc7.ts` (all eight modes, the partition tables read back from Pillow, identical to Pillow on 8,000 random blocks and on all five pasture textures), `terrainBlends.ts` (which neighbours blend into each tile and through which atlas, once per map), the layer byte and masks in `texturedTiles.ts` with `buildCornerHeights` and `slopeLight`, PNG loading for atlases and masks in `deTextureSource.ts`, the shader's blending, layering and hill light in `texturedTerrainGl.ts`, and the wiring in `OverlayCanvas.tsx`.
+
+**Checked.** `dds.test.ts` 19/19 with a 64 block BC7 fixture, `texturedTiles.test.ts` 19/19 (blend rules, layers, light against the measurement), the render and projection tests green (one load timeout in `palette.test.ts`, 26/26 alone). `tsc` clean, eslint and Prettier clean on the changed files, `validate:reference` passes, types regenerated. The shader compiled and drew in a standalone page from the real install files. Full `npm test` not run. Run sheet section 63 owed. Sec.11 lists what stays unverified, the blend mode table beyond land over land first.
+
+## 2026-11-24 DE textures rev 3, measured against the game's own picture
+
+The owner asked how close tier 2 gets to DE, then for a gap study of another renderer as a lead and a script that compares against the game. The script stays offline beside the repo. It captures the scenario editor losslessly, reads the saved scenario's tiles, draws them with this renderer in headless Chrome, finds the camera by correlation and reports per terrain. Design `docs/preview-de-textures-design.md` rev 3, Sec.10.7, has the method and every figure.
+
+**Found and fixed.**
+
+1. Texture repeat. DE repeats every texture over 10 tiles. Farms, pastures, construction stages and wet beaches all line up at 10 and nowhere else, so the dat's `terrain_dimensions` is not the repeat. `TEXTURE_REPEAT_TILES` replaces the per terrain value, and the schema and extractor no longer call the field a repeat.
+2. Colour grade. DE's picture is brighter than its textures by a per channel gain and offset that two scenes on different base terrains agreed on. `DE_COLOUR_GRADE` is applied last in the shader.
+3. Layers without a mask. DE draws them at about two thirds cover. The install's flat masks are named for their cover, which `value ^ 0.78` reproduces, and `neutral.png` gives two thirds. A terrain naming no mask now uses `neutral.png`, and every mask goes through the curve.
+4. Rev 2's water and sand readings came from the computer use tool's JPEG screenshots and are withdrawn.
+
+**Result.** Mean error per channel 19.3 to 10.3 and 19.6 to 10.8 on the two scenes, flat interiors 18 to 8 and 9. Each fix switched off alone makes the scenes worse again, and the blends-off control is worse at edges in every scene.
+
+**Checked.** `texturedTiles.test.ts` 21/21, `dds.test.ts` 19/19, each run alone (run together, both workers timed out at start twice while loading the large constants file, then passed apart). `tsc` clean, `validate:reference` passes, types regenerated. Not run in the app. Run sheet section 63 items 9 and 10 added.
+
+**Left.** The hill surface (a raised scene draws stepped terraces where DE's slopes are smooth, and DE lifts high ground on screen), the blend mode table beyond land over land, other colour moods.
+
+## 2026-11-24 DE textures tiers 3 and 4, object sprites and raised ground
+
+The owner asked, overnight, for the comparison script's noise floor and then tiers 3 and 4. Design rev 4, Sec.12 and Sec.13.
+
+**Noise floor.** Two captures of an unchanged view differ by 0.0, so DE's picture is still. Shifting a capture by one pixel against itself costs 10.2 and halving its resolution 8.5, so the renderer's remaining 8 to 11 is about what its 1024 textures and sub pixel camera error give.
+
+**Built.** `sld.ts` reads DE's SLD sprites (main DXT1 layer, BC4 shadow and player colour layers, block reuse between frames), sharing `decodeBc1Block` and `decodeBc4Block` with `dds.ts`. `--object-data` also writes `reference/data/object-sprites.json` (schema, validated), each standing graphic's file, frames, angles, mirroring, layer and deltas. `objectSprites.ts` picks each object's frame from what `deObjects` stores and orders the parts. `deSpriteSource.ts` reads and composes frames with team colours from `spritecolors.json`. `drawPreview` draws shadows and sprites in place of glyphs once a tile is 16 pixels wide, glyphs for anything without a picture. `useDeSprites.ts` loads the tables as a separate chunk only in the textured view. A Small Trees button (`preview.smallTrees`, remembered in `PreviewViewContext`) halves trees. The textured view no longer tints forest ground. Tier 4: `Viewport.ground` lifts every projected point by the ground, `screenToTile` searches for the front-most raised point, and the shader runs the same search, so terrain, sprites, outlines, overlays and hit tests rise together. Cliffs come with the sprites.
+
+**Measured against DE** (hill and forest scene, Small Trees on): no sprites 22.4, full size trees 25.7, half size trees 19.1, the same with flat ground 23.9. A surface folded along tile diagonals scored 19.5 and was reverted. DE's slopes are broader and smoother than ours, the next lead.
+
+**Checked.** `sld.test.ts` 7, `objectSprites.test.ts` 8, `projectionGround.test.ts` 6, `projection.test.ts` 17, plus the textured, DDS, drawing, help coverage and render loop tests, each run alone. `tsc` clean, `validate:reference` passes. Not run in the app, run sheet section 64.
+
 ## preview-design rev 11 changelog, moved 2026-11-17
 
 Moved here word for word from the spec's Appendix A when rev 12 replaced it.
@@ -15307,3 +15369,93 @@ A replacement round for the terrain and connection stages and for whole scripts,
 2. **Sec.3 rule 11.** `#include_drs` files are read from the user's install and run where they stand, through the token filter, with spans mapped back to the directive. `PreviewOptions.includeFiles`, `includes.ts` and `useIncludeFiles.ts` are new (Sec.15 item 60). Sec.9 item 2 is withdrawn.
 3. **Sec.13.** All 342 maps match with an install. Without one the gate skips the 12 Bazi maps, so CI runs 330.
 4. **Sec.2's consumers.** The Advanced Tools get the same files as `ToolContext.referenceData.includeFiles` (tools-api-design.md). The Consistency Checker and the Balance Summary generate with them through `runPreviewFromContext`, the checker's static pass instantiates with them, and Land Placement's emission resolves the script's constants with them.
+
+## 2026-11-25 DE textures rev 5, sprites in the app, Terrain Blending button, smooth hills
+
+Owner feedback after running the textured view in the app (`docs/preview-de-textures-design.md` Sec.14).
+
+1. **No sprites drew.** The preview worker relayed its result without `deObjects`, so the sprite hook had nothing to plan and every object fell back to its glyph. The tests called `generatePreview` in process and could not see it, the same shape as the hard rule about stages whose tests build their own input. Fixed with `src/preview/generator/deObjectsWire.ts`, a packed transferred `Float64Array` (`PreviewWireResult.deObjectsPacked`), since 30k records cloned as objects measured about 30 ms each side in Node. `deObjectsWire.test.ts` pins the round trip.
+2. **Terrain Blending button** (`preview.terrainBlends`, `PreviewViewContext`, `TexturedTerrainRenderer.blendsOn`). A uniform, no rebuild.
+3. **Hills.** Fractional corner heights (`CornerRule`), light worked out per corner and blended across tiles (`buildCornerLight`, `CORNER_LIGHT`), the sun configurable through `TexturedLook.sun` and moved from 32 to 50 degrees. `texture-compare/compare.py` gained a hill score (`maeHill`, `maeHillBlur`) and `page/render.ts` the variants `cornerRule`, `cornerLight`, `sunDegrees`. `first` scene 19.10 to 15.83, hill blurred 16.13 to 10.20, the old settings re-run reproduced 19.10.
+
+`tsc` clean, the preview and render test folders green (84), eslint no errors and Prettier clean on the changed files. Not run in the app, run sheet section 65.
+
+## 2026-11-25 Terrain objects drawn at the scripted objects' size
+
+Forest trees and other terrain objects drew as squares up to 3 px across, scripted objects as circles of radius up to 5 px, so a terrain tree looked like a lesser kind of object. `drawTerrainObjects` now draws circles of the shared `objectRadius`, with the same dark ring from `OUTLINE_MIN_RADIUS`, still one path, fill and stroke per colour. The sprites' fallback glyphs use the same radius. `drawTerrainObjects.test.ts` checks every circle in a scene with both kinds is one size at three zooms. Not run in the app, run sheet section 65 item 5.
+
+## 2026-11-25 DE textures, SLD reuse flag, town centre annexes, pictureless objects, Hide Decorations
+
+Owner report from Pag seed 1 (`docs/preview-de-textures-design.md` Sec.14.1).
+
+1. **SLD reuse flag.** `sld.ts` read bit 0 of a layer's flags as "keep skipped blocks from the previous frame"; the flag is 0x80. Every tree shadow sets bit 0, so shadows were patched with other variants' blocks (the stair stepped dark blocks), and a frame setting 0x80 drew with holes. Found by dumping the dragon tree file's flags per frame. The hand built test encoded the flag as 1, the hard rule about a test asserting the bug it should catch. It now uses 0x80, and two new tests pin bit 0 alone keeping nothing and the dragon tree's frame 4 filled.
+2. **Town centre annexes.** `planSprites` takes `SpriteTables.annexes` from object-data.json's `ann` and draws each annex at its offset. Checked by composing a town centre from Pag seed 1 headlessly, all four pieces in place.
+3. **Pictureless objects.** `useDeSprites` keeps a circle only for an object with a planned picture that did not load.
+4. **Hide Decorations button** (`preview.hideDecorations`), filtering terrain object and sprite fallback circles of the decoration category.
+
+`tsc` clean, the preview render and component folders green (112 tests), eslint no errors, `validate:reference` passed. Not run in the app, run sheet section 65 items 6 to 9.
+
+## 2026-11-25 Sprites stay on further out
+
+`SPRITE_MIN_HALF_WIDTH` lowered from 8 to 1 on the owner's request (by way of 4, 2.5 and 2), so the textured view switches from sprites to circles when a tile is 2 pixels wide, not 16. Not run in the app; run sheet section 65 item 10.
+
+## 2026-11-25 Sprites drawn on the GPU
+
+Zoomed out sprites lagged. Measured first in the browser pane: 30,000 sprites cost about 1.1 s a frame on the 2D canvas whatever the drawImage form, so the call count was the cost. `src/preview/render/spritesGl.ts` (`SpriteRenderer`, `packAtlas`, `buildSpriteInstances`) draws them with instanced WebGL2 from a texture array atlas, 11 to 18 ms a frame against 250 to 4,200 ms, checked pixel for pixel against `drawSprites` on a bundled page of the real modules. `PreviewBaseLayer.screenSprites` carries the result, `OverlayCanvas` owns the renderer beside the terrain's. `spritesGl.test.ts` covers the packing and the instance numbers, mirroring and lift included. `tsc` clean, the preview render and component folders green (92). Not run in the app, run sheet section 65 item 10.
+
+## 2026-11-25 Script standing graphics in the textured view
+
+`effect_amount (GAIA_)SET_ATTRIBUTE <object> ATTR_STANDING_GRAPHIC <graphic>` now changes the sprite an object draws as (`PreviewResult.standingGraphics`, relayed by the worker, `SpriteTables.graphicOverrides`, docs/preview-de-textures-design.md Sec.14.3). Owner report on Mont Saint Michel's hay stacks. `standingGraphics.test.ts` covers the scopes, the last line winning and an unknown graphic. A one off probe on Mont Saint Michel (untracked, so not a test) showed all 11 Gaia overrides and 81 hay stacks as the bridge piece. `tsc` clean, 103 tests green in the touched folders. Not run in the app, run sheet section 65 item 11.
+
+## 2026-11-25 Preview warped while its divider was dragged
+
+`OverlayCanvas` styled its canvas `width: 100%; height: 100%`, so a divider drag resized the box at once and the browser stretched the old picture into it until the redraw landed. The redraw ran in a `useEffect`, after the browser's paint. The box now takes the viewport's own size, inside a container that clips, and the redraw is a `useLayoutEffect`. Checked in the browser pane with mocked Tauri IPC: 12 resize steps, one frame each, 0 frames stretched; the same steps with the old sizing forced back by a CSS rule stretched 1 frame on a light flat map, and a heavier textured redraw stretches more. Run sheet section 65 item 12.
+
+## 2026-11-25 Preview buttons, Preview Options tab, minimap view, effect tests batch 21
+
+1. **Button sizes.** The map size badge and the failure notice took their height from padding (15.4 px against the buttons' 18), Help was 15.7 px wide and the cog 20.9. All are 1.25rem tall now with the same border, Help and the cog are 1.25rem squares like the zoom buttons, and HelpTip's inline wrapper spans in both rows are flex boxes, so the chips no longer sit on text baselines a pixel apart. Measured in the mocked Tauri browser harness, every chip 18 px and each row on one line.
+2. **The line over the bottom buttons.** `PreviewCanvas` passed `bottomPanel={false}` while no box was open and `OverlayCanvas` rendered an empty `.panel` for anything but null and undefined, so its border drew a 2 px line. It now skips `false` too.
+3. **Preview Options tab** in the settings box, with DE textures, Small Trees, Terrain Blending and Hide Decorations as checkboxes; their toolbar buttons and icons are gone (design Sec.14.4).
+4. **Minimap view** on the minimap colour button (`src/preview/render/minimapLayer.ts`, `useMinimapLayer.ts`, `OverlayCanvas`'s `terrainRender "minimap"`), checked in the harness and by `minimapLayer.test.ts` against the dat's own rows.
+5. **Batch 21** in `tools/scenario-probe/rmstest` (13 scripts, README section): standing graphics on a house, a town centre and a tree class, GAIA_UPGRADE_UNIT on a tree, occlusion modes, an effect foundation on hay stacks, and Ra and Rekawa started as games. Every script parses clean and the preview's side of each prediction was read off `generatePreview`. The whole-script gate already shows DE's editor saves of Ra and Rekawa hold no effect foundation terrain. Not run.
+
+`tsc` clean, 95 tests green in the preview folders, `validate:reference` passed, eslint no errors. Run sheet section 65 items 13 to 16.
+
+## 2026-11-25 Minimap squares doubled, player circles, settings box one size
+
+Minimap view object squares draw at twice their footprint (at least 4 px), trees unchanged. The numbered player circles never draw in the minimap view, and a Preview Options checkbox, Hide player circles (`preview.hidePlayerCircles`, remembered), hides them in the flat and textured views (`PreviewBaseLayer.hidePlayers`). The settings box keeps both tab bodies in one grid cell with the hidden one `visibility: hidden`, so it is the same size on either tab (279 by 322 in the harness on both, the hidden tab not focusable). The first wiring of the player setting called its hook inside `minimapView || ...`, which eslint's rules-of-hooks caught; the hook is now called unconditionally. `GenerationSettingsPanel.test.tsx` now wraps the box in `PreviewViewProvider`, since the Preview Options tab is always rendered. `tsc` clean, 95 tests green in the preview folders. Run sheet section 65 items 17 and 18.
+
+## 2026-11-25 Minimap square priority and sizes
+
+Minimap view squares draw in priority order, players' objects over gold over stone over the rest (`buildMinimapLayer` inserts its colour groups into the Map lowest first, and a Map iterates in insertion order). Squares are 3 times their footprint (`SQUARE_SCALE`), deep water fish (class 5) 1.5 times (`OCEAN_FISH_SCALE`), shore fish (class 33) the full 3. `minimapLayer.test.ts` pins the order and both fish sizes; 97 tests green in the preview folders. Looked at in the mocked Tauri harness. Run sheet section 65 item 19.
+
+## 2026-11-25 Player colours 4 and 6
+
+`PLAYER_COLORS` player 4 is #D7E620 and player 6 #EE30FD, on the owner's request. The table feeds the numbered player markers and the minimap view's squares.
+
+## 2026-11-25 Generation hourglass, batch 21 in the game, textured view gaps
+
+1. **Hourglass.** A button in the preview's top right corner (`preview.timingButton`) opens `PreviewTimingPanel`: the last generation's total, the parse time, one row per section with a bar, and each section opening to its commands slowest first with their lines, run counts and an Other work remainder. `src/preview/generator/generationTiming.ts` records it through a module level recorder that `generatePreview` installs only when `PreviewOptions.timing` asks (the worker does), since the stages share no loop and a timer parameter would touch every stage signature. Sections close at the existing snapshot calls. Rows come from `timeCommand` in the elevation, terrain and connection loops and the object stage's per command loop, and from named steps for the joint ones (land origins, land growth of all lands together, cliffs, reading the script). `generationTiming.test.ts` covers the recorder and a real generation. A note shows when the window was hidden as the result arrived (a measured WebView2 slowdown). Not checked in the browser pane yet, since a game session was driving the real game.
+2. **Batch 21** run sheet at `RMS/editor-automation/RUN-SHEET-batch21.md`, handed to a Sonnet session on low effort driving the game, with a second part capturing six texture comparison scenes.
+3. **Gaps** (design Sec.14.5). The cliff face gap does not occur on DE maps; decode timings measured; the sprite atlas's zero upload removed.
+
+## 2026-11-25 Decode worker, hourglass beside Obj. List, Performance option
+
+1. **Load pause.** DDS textures and SLD sprite frames decode in `src/preview/render/decodeWorker.ts`, through `decodeClient.ts` (one worker for the session, made with `new URL(..., import.meta.url)` so the comparison page's esbuild bundle still builds, inline decoding where no worker exists). The window still reads the files, since Tauri's fs plugin only answers it, and transfers the bytes. The frame composing moved to `spriteCompose.ts`, re-exported by `deSpriteSource.ts`. Checked in the browser pane against a real texture and the oak's 42 frames: identical pixels, every frame with a picture, and the window held at most 9 to 18 ms against 91 ms for one texture decoded on it. `decodeClient.test.ts` covers the inline path.
+2. **Hourglass** moved to the bottom row beside Obj. List, its box over the bottom of the map. Bars keep a minimum width on a narrow map.
+3. **Performance** heading in Preview Options with "Time each generation" (`preview.recordTiming`, on by default, remembered). Off, the worker records nothing and the button stays, greyed out and disabled (owner's choice), and an open hourglass box closes. The setting reaches `usePreviewResult` through a ref, so switching it does not regenerate the map.
+4. **Batch 21's driver** finished here after the Sonnet session paused: 88b, 88c Ra and 88c Rekawa saved with captures, labels checked by eye. The game had left the editor on an old map after its crash, which the earlier attempt mistook for a fresh one.
+
+`tsc` clean, eslint no errors, 104 tests green in the preview folders. Run sheet section 65 item 20.
+
+## 2026-11-25 Batch 21 Part 2 scenes, comparisons, object gate
+
+Six scenes generated in the editor (`RMS/editor-automation/scenes_part2.ps1`, with longer waits after the game, short of memory, lost a Create Scenario click) and four skirmish games for colour moods (`skirmish.ps1`; each round goes back through the main menu to change the script, since Play Again replays the same lobby settings, possibly the same seed, per the owner; one round went wrong when the screen was touched mid-run; the location picker needs a held click and slow typing). Comparisons in `RMS/texture-compare/results.md`: coasts match DE, mean corners settled against, moods did not apply in either the editor or skirmish. The object gate passed 340 of 340 once the game was closed (it had held 5.3 of 7.8 GB and Vitest's worker could not start), so the hourglass hooks changed no generated object.
+
+## 2026-11-25 Colour moods measured, Map lighting found off
+
+The owner's DE had Graphics on Low with Map lighting off, which is why `color_correction` showed nothing. With it on, autumn, winter and night are each a per channel gain and offset of the default within 1 unit (`RMS/texture-compare/results.md`). Every earlier capture, the colour grade's included, had lighting off; with it on bright ground is about 5 percent darker in red. Not acted on in the renderer yet.
+
+## 2026-11-25 Colour moods in the preview, grade refitted with Map lighting on
+
+All 18 `color_correction` moods measured in skirmish with Map lighting on (`RMS/editor-automation/moods_all.ps1`) and applied in the textured view: `src/preview/generator/colorMood.ts` (`PreviewResult.colorMood`), `src/preview/render/colourMoods.ts`, mood uniforms in `texturedTerrainGl.ts` and `spritesGl.ts`, wired in `OverlayCanvas`. `DE_COLOUR_GRADE` refitted on editor scenes captured with lighting on (errors 12.2 to 9.2, 14.1 to 11.6, 15.0 to 13.2); the sun stays at 50 degrees. `colorMood.test.ts` covers reading the mood. 103 tests green in the touched folders, `tsc` clean. The mood tint has not been seen in the app; run sheet section 65 item 21. A stray click while the game was closing opened a Steam store tab in the owner's browser; nothing else happened.

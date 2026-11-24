@@ -21,6 +21,7 @@
 // things go. Stream 6 (`aux`) gives facings and stream 3 (`anim`) animation
 // start frames, each advanced only when an object is built.
 
+import { timeCall } from "./generationTiming";
 import type { DeStream } from "./deRandom";
 import {
   CLASS_CLIFF_ZONE,
@@ -1491,39 +1492,42 @@ export class ObjectStage {
       }
     for (const d of descs) {
       if (d.area !== undefined) continue;
-      const before = this.placedGroups;
-      const [frames, last] = this.dispatch(d);
-      const dispatched =
-        d.everyPlayer || (d.landId !== undefined && d.landId >= 0);
-      let requested = 0;
-      for (const fr of frames) {
-        if (dispatched && fr !== undefined) {
-          this.ctx = fr.slot || undefined;
-          this.centreLand = [fr.x, fr.y];
+      // The hourglass's row for this command (generationTiming.ts).
+      timeCall(`create_object ${d.name}`, d.span.start, () => {
+        const before = this.placedGroups;
+        const [frames, last] = this.dispatch(d);
+        const dispatched =
+          d.everyPlayer || (d.landId !== undefined && d.landId >= 0);
+        let requested = 0;
+        for (const fr of frames) {
+          if (dispatched && fr !== undefined) {
+            this.ctx = fr.slot || undefined;
+            this.centreLand = [fr.x, fr.y];
+          }
+          const drawsBefore = this.st.state().count;
+          const builtBefore = this.objects.length;
+          requested += this.command(d, fr, dispatched);
+          if (this.trace)
+            this.trace(
+              `${d.index} ${d.name} ${fr ? fr.slot : "-"} draws ${this.st.state().count - drawsBefore} built ${this.objects
+                .slice(builtBefore)
+                .map(
+                  (b) =>
+                    `${b.id}@${Math.round(b.x * 256)},${Math.round(b.y * 256)}`,
+                )
+                .join(" ")}`,
+            );
         }
-        const drawsBefore = this.st.state().count;
-        const builtBefore = this.objects.length;
-        requested += this.command(d, fr, dispatched);
-        if (this.trace)
-          this.trace(
-            `${d.index} ${d.name} ${fr ? fr.slot : "-"} draws ${this.st.state().count - drawsBefore} built ${this.objects
-              .slice(builtBefore)
-              .map(
-                (b) =>
-                  `${b.id}@${Math.round(b.x * 256)},${Math.round(b.y * 256)}`,
-              )
-              .join(" ")}`,
-          );
-      }
-      if (dispatched && last !== undefined) {
-        this.ctx = last.slot || undefined;
-        this.centreLand = [last.x, last.y];
-      }
-      const placed = this.placedGroups - before;
-      const prev = this.outcomes.get(d.index);
-      this.outcomes.set(d.index, {
-        requested: (prev?.requested ?? 0) + requested,
-        placed: (prev?.placed ?? 0) + placed,
+        if (dispatched && last !== undefined) {
+          this.ctx = last.slot || undefined;
+          this.centreLand = [last.x, last.y];
+        }
+        const placed = this.placedGroups - before;
+        const prev = this.outcomes.get(d.index);
+        this.outcomes.set(d.index, {
+          requested: (prev?.requested ?? 0) + requested,
+          placed: (prev?.placed ?? 0) + placed,
+        });
       });
     }
     this.wallJoints();

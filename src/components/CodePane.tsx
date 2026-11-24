@@ -17,7 +17,11 @@ import {
   QUICK_START_LABEL,
 } from "../breakdown/templates/templates";
 import { languageIndex } from "../editor/staticNameIndex";
-import { templateSpotAt, type TemplateSpot } from "../editor/templateTarget";
+import {
+  applyIndentSetting,
+  templateSpotAt,
+  type TemplateSpot,
+} from "../editor/templateTarget";
 import {
   AOE2_RMS_MONACO_THEME,
   defineAoe2RmsMonacoTheme,
@@ -70,9 +74,6 @@ import {
 const MARKER_OWNER = "aoe2-rms-parser";
 
 const gameConstants = gameConstantsRaw as unknown as GameConstantsData;
-
-/** Context key the "Add Template" menu entry is gated on, true in a section that has templates. */
-const IN_TEMPLATE_SECTION = "aoe2rms.inTemplateSection";
 
 // Module-scope, same pattern as useDocument.ts's `documentModel`: there is
 // at most one mounted editor instance at a time (CodePane fully unmounts
@@ -215,12 +216,11 @@ export function CodePane({
   // travel together: the dialog can stay open across several re-parses, and
   // the insert must be computed against the parse its target came from.
   const [templateAsk, setTemplateAsk] = useState<{
-    spot: TemplateSpot;
+    /** null when the caret is outside a template section: the text then goes in at `offset`. */
+    spot: TemplateSpot | null;
+    offset: number;
     parse: ParseResult;
   } | null>(null);
-  const templateKeyRef = useRef<Monaco.editor.IContextKey<boolean> | null>(
-    null,
-  );
   const { resolveFlash, codePrediction, suggestionKeys } = useAppSettings();
   const resolveFlashOnRef = useRef(resolveFlash);
   resolveFlashOnRef.current = resolveFlash;
@@ -271,8 +271,15 @@ export function CodePane({
     if (!editor || !pos || !parseResult) return;
     const model = getDocumentModel();
     if (model.getValue() !== parseResult.source) return;
-    const spot = templateSpotAt(parseResult, model.getOffsetAt(pos));
-    if (spot) setTemplateAsk({ spot, parse: parseResult });
+    const offset = model.getOffsetAt(pos);
+    // Outside Objects and Terrain generation (the header, another section,
+    // after the last one) there is no spot, and the dialog offers every
+    // template to paste at the caret.
+    setTemplateAsk({
+      spot: templateSpotAt(parseResult, offset),
+      offset,
+      parse: parseResult,
+    });
   };
 
   // The preview's Current cut point (docs/preview-design.md Sec.5). Read
@@ -319,25 +326,6 @@ export function CodePane({
     setSuggestionDiagnostics(source, diagnostics);
     offerBulbRef.current?.refresh();
   }, [source, diagnostics, parseResult]);
-  // The parse and the caret decide together whether "Add Template" shows, so
-  // both the cursor listener (handleMount) and a new parse re-read it.
-  const refreshTemplateKey = useCallback(() => {
-    const editor = editorRef.current;
-    const key = templateKeyRef.current;
-    if (!editor || !key) return;
-    const pos = editor.getPosition();
-    if (!pos || !parseResult) return key.set(false);
-    const model = getDocumentModel();
-    key.set(
-      model.getValue() === parseResult.source &&
-        templateSpotAt(parseResult, model.getOffsetAt(pos)) !== null,
-    );
-  }, [parseResult]);
-  const refreshTemplateKeyRef = useRef(refreshTemplateKey);
-  refreshTemplateKeyRef.current = refreshTemplateKey;
-  useEffect(() => {
-    refreshTemplateKey();
-  }, [refreshTemplateKey]);
   // The #const code actions apply through the same one-undo-step path as
   // everything else, then select the new value for typing over.
   useEffect(() => {
@@ -553,27 +541,21 @@ export function CodePane({
     });
 
     // "Add Template..." in the right-click menu, the Code tab's version of
-    // Breakdown's Add template button. A menu entry hides when its
-    // precondition is false, and a precondition can only read a context key,
-    // so the key follows the caret.
+    // Breakdown's Add template button. Always on: inside an Objects or
+    // Terrain section the text goes after the item under the caret, anywhere
+    // else it goes in at the caret, and the person may put it in the wrong
+    // section on purpose.
     //
     // HELPTIP EXCEPTION. Monaco draws its context menu itself, so the entry
     // cannot be wrapped in a HelpTip. The label and the dialog it opens
     // (the same TemplateDialog, with its own help) say what it does.
-    templateKeyRef.current = editor.createContextKey<boolean>(
-      IN_TEMPLATE_SECTION,
-      false,
-    );
     editor.addAction({
       id: "aoe2rms.addTemplate",
       label: "Add Template...",
-      precondition: IN_TEMPLATE_SECTION,
       contextMenuGroupId: "1_modification",
       contextMenuOrder: 0.5,
       run: () => openTemplateRef.current(),
     });
-    editor.onDidChangeCursorPosition(() => refreshTemplateKeyRef.current());
-    refreshTemplateKeyRef.current();
 
     // Tab and Shift+Tab while the suggestion list is open. With the default
     // arrangement Tab steps down the list and Shift+Tab up, Enter being the
@@ -713,7 +695,6 @@ export function CodePane({
       resolveFlashRef.current = null;
       offerBulbRef.current?.dispose();
       offerBulbRef.current = null;
-      templateKeyRef.current = null;
       // The collection is owned by the editor being torn down; dropping the
       // reference stops the next mount from writing into a dead one.
       cutDecorationsRef.current = null;
@@ -779,7 +760,7 @@ export function CodePane({
       </div>
       {templateAsk && (
         <TemplateDialog
-          section={templateAsk.spot.section}
+          section={templateAsk.spot?.section ?? "ANY"}
           script={{
             parse: templateAsk.parse,
             playerLand: playerLandTerrain(templateAsk.parse),
@@ -802,22 +783,69 @@ export function CodePane({
             editorRef.current?.focus();
           }}
           onInsert={({ text, caretOffset, setupText, headerText }) => {
-            const { spot, parse } = templateAsk;
+            const { spot, parse, offset } = templateAsk;
             setTemplateAsk(null);
             const editor = editorRef.current;
             const model = getDocumentModel();
             // The dialog is modal, so this only differs if something edited
             // the text while it was open. The offsets would be wrong then.
             if (!editor || model.getValue() !== parse.source) return;
+            // Indent with Settings > Code's tab size, not the step detected
+            // in the file, so a template matches what Tab types here.
+            const indented = applyIndentSetting(
+              text,
+              caretOffset,
+              tabSize,
+              insertSpaces,
+            );
+            const indentCompanion = (t: string): string =>
+              applyIndentSetting(t, 0, tabSize, insertSpaces).text;
+            if (spot === null) {
+              // Outside a template section: a plain insert at the caret. The
+              // patch engine has no target there, so the template's
+              // PLAYER_SETUP or header lines are not added.
+              const eol = model.getEOL();
+              const body = indented.text.replace(/\n/g, eol);
+              const before = model.getValue().slice(0, offset);
+              const after = model.getValue().slice(offset);
+              const lead = /(^|\n)[ \t]*$/.test(before) ? "" : eol;
+              const tail = /^[ \t]*(\r?\n|$)/.test(after) ? "" : eol;
+              const caretInBody = indented.text
+                .slice(0, indented.caretOffset)
+                .replace(/\n/g, eol).length;
+              const start = model.getPositionAt(offset);
+              editor.executeEdits("aoe2rms.addTemplate", [
+                {
+                  range: {
+                    startLineNumber: start.lineNumber,
+                    startColumn: start.column,
+                    endLineNumber: start.lineNumber,
+                    endColumn: start.column,
+                  },
+                  text: lead + body + tail,
+                },
+              ]);
+              const at = model.getPositionAt(
+                offset + lead.length + caretInBody,
+              );
+              editor.setPosition(at);
+              editor.revealPositionInCenterIfOutsideViewport(at);
+              editor.focus();
+              return;
+            }
             const result = applyEditIntent(
               parse,
               {
                 kind: "insertText",
                 at: spot.target,
-                text,
-                caretOffset,
-                ...(setupText === undefined ? {} : { setupText }),
-                ...(headerText === undefined ? {} : { headerText }),
+                text: indented.text,
+                caretOffset: indented.caretOffset,
+                ...(setupText === undefined
+                  ? {}
+                  : { setupText: indentCompanion(setupText) }),
+                ...(headerText === undefined
+                  ? {}
+                  : { headerText: indentCompanion(headerText) }),
               },
               languageIndex,
               applyTextEdits,

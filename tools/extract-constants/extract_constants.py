@@ -1400,6 +1400,43 @@ class DatExtraction:
         ]
         return int(t.is_water), slots
 
+    def texture_tiles(self, const_id: int) -> int | None:
+        """The dat's `Terrain.terrain_dimensions`, 10 for most terrains, 6 for
+        farms and pastures, 3 for their construction stages and 15 for the
+        gravel and rock wet beaches. The field is a (rows, cols) pair and every
+        enabled terrain has the two equal, so the first is the answer. Read as
+        the texture repeat until DE was measured to repeat every texture over
+        10 tiles regardless (docs/preview-de-textures-design.md Sec.10.7), so it
+        is kept as data, not used. None for a row the dat lacks or one with no
+        positive value."""
+        terrains = self.dat.terrain_block.terrains
+        if not (0 <= const_id < len(terrains)):
+            return None
+        rows = int(terrains[const_id].terrain_dimensions[0])
+        return rows if rows > 0 else None
+
+    def terrain_render(self, const_id: int) -> dict | None:
+        """Every field the preview's textured view reads for one terrain, or
+        None for a row the dat lacks. `textureTiles` as `texture_tiles` above.
+        `blendPriority` decides which of two neighbours spreads over the other
+        (the higher one), `blendType` picks the blend atlas for a pair, and
+        `overlayMask` names the PNG in `terrain/masks` a layered tile is drawn
+        through, omitted when the dat leaves it empty
+        (docs/preview-de-textures-design.md Sec.10)."""
+        tiles = self.texture_tiles(const_id)
+        if tiles is None:
+            return None
+        t = self.dat.terrain_block.terrains[const_id]
+        fields: dict = {
+            "textureTiles": tiles,
+            "blendPriority": int(t.blend_priority),
+            "blendType": int(t.blend_type),
+        }
+        mask = (t.overlay_mask_name or "").strip()
+        if mask:
+            fields["overlayMask"] = mask
+        return fields
+
     def terrain_restrictions_table(self) -> list[dict]:
         """The dat's WHOLE `terrain_restrictions` table, one row per restriction
         id, each expanded to the terrain ids it permits — the top-level
@@ -1753,6 +1790,41 @@ def merge_terrain_generation(entry: dict, fields: dict, run_date: str) -> dict:
     return updated
 
 
+# Matches both the note this mode wrote before it read the blend fields and
+# the one it writes now, so a rerun replaces either.
+_TERRAIN_RENDER_NOTE_RE = re.compile(
+    r"\s*textureTiles(?:, blendPriority, blendType and overlayMask)? extracted \S+ "
+    r"by tools/extract-constants --terrain-render "
+    r"\(Terrain\.[a-z_, ]+ read directly from empires2_x2_p1\.dat\)\."
+)
+
+TERRAIN_RENDER_FIELDS = ("textureTiles", "blendPriority", "blendType", "overlayMask")
+
+
+def terrain_render_note(run_date: str) -> str:
+    return (
+        f"textureTiles, blendPriority, blendType and overlayMask extracted {run_date} "
+        "by tools/extract-constants --terrain-render "
+        "(Terrain.terrain_dimensions, blend_priority, blend_type, overlay_mask_name "
+        "read directly from empires2_x2_p1.dat)."
+    )
+
+
+def merge_terrain_render(entry: dict, fields: dict, run_date: str) -> dict:
+    """Writes this mode's fields onto one terrain entry and replaces this
+    mode's own note, so a second run leaves one note rather than two. A field
+    this run did not read (an empty `overlayMask`) is removed, so a mask the
+    dat drops does not linger."""
+    updated = dict(entry)
+    for key in TERRAIN_RENDER_FIELDS:
+        updated.pop(key, None)
+    updated.update(fields)
+    existing_notes = _TERRAIN_RENDER_NOTE_RE.sub("", updated.get("notes", "")).strip()
+    note = terrain_render_note(run_date)
+    updated["notes"] = f"{existing_notes} {note}" if existing_notes else note
+    return updated
+
+
 def entry_label(entry: dict) -> str:
     """A name for console output. `rmsConstant` is null for the 53 DE terrains
     that have no callable constant, so nothing that prints an entry may reach
@@ -1914,6 +1986,13 @@ CONSTANT_KEY_ORDER = [
     # bitfield and every decoration slot, read by the elevation and cliff stages.
     "placementClass",
     "decorations",
+    # Terrain entries only, --terrain-render. How many tiles one copy of the
+    # texture covers, read by the preview's textured view. Then how the view
+    # blends a terrain into its neighbours and the mask a layer is drawn through.
+    "textureTiles",
+    "blendPriority",
+    "blendType",
+    "overlayMask",
     "isHybrid",
     "isBeach",
     "isUnbuildable",
@@ -2294,6 +2373,55 @@ def run_terrain_units(install_path: Path, output: Path, dat: "DatExtraction | No
         print("\n--dry-run: nothing written.")
         return 0
     write_game_constants(output, updated, terrain_restrictions)
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+def run_terrain_render(output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Writes `textureTiles` onto every terrain entry with a constId, read from
+    `empires2_x2_p1.dat`. The preview's textured view reads it to scale each
+    terrain's texture over the tile grid (docs/preview-de-textures-design.md
+    Sec.2). Prints every entry whose value changes."""
+    import json
+
+    if dat is None:
+        print("Cannot extract texture repeats without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    run_date = date.today().isoformat()
+    changed: list[tuple[str, object, int]] = []
+    unread: list[str] = []
+    unchanged = 0
+    updated: list[dict] = []
+    for entry in existing["constants"]:
+        if entry.get("category") != "terrain" or entry.get("constId") is None:
+            updated.append(entry)
+            continue
+        fields = dat.terrain_render(entry["constId"])
+        if fields is None:
+            unread.append(entry_label(entry))
+            updated.append(entry)
+            continue
+        before = {key: entry[key] for key in TERRAIN_RENDER_FIELDS if key in entry}
+        if before == fields:
+            unchanged += 1
+            updated.append(entry)
+            continue
+        changed.append((entry_label(entry), before, fields))
+        updated.append(merge_terrain_render(entry, fields, run_date))
+
+    print(f"  render fields agree with the file: {unchanged}")
+    print(f"  render fields CHANGED by this run  : {len(changed)}")
+    for name, before, after in changed:
+        print(f"      {name:22s} {before} -> {after}")
+    if unread:
+        print(f"  no terrain row in the dat: {', '.join(unread)}")
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    write_game_constants(output, updated, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -3005,6 +3133,7 @@ def main() -> int:
     parser.add_argument("--terrain-table", action="store_true", help="Update ONLY the engine's terrain table on object entries, read from empires2_x2_p1.dat (preview-design Sec.15 item 23): terrainRestrictionId, allowedTerrains, placementSideTerrain, and the coarse habitat derived from them. Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
     parser.add_argument("--terrain-units", action="store_true", help="Update ONLY autoTreeUnits on terrain entries (the units a terrain auto-spawns with no create_object, first-hit-wins by slot) plus the top-level terrainRestrictions table, both read from empires2_x2_p1.dat. Rewrites no other field. Prints every entry whose measured autoTreeUnits disagrees with what is in the file.")
     parser.add_argument("--terrain-generation", action="store_true", help="Update ONLY placementClass and decorations on terrain entries, read from empires2_x2_p1.dat (Terrain.is_water, which is a bitfield, and every used terrain_unit slot with its density and centering). The preview's elevation and cliff stages read them. Rewrites no other field.")
+    parser.add_argument("--terrain-render", action="store_true", help="Update ONLY textureTiles on terrain entries, read from empires2_x2_p1.dat (Terrain.terrain_dimensions, how many tiles one copy of the texture covers). The preview's textured view reads it. Rewrites no other field.")
     parser.add_argument("--storages", action="store_true", help="Update ONLY the resource-storage data on object entries, read from empires2_x2_p1.dat: the raw resourceStorages slots plus a refreshed resourceAmounts derived from them. Rewrites no other field. This is what tells a consumer whether an effect_amount ATTR_STORAGE_VALUE line changes a resource, a population count or a decay timer.")
     parser.add_argument("--attributes", action="store_true", help="Update ONLY the effect_amount attribute selectors (ATTR_*), read from random_map.def's own Attribute Constants section. Needs no dat file. Rewrites no other field.")
     parser.add_argument("--classes", action="store_true", help="Update ONLY the unit-class data, read from empires2_x2_p1.dat: one objectClass row per genie unit class (with the unit ids in it) plus a classId on every object entry. Rewrites no other field. Verifies the class-to-constant offset against random_map.def first and refuses to write if it disagrees.")
@@ -3015,8 +3144,8 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --terrain-units, --classes, --roster or --misc-constants to see the diff before taking it.")
     args = parser.parse_args()
 
-    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.terrain_generation), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants), bool(args.object_data)]) > 1:
-        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --terrain-units, --terrain-generation, --classes, --storages, --attributes, --roster, --misc-constants) are mutually exclusive.", file=sys.stderr)
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.terrain_generation), bool(args.terrain_render), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants), bool(args.object_data)]) > 1:
+        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --terrain-units, --terrain-generation, --terrain-render, --classes, --storages, --attributes, --roster, --misc-constants) are mutually exclusive.", file=sys.stderr)
         return 1
 
     install_path = args.install_path or guess_install_path()
@@ -3101,6 +3230,9 @@ def main() -> int:
 
     if args.terrain_generation:
         return run_terrain_generation(args.output, load_dat(), args.dry_run)
+
+    if args.terrain_render:
+        return run_terrain_render(args.output, load_dat(), args.dry_run)
 
     if args.classes:
         return run_classes(install_path, args.output, load_dat(), args.dry_run)

@@ -156,3 +156,28 @@ describe("caretContext", () => {
     expect(lookupOffset(ctx)).toBe("#const A 1\n<LAND_GENERATION>\n".length);
   });
 });
+
+describe("caretContext, a new attribute after a finished one on the same line", () => {
+  const sec = "<OBJECTS_GENERATION>\ncreate_object GOLD {\n";
+
+  it("offers attributes at the start of a line (the case that works)", () => {
+    expect(at(`${sec}avoid_actor|`).slot?.kind).toBe("lineStart");
+  });
+
+  it("offers attributes after a finished attribute on one line", () => {
+    const ctx = at(`${sec}number_of_objects 5 avoid_actor|`);
+    expect(ctx.slot?.kind).toBe("lineStart");
+  });
+
+  it("offers attributes after a finished attribute on a one-line command", () => {
+    const ctx = at(
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 5 avoid_actor|",
+    );
+    expect(ctx.slot?.kind).toBe("lineStart");
+  });
+
+  it("still reads an unfinished argument as an argument", () => {
+    const ctx = at(`${sec}number_of_objects |`);
+    expect(ctx.slot?.kind).toBe("argument");
+  });
+});

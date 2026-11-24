@@ -1,8 +1,15 @@
 /* The placement notice, a dark chip like the canvas's other overlays so it
    reads over any terrain, with the status carried by the text colour. */
+/* The same 1.25rem height and 1px border as the buttons beside it, so the
+   bottom row reads as one size. A transparent border, so the text sits where
+   a button's does. */
 .notice {
-  display: inline-block;
-  padding: 0.12rem 0.34rem;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 1.25rem;
+  border: 1px solid transparent;
+  padding: 0 0.35rem;
   font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
   background: rgba(0, 0, 0, 0.66);
@@ -23,6 +30,7 @@
    shared `.exportButton` rule in PreviewCanvas.module.css), so the row reads
    as one set of controls. */
 .barButton {
+  box-sizing: border-box;
   height: 1.25rem;
   padding: 0 0.35rem;
   font-size: 0.62rem;
@@ -35,19 +43,30 @@
   white-space: nowrap;
 }
 
-/* The settings cog. A fixed box, so the larger glyph fills the button without
-   growing it. */
-.cogButton {
-  width: 1.45rem;
+/* Help and the settings cog. Squares the size of the zoom buttons, so the
+   top right row and the bottom row share one button size. */
+.squareButton {
+  width: 1.25rem;
   padding: 0;
-  font-size: 1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.barButton:hover {
+/* The cog glyph is drawn small in most fonts, so it takes a larger size
+   inside the same square. */
+.cogButton {
+  font-size: 0.9rem;
+}
+
+.barButton:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.82);
+}
+
+/* The hourglass while timing is off in Preview Options. */
+.barButton:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .barButton[aria-expanded="true"] {

@@ -38,6 +38,8 @@ from extract_constants import (
     compute_terrain_generation,
     merge_terrain_generation,
     terrain_generation_note,
+    merge_terrain_render,
+    terrain_render_note,
     derive_habitat,
     format_constant,
     format_game_constants,
@@ -1017,6 +1019,30 @@ class TestTerrainGeneration(unittest.TestCase):
         self.assertIn(terrain_generation_note("2026-10-20"), twice["notes"])
         self.assertNotIn(terrain_generation_note("2026-10-19"), twice["notes"])
         self.assertTrue(twice["notes"].startswith("constId 0 confirmed."))
+
+
+class TestMergeTerrainRender(unittest.TestCase):
+    def test_writes_the_field_and_replaces_its_own_note(self):
+        fields = {"textureTiles": 3, "blendPriority": 180, "blendType": 1, "overlayMask": "farm.png"}
+        once = merge_terrain_render({"constId": 29, "notes": "constId 29 confirmed."}, fields, "2026-11-23")
+        self.assertEqual(once["textureTiles"], 3)
+        self.assertEqual(once["blendPriority"], 180)
+        twice = merge_terrain_render(once, {"textureTiles": 3, "blendPriority": 180, "blendType": 1}, "2026-11-24")
+        self.assertIn(terrain_render_note("2026-11-24"), twice["notes"])
+        self.assertNotIn(terrain_render_note("2026-11-23"), twice["notes"])
+        self.assertTrue(twice["notes"].startswith("constId 29 confirmed."))
+        # A mask the dat no longer names is removed, not kept from the last run.
+        self.assertNotIn("overlayMask", twice)
+
+    def test_replaces_the_note_written_before_the_blend_fields(self):
+        old_note = (
+            "textureTiles extracted 2026-11-23 by tools/extract-constants --terrain-render "
+            "(Terrain.terrain_dimensions read directly from empires2_x2_p1.dat)."
+        )
+        entry = {"constId": 0, "notes": f"constId 0 confirmed. {old_note}"}
+        merged = merge_terrain_render(entry, {"textureTiles": 10, "blendPriority": 110, "blendType": 0}, "2026-11-24")
+        self.assertNotIn(old_note, merged["notes"])
+        self.assertEqual(merged["notes"].count("--terrain-render"), 1)
 
 
 class TestMergeTerrainUnits(unittest.TestCase):

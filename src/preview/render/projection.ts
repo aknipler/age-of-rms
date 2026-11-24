@@ -44,12 +44,23 @@
  * rather than an implementation of one. 4.3's visual-calibration pass
  * (Sec.13) compares against real DE screenshots and is the right place to
  * revisit it; this is the one line that has to change.
+ *
+ * Since 2026-11-23 this is the flat view's value, and the squash lives on
+ * the viewport (`Viewport.aspect`), so the textured view can draw at the
+ * game's own squash through the same functions
+ * (docs/preview-de-textures-design.md Sec.3).
  */
 export const TILE_ASPECT = 1;
 
+/**
+ * The game's squash. The dat's terrain block gives a tile 96 wide and 48
+ * tall, exactly 2 to 1, which the textured view draws at.
+ */
+export const DE_TILE_ASPECT = 0.5;
+
 /** Zoom limits, in screen pixels per tile half-width. */
 export const MIN_HALF_WIDTH = 0.15;
-export const MAX_HALF_WIDTH = 24;
+export const MAX_HALF_WIDTH = 156;
 
 export interface Viewport {
   /** Canvas size in CSS pixels. */
@@ -60,6 +71,69 @@ export interface Viewport {
   /** Where tile-lattice point (0,0) — the map's west corner — sits on screen. */
   originX: number;
   originY: number;
+  /**
+   * A tile's half height over its half width. `TILE_ASPECT` for the flat
+   * view, `DE_TILE_ASPECT` for the textured one. On the viewport rather than
+   * a module constant so every function here, and so every hit test and draw
+   * call built on them, follows whichever view is showing with no change of
+   * its own. Optional so a viewport built before this field existed, or by a
+   * caller that only wants the flat view, reads as `TILE_ASPECT`.
+   */
+  aspect?: number;
+  /**
+   * The ground's height field, set only in the textured view, which draws
+   * high ground raised as the game does (docs/preview-de-textures-design.md
+   * Sec.13). Every point placed through this module is lifted by the ground
+   * under it, and `screenToTile` finds the raised point under the pointer,
+   * so objects, outlines, overlays and hit tests all follow the hills with
+   * no change of their own, as they follow `aspect`.
+   */
+  ground?: GroundHeights;
+}
+
+/** The ground's height at each tile corner, as texturedTiles.ts's buildCornerHeights gives it. */
+export interface GroundHeights {
+  dim: number;
+  /** `(dim + 1)` a side, row major, in elevation levels, fractional where the corner rule averages. */
+  corners: ArrayLike<number>;
+  /** The highest corner, which bounds the search in screenToTile. */
+  maxLevel: number;
+}
+
+/**
+ * How far one elevation level lifts the ground, in tile half widths. The
+ * dat's `elev_height` is 24 pixels on its 96 by 48 tile, whose half width is
+ * 48, so a level is half a half width, one half height at the 2:1 squash.
+ */
+export const LIFT_PER_LEVEL = 0.5;
+
+/**
+ * The ground's height at a continuous tile point, blended from its tile's
+ * corners as the hill light is. A surface folded along a tile diagonal was
+ * tried and matched the game slightly worse (docs/preview-de-textures-design.md
+ * Sec.13).
+ */
+export function groundHeightAt(
+  ground: GroundHeights,
+  x: number,
+  y: number,
+): number {
+  const dim = ground.dim;
+  const cx = Math.min(Math.max(x, 0), dim);
+  const cy = Math.min(Math.max(y, 0), dim);
+  const x0 = Math.min(Math.floor(cx), dim - 1);
+  const y0 = Math.min(Math.floor(cy), dim - 1);
+  const fx = cx - x0;
+  const fy = cy - y0;
+  const side = dim + 1;
+  const c = ground.corners;
+  const h00 = c[y0 * side + x0];
+  const h10 = c[y0 * side + x0 + 1];
+  const h01 = c[(y0 + 1) * side + x0];
+  const h11 = c[(y0 + 1) * side + x0 + 1];
+  return (
+    (h00 * (1 - fx) + h10 * fx) * (1 - fy) + (h01 * (1 - fx) + h11 * fx) * fy
+  );
 }
 
 export interface ScreenPoint {
@@ -74,7 +148,30 @@ export interface TilePoint {
 }
 
 export function halfHeightOf(viewport: Viewport): number {
-  return viewport.halfWidth * TILE_ASPECT;
+  return viewport.halfWidth * aspectOf(viewport);
+}
+
+export function aspectOf(viewport: Viewport): number {
+  return viewport.aspect ?? TILE_ASPECT;
+}
+
+/**
+ * The same viewport at another squash, with the tile at the canvas centre
+ * kept at the centre and the zoom kept. Switching views then keeps whatever
+ * the user was looking at in front of them.
+ */
+export function withAspect(viewport: Viewport, aspect: number): Viewport {
+  if (aspectOf(viewport) === aspect) return viewport;
+  const centreX = viewport.width / 2;
+  const centreY = viewport.height / 2;
+  const centre = screenToTile(viewport, centreX, centreY);
+  const next: Viewport = { ...viewport, aspect };
+  const after = latticeToScreen(next, centre.x, centre.y);
+  return {
+    ...next,
+    originX: next.originX + (centreX - after.x),
+    originY: next.originY + (centreY - after.y),
+  };
 }
 
 /**
@@ -93,9 +190,15 @@ export function latticeToScreen(
   x: number,
   y: number,
 ): ScreenPoint {
+  const lift =
+    viewport.ground === undefined
+      ? 0
+      : groundHeightAt(viewport.ground, x, y) *
+        LIFT_PER_LEVEL *
+        viewport.halfWidth;
   return {
     x: viewport.originX + (x + y) * viewport.halfWidth,
-    y: viewport.originY + (y - x) * halfHeightOf(viewport),
+    y: viewport.originY + (y - x) * halfHeightOf(viewport) - lift,
   };
 }
 
@@ -136,8 +239,53 @@ export function screenToTile(
   screenY: number,
 ): TilePoint {
   const u = (screenX - viewport.originX) / viewport.halfWidth;
-  const v = (screenY - viewport.originY) / halfHeightOf(viewport);
-  return { x: (u - v) / 2, y: (u + v) / 2 };
+  const flatAt = (level: number): TilePoint => {
+    const v =
+      (screenY +
+        level * LIFT_PER_LEVEL * viewport.halfWidth -
+        viewport.originY) /
+      halfHeightOf(viewport);
+    return { x: (u - v) / 2, y: (u + v) / 2 };
+  };
+  const ground = viewport.ground;
+  if (ground === undefined || ground.maxLevel === 0) return flatAt(0);
+  return liftedPoint(ground, flatAt);
+}
+
+/** The steps the raised search takes per level before it narrows down. */
+const SEARCH_STEPS_PER_LEVEL = 4;
+
+/**
+ * The ground point a raised screen point shows. The point at level L under
+ * the pointer is where the flat inverse lands with the screen point moved
+ * down by L levels, and the ground shows there when its height reaches L.
+ * Stepping L down from the highest level, the first that reaches is the
+ * front-most, nearest the viewer, so a hill hides what is behind it. A few
+ * halvings then settle the crossing. The textured view's shader runs the
+ * same search per pixel, so a hit test lands on the tile drawn there.
+ */
+function liftedPoint(
+  ground: GroundHeights,
+  flatAt: (level: number) => TilePoint,
+): TilePoint {
+  const step = 1 / SEARCH_STEPS_PER_LEVEL;
+  const reaches = (level: number): boolean => {
+    const p = flatAt(level);
+    return groundHeightAt(ground, p.x, p.y) >= level;
+  };
+  for (let level = ground.maxLevel; level > 0; level -= step) {
+    if (!reaches(level)) continue;
+    // `level` reaches and `level + step` did not, so the crossing is between.
+    let low = level;
+    let high = Math.min(level + step, ground.maxLevel + step);
+    for (let i = 0; i < 6; i++) {
+      const mid = (low + high) / 2;
+      if (reaches(mid)) low = mid;
+      else high = mid;
+    }
+    return flatAt(low);
+  }
+  return flatAt(0);
 }
 
 /** True when a fractional tile point lands inside a dim x dim map. */
@@ -185,18 +333,20 @@ export function fitViewport(
   width: number,
   height: number,
   padding = 6,
+  aspect = TILE_ASPECT,
 ): Viewport {
   const usableWidth = Math.max(1, width - 2 * padding);
   const usableHeight = Math.max(1, height - 2 * padding);
   // The diamond is 2*dim half-widths across and 2*dim half-heights tall, so
   // each dimension caps the zoom independently and the tighter one wins.
   const byWidth = usableWidth / (2 * dim);
-  const byHeight = usableHeight / (2 * dim * TILE_ASPECT);
+  const byHeight = usableHeight / (2 * dim * aspect);
   const halfWidth = clampHalfWidth(Math.min(byWidth, byHeight));
   return {
     width,
     height,
     halfWidth,
+    aspect,
     // Horizontally: centre the 2*dim*halfWidth-wide box.
     originX: (width - 2 * dim * halfWidth) / 2,
     // Vertically: screen y runs from -dim*halfHeight to +dim*halfHeight about

@@ -1,0 +1,44 @@
+/*
+================================================================================
+RMSTEST_88b - control for 88a, no effect line
+Feeds: whether a foundation terrain set by an effect paints at all, and when.
+The preview paints foundations for farms only. The whole-script gate already
+matches DE's editor saves of Ra and Rekawa tile for tile, and those maps place
+MAKE_*_TERRAIN objects carrying ATTR_FOUNDATION_TERRAIN, so the editor save has
+no foundation under them. What a started game shows is not measured.
+Generate at Tiny, 2 players, seed 1000.
+  1. In the editor, save, and read the SNOW count with probe_scenario.py.
+     Prediction from the gate: SNOW 0.
+  2. Start it as a game (Test, or a lobby game). Is there SNOW under the hay stacks?
+88b is the control. 88c is test-maps/AD4 - Ra.rms and the archive's Rekawa as they
+are, started as games at the same seed, compared with the preview: does jungle
+underbrush (Ra) or mangrove forest (Rekawa) show where their MAKE_* objects stand?
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 60
+    base_size 12
+  }
+
+<OBJECTS_GENERATION>
+
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players 0
+}
+
+create_object HAY_STACK
+{
+  number_of_objects 40
+  set_gaia_object_only
+  min_distance_to_players 8
+}
+

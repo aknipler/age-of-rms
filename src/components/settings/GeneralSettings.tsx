@@ -1,3 +1,7 @@
+import {
+  MAX_SHORTENED_PREFIX_LENGTH,
+  MIN_SHORTENED_PREFIX_LENGTH,
+} from "../../settings/nameDisplay";
 import { useHelpSettings } from "../../help/HelpSettingsContext";
 import type { HelpMode } from "../../help/helpConstants";
 import { useAppSettings } from "../../settings/AppSettingsContext";
@@ -18,8 +22,14 @@ const HELP_MODE_OPTIONS: ReadonlyArray<{ value: HelpMode; label: string }> = [
 // different place in the tree.
 export function GeneralSettings() {
   const { mode, setMode } = useHelpSettings();
-  const { shortenLongNames, setShortenLongNames, authorName, setAuthorName } =
-    useAppSettings();
+  const {
+    shortenLongNames,
+    setShortenLongNames,
+    shortenNameLength,
+    setShortenNameLength,
+    authorName,
+    setAuthorName,
+  } = useAppSettings();
 
   return (
     <>
@@ -80,6 +90,22 @@ export function GeneralSettings() {
             <label htmlFor="shorten-long-names">
               Shorten long #const / #define names
             </label>
+          </div>
+          <div className={dialogStyles.optionRow}>
+            <label htmlFor="shorten-name-length">Shorten to</label>
+            <input
+              type="number"
+              id="shorten-name-length"
+              min={MIN_SHORTENED_PREFIX_LENGTH}
+              max={MAX_SHORTENED_PREFIX_LENGTH}
+              disabled={!shortenLongNames}
+              value={shortenNameLength}
+              onChange={(event) => {
+                const typed = event.target.valueAsNumber;
+                if (!Number.isNaN(typed)) setShortenNameLength(typed);
+              }}
+            />
+            <span>characters</span>
           </div>
         </fieldset>
       </HelpTip>

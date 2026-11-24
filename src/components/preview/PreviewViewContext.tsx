@@ -2,12 +2,23 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { load, type Store } from "@tauri-apps/plugin-store";
+
+const DE_TEXTURES_STORE_FILE = "settings.json";
+const DE_TEXTURES_KEY = "previewDeTextures";
+const SMALL_TREES_KEY = "previewSmallTrees";
+const TERRAIN_BLENDS_KEY = "previewTerrainBlends";
+const HIDE_DECORATIONS_KEY = "previewHideDecorations";
+const HIDE_PLAYER_CIRCLES_KEY = "previewHidePlayerCircles";
+const RECORD_TIMING_KEY = "previewRecordTiming";
 import {
   DEFAULT_TERRAIN_COLOR_MODE,
   type TerrainColorMode,
@@ -41,7 +52,8 @@ export type PreviewViewMode = "current" | "final";
  * useSharedSelection into App (App.tsx) and that keeps the Monaco model at
  * module scope in useDocument.ts.
  *
- * Deliberately NOT persisted to the Tauri store, unlike the help and
+ * Deliberately NOT persisted to the Tauri store (except `deTextures`, the
+ * isometric switch), unlike the help and
  * generation settings. Those describe how you want the app to behave; this
  * describes where you happen to be looking right now, and a seed restored from
  * three sessions ago would be noise rather than a convenience.
@@ -71,6 +83,47 @@ export interface PreviewViewValue {
   /** Game (texture) or Minimap (data colour class) terrain colours. */
   colorMode: TerrainColorMode;
   setColorMode: (mode: TerrainColorMode) => void;
+  /**
+   * Draw the map isometrically with the terrain textures from the user's DE
+   * install instead of flat colours (docs/preview-de-textures-design.md).
+   * Off by default, and both the app's preview and the Land Placement panel
+   * follow it, so the two canvases always agree.
+   */
+  deTextures: boolean;
+  setDeTextures: (on: boolean) => void;
+  /**
+   * Draw trees at half size in the DE textures view, as DE's own Small
+   * Trees option does. Remembered like `deTextures`, off by default as in
+   * the game.
+   */
+  smallTrees: boolean;
+  setSmallTrees: (on: boolean) => void;
+  /**
+   * Blend each terrain into its neighbours in the DE textures view, as the
+   * game does. On by default. Off, every tile ends at its own edge, so a
+   * scripter can read exactly which tile holds which terrain.
+   */
+  terrainBlends: boolean;
+  setTerrainBlends: (on: boolean) => void;
+  /**
+   * Leave out the circles of decorations terrains spawn (grass, rocks,
+   * flowers), so resources and scripted objects stand out. Off by default.
+   * Their sprites in the textured view are unaffected.
+   */
+  hideDecorations: boolean;
+  setHideDecorations: (on: boolean) => void;
+  /**
+   * Leave out the numbered player circles in the flat and textured views.
+   * Off by default. The minimap view never draws them, whatever this says.
+   */
+  hidePlayerCircles: boolean;
+  setHidePlayerCircles: (on: boolean) => void;
+  /**
+   * Time each generation for the hourglass (generationTiming.ts). On by
+   * default. Off, the worker records nothing and the hourglass button goes.
+   */
+  recordTiming: boolean;
+  setRecordTiming: (on: boolean) => void;
   /**
    * Regenerate the preview whenever the script is edited. On by default. Off,
    * an edit leaves the map as it is and marks it stale; the seed, the
@@ -137,6 +190,118 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
     DEFAULT_TERRAIN_COLOR_MODE,
   );
   const [regenOnEdit, setRegenOnEdit] = useState(true);
+  // The isometric switch is the one view setting that IS remembered across
+  // launches: it is a way of looking the user picks and keeps, unlike a seed.
+  // Same settings.json and load-then-write pattern as useRememberedTab.ts.
+  const [deTextures, setDeTexturesState] = useState(false);
+  const [deStore, setDeStore] = useState<Store | null>(null);
+  // Set once the user flips the switch before the store answers, so a slow
+  // load cannot overwrite their click with the saved value (a ref, since the
+  // load callback would otherwise read a stale closure).
+  const deChosenRef = useRef(false);
+  const [smallTrees, setSmallTreesState] = useState(false);
+  const treesChosenRef = useRef(false);
+  const [terrainBlends, setTerrainBlendsState] = useState(true);
+  const blendsChosenRef = useRef(false);
+  const [hideDecorations, setHideDecorationsState] = useState(false);
+  const decorationsChosenRef = useRef(false);
+  const [hidePlayerCircles, setHidePlayerCirclesState] = useState(false);
+  const playerCirclesChosenRef = useRef(false);
+  const [recordTiming, setRecordTimingState] = useState(true);
+  const timingChosenRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    load(DE_TEXTURES_STORE_FILE, { autoSave: true, defaults: {} })
+      .then(async (loaded) => {
+        if (cancelled) return;
+        const saved = await loaded.get<unknown>(DE_TEXTURES_KEY);
+        if (cancelled) return;
+        if (!deChosenRef.current && typeof saved === "boolean")
+          setDeTexturesState(saved);
+        const savedTrees = await loaded.get<unknown>(SMALL_TREES_KEY);
+        if (cancelled) return;
+        if (!treesChosenRef.current && typeof savedTrees === "boolean")
+          setSmallTreesState(savedTrees);
+        const savedBlends = await loaded.get<unknown>(TERRAIN_BLENDS_KEY);
+        if (cancelled) return;
+        if (!blendsChosenRef.current && typeof savedBlends === "boolean")
+          setTerrainBlendsState(savedBlends);
+        const savedDecorations =
+          await loaded.get<unknown>(HIDE_DECORATIONS_KEY);
+        if (cancelled) return;
+        if (
+          !decorationsChosenRef.current &&
+          typeof savedDecorations === "boolean"
+        )
+          setHideDecorationsState(savedDecorations);
+        const savedPlayerCircles = await loaded.get<unknown>(
+          HIDE_PLAYER_CIRCLES_KEY,
+        );
+        if (cancelled) return;
+        if (
+          !playerCirclesChosenRef.current &&
+          typeof savedPlayerCircles === "boolean"
+        )
+          setHidePlayerCirclesState(savedPlayerCircles);
+        const savedTiming = await loaded.get<unknown>(RECORD_TIMING_KEY);
+        if (cancelled) return;
+        if (!timingChosenRef.current && typeof savedTiming === "boolean")
+          setRecordTimingState(savedTiming);
+        // Only after the read, so the default is never written over it.
+        setDeStore(loaded);
+      })
+      .catch(() => {
+        // No store (a test, or a plain browser): the switch just is not
+        // remembered.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (deStore !== null) void deStore.set(DE_TEXTURES_KEY, deTextures);
+  }, [deStore, deTextures]);
+  const setDeTextures = useCallback((on: boolean) => {
+    deChosenRef.current = true;
+    setDeTexturesState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null) void deStore.set(SMALL_TREES_KEY, smallTrees);
+  }, [deStore, smallTrees]);
+  const setSmallTrees = useCallback((on: boolean) => {
+    treesChosenRef.current = true;
+    setSmallTreesState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null) void deStore.set(TERRAIN_BLENDS_KEY, terrainBlends);
+  }, [deStore, terrainBlends]);
+  const setTerrainBlends = useCallback((on: boolean) => {
+    blendsChosenRef.current = true;
+    setTerrainBlendsState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null)
+      void deStore.set(HIDE_DECORATIONS_KEY, hideDecorations);
+  }, [deStore, hideDecorations]);
+  const setHideDecorations = useCallback((on: boolean) => {
+    decorationsChosenRef.current = true;
+    setHideDecorationsState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null)
+      void deStore.set(HIDE_PLAYER_CIRCLES_KEY, hidePlayerCircles);
+  }, [deStore, hidePlayerCircles]);
+  const setHidePlayerCircles = useCallback((on: boolean) => {
+    playerCirclesChosenRef.current = true;
+    setHidePlayerCirclesState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null) void deStore.set(RECORD_TIMING_KEY, recordTiming);
+  }, [deStore, recordTiming]);
+  const setRecordTiming = useCallback((on: boolean) => {
+    timingChosenRef.current = true;
+    setRecordTimingState(on);
+  }, []);
   const [hiddenNotes, setHiddenNotes] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
   );
@@ -206,6 +371,18 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
       reseed,
       colorMode,
       setColorMode,
+      deTextures,
+      setDeTextures,
+      smallTrees,
+      setSmallTrees,
+      terrainBlends,
+      setTerrainBlends,
+      hideDecorations,
+      setHideDecorations,
+      hidePlayerCircles,
+      setHidePlayerCircles,
+      recordTiming,
+      setRecordTiming,
       regenOnEdit,
       setRegenOnEdit,
       hiddenNotes,
@@ -224,6 +401,18 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
       seed,
       reseed,
       colorMode,
+      deTextures,
+      setDeTextures,
+      smallTrees,
+      setSmallTrees,
+      terrainBlends,
+      setTerrainBlends,
+      hideDecorations,
+      setHideDecorations,
+      hidePlayerCircles,
+      setHidePlayerCircles,
+      recordTiming,
+      setRecordTiming,
       regenOnEdit,
       hiddenNotes,
       hideNote,
@@ -247,6 +436,36 @@ export function usePreviewView(): PreviewViewValue {
   if (!ctx)
     throw new Error("usePreviewView must be used within PreviewViewProvider");
   return ctx;
+}
+
+/**
+ * The DE textures switch alone, off outside the provider. For the Land
+ * Placement panel's canvas, which the app always renders inside the provider
+ * but its own tests render without one, and which has no use for the rest
+ * of this context.
+ */
+export function useDeTexturesSetting(): boolean {
+  return useContext(PreviewViewCtx)?.deTextures ?? false;
+}
+
+/** The Small Trees setting alone, off outside the provider, for the same reason. */
+export function useSmallTreesSetting(): boolean {
+  return useContext(PreviewViewCtx)?.smallTrees ?? false;
+}
+
+/** The terrain blends setting alone, on outside the provider, for the same reason. */
+export function useTerrainBlendsSetting(): boolean {
+  return useContext(PreviewViewCtx)?.terrainBlends ?? true;
+}
+
+/** The hide decorations setting alone, off outside the provider, for the same reason. */
+export function useHideDecorationsSetting(): boolean {
+  return useContext(PreviewViewCtx)?.hideDecorations ?? false;
+}
+
+/** The hide player circles setting alone, off outside the provider, for the same reason. */
+export function useHidePlayerCirclesSetting(): boolean {
+  return useContext(PreviewViewCtx)?.hidePlayerCircles ?? false;
 }
 
 /**

@@ -162,3 +162,21 @@ describe("compareInventoryRows", () => {
     expect(sorted.map((r) => r.objectRef)).toEqual(["BOAR", "GOLD", "DEER"]);
   });
 });
+
+describe("buildObjectInventory with a script's own #const", () => {
+  const source = `#const PLACEHOLDER_ONGRID 1613\n<OBJECTS_GENERATION>\ncreate_object PLACEHOLDER_ONGRID { number_of_objects 4 }`;
+
+  it("reads a placed bare id as the script's name for it", () => {
+    const result = buildObjectInventory(parse(source), placed("1613", 4));
+    expect(result).toEqual([{ objectRef: "PLACEHOLDER_ONGRID", spawned: 4 }]);
+  });
+
+  it("leaves an unrelated id on its own row", () => {
+    const result = buildObjectInventory(parse(source), placed("999", 2));
+    expect(result).toContainEqual({ objectRef: "999", spawned: 2 });
+    expect(result).toContainEqual({
+      objectRef: "PLACEHOLDER_ONGRID",
+      spawned: 0,
+    });
+  });
+});

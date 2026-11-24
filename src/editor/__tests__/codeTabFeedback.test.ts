@@ -245,3 +245,18 @@ describe("move offer for an if condition", () => {
     expect(offersOn(src, "NOT_DEFINED_ANYWHERE")).toEqual([]);
   });
 });
+
+describe("constantHoverLine for a constants.inc only name", () => {
+  it("says the game does not know WHALE unless the script includes the file or defines it", () => {
+    const whale = gameConstants.constants.find(
+      (c) => c.rmsConstant === "WHALE" && c.category === "objectAlias",
+    );
+    if (!whale) throw new Error("WHALE alias row missing");
+    const line = constantHoverLine(
+      whale as unknown as Parameters<typeof constantHoverLine>[0],
+    );
+    expect(line).toContain("constants.inc");
+    expect(line).toContain("#const");
+    expect(line).not.toBe("Predefined constant.");
+  });
+});

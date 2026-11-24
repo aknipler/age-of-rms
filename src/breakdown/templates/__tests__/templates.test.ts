@@ -49,6 +49,10 @@ import {
   type T5Options,
   type TemplateConstant,
 } from "../templates";
+
+// The resources tests below read the quick-start herd, so they start from the
+// option ticked. T2_DEFAULTS has it off, which the last test here pins.
+const T2_QUICK = { ...T2_DEFAULTS, quickStart: true };
 import {
   definesSymbol,
   playerLandTerrain,
@@ -453,14 +457,14 @@ describe("T1 standard player objects", () => {
 
 describe("T2 standard player resources", () => {
   const combos: T2Options[] = [
-    T2_DEFAULTS,
-    { ...T2_DEFAULTS, seasonal: true },
-    { ...T2_DEFAULTS, terrainToPlaceOn: "GRASS" },
-    { ...T2_DEFAULTS, seasonal: true, terrainToPlaceOn: "GRASS" },
-    ...BERRY_OPTIONS.map((b) => ({ ...T2_DEFAULTS, berryType: b.value })),
-    ...HERDABLE_OPTIONS.map((h) => ({ ...T2_DEFAULTS, herdable: h.value })),
-    ...HUNTABLE_OPTIONS.map((h) => ({ ...T2_DEFAULTS, huntable: h.value })),
-    ...LURABLE_OPTIONS.map((l) => ({ ...T2_DEFAULTS, lurable: l.value })),
+    T2_QUICK,
+    { ...T2_QUICK, seasonal: true },
+    { ...T2_QUICK, terrainToPlaceOn: "GRASS" },
+    { ...T2_QUICK, seasonal: true, terrainToPlaceOn: "GRASS" },
+    ...BERRY_OPTIONS.map((b) => ({ ...T2_QUICK, berryType: b.value })),
+    ...HERDABLE_OPTIONS.map((h) => ({ ...T2_QUICK, herdable: h.value })),
+    ...HUNTABLE_OPTIONS.map((h) => ({ ...T2_QUICK, huntable: h.value })),
+    ...LURABLE_OPTIONS.map((l) => ({ ...T2_QUICK, lurable: l.value })),
   ];
 
   for (const options of combos) {
@@ -492,13 +496,13 @@ describe("T2 standard player resources", () => {
   }
 
   it("the caret offset lands on the first actor area constant", () => {
-    const { text, caretOffset } = renderStandardPlayerResources(T2_DEFAULTS);
+    const { text, caretOffset } = renderStandardPlayerResources(T2_QUICK);
     expect(text.slice(caretOffset)).toMatch(/^#const AA_BERRIES 9995/);
   });
 
   it("seasonal disables berryType/wildlife by emitting the seasons consts regardless", () => {
     const withForage = renderStandardPlayerResources({
-      ...T2_DEFAULTS,
+      ...T2_QUICK,
       seasonal: true,
       berryType: "DLC_ORANGEBUSH",
       herdable: "DLC_COW",
@@ -510,10 +514,10 @@ describe("T2 standard player resources", () => {
   it("defaults to DE's pile sizes", () => {
     // F_NearGoldStone.inc, NEAR_GS_STANDARD: 7 and 4 gold, 5 and 4 stone.
     expect([
-      T2_DEFAULTS.largeGold.count,
-      T2_DEFAULTS.smallGold.count,
-      T2_DEFAULTS.largeStone.count,
-      T2_DEFAULTS.smallStone.count,
+      T2_QUICK.largeGold.count,
+      T2_QUICK.smallGold.count,
+      T2_QUICK.largeStone.count,
+      T2_QUICK.smallStone.count,
     ]).toEqual(["7", "4", "5", "4"]);
   });
 
@@ -522,7 +526,7 @@ describe("T2 standard player resources", () => {
   for (const seasonal of [false, true]) {
     it(`every block is gaia-only except the player's own sheep (seasonal=${seasonal})`, () => {
       const { text } = renderStandardPlayerResources({
-        ...T2_DEFAULTS,
+        ...T2_QUICK,
         seasonal,
       });
       const blocks = [...text.matchAll(/create_object [^{]*\{[^}]*\}/g)].map(
@@ -543,7 +547,7 @@ describe("T2 standard player resources", () => {
   // The two starts, picked by `if QUICK_START`. The else branch is the
   // standard start, so a script with no QUICK_START gets that one.
   describe("the sheep", () => {
-    const { text } = renderStandardPlayerResources(T2_DEFAULTS);
+    const { text } = renderStandardPlayerResources(T2_QUICK);
     const ifAt = text.indexOf("if QUICK_START");
     const elseAt = text.indexOf("\nelse\n");
     const endAt = text.indexOf("\nendif");
@@ -598,7 +602,7 @@ describe("T2 standard player resources", () => {
 
   it("leaves a dropdown parameter out entirely when it is None", () => {
     const none = (patch: Partial<T2Options>) =>
-      renderStandardPlayerResources({ ...T2_DEFAULTS, ...patch }).text;
+      renderStandardPlayerResources({ ...T2_QUICK, ...patch }).text;
     expect(none({ berryType: "none" })).not.toContain("FORAGE_BUSH");
     expect(none({ huntable: "none" })).not.toMatch(/DEER|Deer/);
     expect(none({ lurable: "none" })).not.toMatch(/BOAR|Boar/);
@@ -619,7 +623,7 @@ describe("T2 standard player resources", () => {
 
   it("leaves a pile out when it is unticked, and uses the typed amount", () => {
     const { text } = renderStandardPlayerResources({
-      ...T2_DEFAULTS,
+      ...T2_QUICK,
       largeGold: { enabled: true, count: "9" },
       smallGold: { enabled: false, count: "4" },
       smallStone: { enabled: true, count: "2" },
@@ -633,7 +637,7 @@ describe("T2 standard player resources", () => {
 
   it("under Seasonal variation, None still drops a block and anything else keeps its placeholder", () => {
     const { text } = renderStandardPlayerResources({
-      ...T2_DEFAULTS,
+      ...T2_QUICK,
       seasonal: true,
       huntable: "none",
     });
@@ -644,7 +648,7 @@ describe("T2 standard player resources", () => {
   });
 
   it("places the boar as two groups of one, spaced apart", () => {
-    const { text } = renderStandardPlayerResources(T2_DEFAULTS);
+    const { text } = renderStandardPlayerResources(T2_QUICK);
     const boar = blockOf(text, "BOAR");
     expect(boar).toContain("number_of_objects 1\n");
     expect(boar).toContain("number_of_groups 2");
@@ -663,7 +667,7 @@ describe("T2 standard player resources", () => {
     for (const seasonal of [false, true]) {
       it(`every resource claims a named area and avoids all earlier ones (seasonal=${seasonal})`, () => {
         const { text } = renderStandardPlayerResources({
-          ...T2_DEFAULTS,
+          ...T2_QUICK,
           seasonal,
         });
         // Blocks in the order they are written. The close herd's own area
@@ -693,7 +697,7 @@ describe("T2 standard player resources", () => {
     }
 
     it("defines each constant before its first use, and only the ones used", () => {
-      const { text } = renderStandardPlayerResources(T2_DEFAULTS);
+      const { text } = renderStandardPlayerResources(T2_QUICK);
       const defined = [...text.matchAll(/#const (AA_\w+) (\d+)/g)];
       expect(defined.map((m) => m[1]).sort()).toEqual(
         [
@@ -716,7 +720,7 @@ describe("T2 standard player resources", () => {
 
     it("a resource that is left out leaves no constant and no avoid line", () => {
       const { text } = renderStandardPlayerResources({
-        ...T2_DEFAULTS,
+        ...T2_QUICK,
         berryType: "none",
         lurable: "none",
         largeStone: { enabled: false, count: "5" },
@@ -731,7 +735,7 @@ describe("T2 standard player resources", () => {
 
     it("writes no constants at all when every area-owning block is left out", () => {
       const { text } = renderStandardPlayerResources({
-        ...T2_DEFAULTS,
+        ...T2_QUICK,
         berryType: "none",
         herdable: "none",
         huntable: "none",
@@ -748,7 +752,7 @@ describe("T2 standard player resources", () => {
 
   it("the caret lands on whichever block comes first", () => {
     const { text, caretOffset } = renderStandardPlayerResources({
-      ...T2_DEFAULTS,
+      ...T2_QUICK,
       berryType: "none",
     });
     expect(text.slice(caretOffset)).toMatch(/^#const AA_GOLD_LARGE 9999/);
@@ -757,8 +761,8 @@ describe("T2 standard player resources", () => {
 
   it("reports each bad field, and a None-everything template", () => {
     const bad = (patch: Partial<T2Options>) =>
-      playerResourcesProblems({ ...T2_DEFAULTS, ...patch });
-    expect(playerResourcesProblems(T2_DEFAULTS)).toEqual([]);
+      playerResourcesProblems({ ...T2_QUICK, ...patch });
+    expect(playerResourcesProblems(T2_QUICK)).toEqual([]);
     expect(bad({ largeGold: { enabled: true, count: "0" } })).toHaveLength(1);
     expect(bad({ smallStone: { enabled: true, count: "4x" } })).toHaveLength(1);
     expect(bad({ smallStone: { enabled: true, count: "" } })).toHaveLength(1);
@@ -791,7 +795,7 @@ describe("T2 standard player resources", () => {
           for (let pileMask = 0; pileMask < 16; pileMask++) {
             const bit = (mask: number, i: number) => (mask >> i) & 1;
             const options: T2Options = {
-              ...T2_DEFAULTS,
+              ...T2_QUICK,
               seasonal,
               berryType: bit(wildMask, 0) ? "none" : "DLC_ORANGEBUSH",
               herdable: bit(wildMask, 1) ? "none" : "DLC_GOAT",
@@ -1255,5 +1259,21 @@ describe("scriptContext", () => {
     expect(definesSymbol(parse("#const OTHER 1"), FOREST_MAKER_CONST)).toBe(
       false,
     );
+  });
+});
+
+describe("Standard player resources, Quick-start herd option", () => {
+  it("is off by default and writes no if QUICK_START", () => {
+    expect(T2_DEFAULTS.quickStart).toBe(false);
+    const { text } = renderStandardPlayerResources(T2_DEFAULTS);
+    expect(text).not.toContain("QUICK_START");
+    expect(text).not.toContain("else");
+    expect(text).toContain("/* Sheep */");
+  });
+
+  it("writes if QUICK_START with the standard herd as else when ticked", () => {
+    const { text } = renderStandardPlayerResources(T2_QUICK);
+    expect(text).toContain("if QUICK_START");
+    expect(text).toContain("else");
   });
 });

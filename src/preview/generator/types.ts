@@ -13,6 +13,7 @@
 // Nothing in here is implementation. The generator (4.3) fills these in;
 // 4.2 renders them.
 
+import type { GenerationTiming } from "./generationTiming";
 import type { ArgNode, Span } from "../../parser/types";
 import type { CommandDef } from "../../parser/language";
 import type {
@@ -95,6 +96,8 @@ export interface PreviewOptions {
   includeFiles?: IncludeFiles;
   /** Diagnostics only: hears one line per frame of each `create_object` in DE's object stage. */
   objectTrace?: (line: string) => void;
+  /** Records how long each section and command took (`PreviewResult.timing`), for the preview's hourglass. */
+  timing?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -659,6 +662,29 @@ export interface PreviewResult {
    * (forestTrees.ts), and the checker's figures are over scripted objects.
    */
   terrainObjects?: TerrainObjectLayer;
+  /**
+   * The script's `effect_amount (GAIA_)SET_ATTRIBUTE <object>
+   * ATTR_STANDING_GRAPHIC <graphic>` lines, as [object id, graphic id]
+   * pairs, the last line for an object winning. `gaia` applies to objects
+   * Gaia owns, `player` to the players'. The textured view draws an object
+   * as its graphic here in place of the dat's. Present when the object data
+   * is loaded.
+   */
+  /**
+   * How long each section and each command of this generation took, when
+   * `PreviewOptions.timing` asked for it (generationTiming.ts).
+   */
+  timing?: GenerationTiming;
+  /**
+   * The mood the script's last `color_correction` names (the
+   * `colorCorrection` constants, CC_DEFAULT 0). The textured view tints the
+   * map with it (colourMoods.ts). Absent when the script names none.
+   */
+  colorMood?: number;
+  standingGraphics?: {
+    gaia: readonly (readonly [number, number])[];
+    player: readonly (readonly [number, number])[];
+  };
 }
 
 /**
@@ -725,7 +751,14 @@ export interface CliffPiece {
  * the same "one contract, two costs" split `tools-api-design.md` Sec.1
  * already runs on, landing here first.
  */
-export type PreviewWireResult = Omit<PreviewResult, "grid">;
+export type PreviewWireResult = Omit<PreviewResult, "grid" | "deObjects"> & {
+  /**
+   * `deObjects` packed into one transferred buffer (`deObjectsWire.ts`),
+   * which the textured view's sprites unpack. As objects it cost about 30 ms
+   * of cloning per preview on a forested map.
+   */
+  deObjectsPacked?: Float64Array;
+};
 
 // ---------------------------------------------------------------------------
 // Worker protocol (Sec.10)

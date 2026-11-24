@@ -22,9 +22,79 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.title {
+/* Two tabs in the header, where the title was. The selected one takes the
+   title's weight and an underline; the other reads as a quieter link. */
+.tabs {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.tab {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.05rem 0 0.1rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.tab:hover {
+  opacity: 1;
+}
+
+.tab[aria-selected="true"] {
+  opacity: 1;
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* The two tab bodies, stacked in one cell so the box takes the larger of
+   them (GenerationSettingsPanel.tsx). */
+.tabBodies {
+  display: grid;
+}
+
+.tabBodies > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* Keeps its space, so the box stays one size, but cannot be seen, clicked or
+   focused. */
+.hiddenTab {
+  visibility: hidden;
+}
+
+/* Preview Options, one checkbox a line. */
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+/* A group's name inside Preview Options, such as Performance. */
+.optionHeading {
+  margin-top: 0.35rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border-subtle);
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+/* Options that belong to the one above them (DE textures). */
+.indented {
+  margin-left: 1.1rem;
+}
+
+.disabled {
+  opacity: 0.5;
+}
+
+.disabled label {
+  cursor: default;
 }
 
 /* Just an X, with no border at rest. Hover and keyboard focus wash the

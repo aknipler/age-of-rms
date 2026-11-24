@@ -35,6 +35,7 @@
 // reasonable reading of the guide and each is refuted by a DE map. Its
 // history is in docs/build-log.md.
 
+import { timeCommand } from "./generationTiming";
 import type {
   CommandReport,
   InstantiatedCommand,
@@ -616,40 +617,45 @@ export function applyConnections(
     outcome.set(cmd, { attempted: 0, placed: 0, failures: [] });
 
   for (const connection of list) {
-    const log: PaintLog = { beforeLast: new Map() };
-    const report = connection.cmd ? outcome.get(connection.cmd) : undefined;
-    const { endpoints, table } = connection;
-    for (let a = 0; a < endpoints.length; a++)
-      for (let b = a + 1; b < endpoints.length; b++) {
-        const from = origins[endpoints[a]];
-        const to = origins[endpoints[b]];
-        if (report) report.attempted++;
-        const path = findPath(
-          view,
-          dim,
-          table,
-          from.y * dim + from.x,
-          to.y * dim + to.x,
-          parent,
-          seen,
-        );
-        if (path === undefined) {
-          if (report && connection.cmd)
-            pushFailure(report.failures, {
-              bucket: "connectionBlocked",
-              commandSpan: connection.cmd.span,
-              stage: "S5",
-              entity: `connection ${landLabel(origins, endpoints[a])}-${landLabel(origins, endpoints[b])}`,
-              detail:
-                "No passable route exists between these two lands' origins, so this connection was not produced.",
-            });
-          continue;
+    const run = () => {
+      const log: PaintLog = { beforeLast: new Map() };
+      const report = connection.cmd ? outcome.get(connection.cmd) : undefined;
+      const { endpoints, table } = connection;
+      for (let a = 0; a < endpoints.length; a++)
+        for (let b = a + 1; b < endpoints.length; b++) {
+          const from = origins[endpoints[a]];
+          const to = origins[endpoints[b]];
+          if (report) report.attempted++;
+          const path = findPath(
+            view,
+            dim,
+            table,
+            from.y * dim + from.x,
+            to.y * dim + to.x,
+            parent,
+            seen,
+          );
+          if (path === undefined) {
+            if (report && connection.cmd)
+              pushFailure(report.failures, {
+                bucket: "connectionBlocked",
+                commandSpan: connection.cmd.span,
+                stage: "S5",
+                entity: `connection ${landLabel(origins, endpoints[a])}-${landLabel(origins, endpoints[b])}`,
+                detail:
+                  "No passable route exists between these two lands' origins, so this connection was not produced.",
+              });
+            continue;
+          }
+          paintPath(view, dim, table, path, stream, inSet, log, finalPaint);
+          if (report) report.placed++;
         }
-        paintPath(view, dim, table, path, stream, inSet, log, finalPaint);
-        if (report) report.placed++;
-      }
-    for (const i of log.beforeLast.keys()) painted.add(i);
-    if (undo) for (const [i, before] of log.beforeLast) view[i] = before;
+      for (const i of log.beforeLast.keys()) painted.add(i);
+      if (undo) for (const [i, before] of log.beforeLast) view[i] = before;
+    };
+    // The hourglass's row for this connection's command (generationTiming.ts).
+    if (connection.cmd) timeCommand(connection.cmd, run);
+    else run();
   }
   if (undo) {
     view.set(start);
@@ -695,7 +701,7 @@ export function applyConnections(
       prominence: "drawer",
       stage: "S5",
       span: cmd.span,
-      text: "The create_connect_to_nonplayer_land before this command writes one road per player over the commands that follow it, one command per player land, so the game never runs this one. The preview does the same.",
+      text: "The create_connect_to_nonplayer_land before this command writes one road per player over the commands that follow it, one command per player land, so the game never runs this one.",
     });
   }
   return { reports, notes, stream: stream.state() };

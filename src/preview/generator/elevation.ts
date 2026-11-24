@@ -26,6 +26,7 @@
 // of the lists has its bottom edge at x + r rather than y + r, which is the
 // whole of the "diagonal bias" the earlier statistical model fitted by hand.
 
+import { timeCommand } from "./generationTiming";
 import type {
   CommandReport,
   InstantiatedCommand,
@@ -662,7 +663,9 @@ export function applyElevation(
 
   const outcomes = new Map<InstantiatedCommand, LayerOutcome[]>();
   for (const layer of layers) {
-    const outcome = growLayer(layer, grid, weight, lists, stream);
+    const outcome = timeCommand(layer.cmd, () =>
+      growLayer(layer, grid, weight, lists, stream),
+    );
     smoothElevation(grid.elevation, dim);
     const list = outcomes.get(layer.cmd) ?? [];
     list.push(outcome);

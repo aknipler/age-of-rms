@@ -12,6 +12,7 @@ import { resolveMapDim } from "../../preview/generator/mapDimensions";
 import { isSidePanelKeyEvent } from "../../settings/focusRegion";
 import { HelpTip } from "../HelpTip";
 import { TeamSection } from "../TeamSection";
+import { usePreviewView } from "./PreviewViewContext";
 import styles from "./GenerationSettingsPanel.module.css";
 
 // Same double-cast as ReferenceTable.tsx and parserWorker.ts: the JSON import
@@ -105,6 +106,114 @@ function MapSizePicker({
   );
 }
 
+/** The box's two tabs. */
+type SettingsTab = "generation" | "preview";
+
+/**
+ * How the preview draws the map, the second tab. These change the picture
+ * only, never what is generated, so they sit apart from the lobby settings.
+ * Checkboxes rather than the icon buttons they were in the toolbar, since a
+ * labelled row says what it does without a hover. The two textured view
+ * options are disabled, not hidden, while that view is off, so the list
+ * keeps its shape and says they exist.
+ */
+function PreviewOptions() {
+  const {
+    deTextures,
+    setDeTextures,
+    smallTrees,
+    setSmallTrees,
+    terrainBlends,
+    setTerrainBlends,
+    hideDecorations,
+    setHideDecorations,
+    hidePlayerCircles,
+    setHidePlayerCircles,
+    recordTiming,
+    setRecordTiming,
+  } = usePreviewView();
+  const rows: {
+    id: string;
+    helpId: string;
+    label: string;
+    checked: boolean;
+    set: (on: boolean) => void;
+    disabled?: boolean;
+    indent?: boolean;
+  }[] = [
+    {
+      id: "preview-option-de-textures",
+      helpId: "preview.deTextures",
+      label: "DE textures",
+      checked: deTextures,
+      set: setDeTextures,
+    },
+    {
+      id: "preview-option-small-trees",
+      helpId: "preview.smallTrees",
+      label: "Small trees",
+      checked: smallTrees,
+      set: setSmallTrees,
+      disabled: !deTextures,
+      indent: true,
+    },
+    {
+      id: "preview-option-terrain-blends",
+      helpId: "preview.terrainBlends",
+      label: "Terrain blending",
+      checked: terrainBlends,
+      set: setTerrainBlends,
+      disabled: !deTextures,
+      indent: true,
+    },
+    {
+      id: "preview-option-hide-decorations",
+      helpId: "preview.hideDecorations",
+      label: "Hide decoration circles",
+      checked: hideDecorations,
+      set: setHideDecorations,
+    },
+    {
+      id: "preview-option-hide-player-circles",
+      helpId: "preview.hidePlayerCircles",
+      label: "Hide player circles",
+      checked: hidePlayerCircles,
+      set: setHidePlayerCircles,
+    },
+  ];
+  const renderRow = (row: (typeof rows)[number]) => (
+    <HelpTip key={row.id} id={row.helpId}>
+      <div
+        className={`${styles.field} ${row.indent ? styles.indented : ""} ${
+          row.disabled ? styles.disabled : ""
+        }`}
+      >
+        <input
+          id={row.id}
+          type="checkbox"
+          checked={row.checked}
+          disabled={row.disabled}
+          onChange={(event) => row.set(event.target.checked)}
+        />
+        <label htmlFor={row.id}>{row.label}</label>
+      </div>
+    </HelpTip>
+  );
+  return (
+    <div className={styles.optionList}>
+      {rows.map(renderRow)}
+      <div className={styles.optionHeading}>Performance</div>
+      {renderRow({
+        id: "preview-option-record-timing",
+        helpId: "preview.recordTiming",
+        label: "Time each generation",
+        checked: recordTiming,
+        set: setRecordTiming,
+      })}
+    </div>
+  );
+}
+
 /**
  * Map size, player count, Team Positions and the teams, in a box over the map
  * preview (PreviewCanvas hands it to OverlayCanvas's top right panel slot).
@@ -138,6 +247,9 @@ export function GenerationSettingsPanel({
   // blank field at all). Typing a valid digit still commits immediately;
   // this only buys room for the momentarily-empty/invalid states in between.
   const [draft, setDraft] = useState(String(playerCount));
+  // Which tab shows. Local state, so the box opens on Generation Settings,
+  // what the cog and Ctrl+D have always opened.
+  const [tab, setTab] = useState<SettingsTab>("generation");
 
   useEffect(() => {
     setDraft(String(playerCount));
@@ -167,7 +279,30 @@ export function GenerationSettingsPanel({
   return (
     <div ref={rootRef} className={styles.panel} tabIndex={-1}>
       <div className={styles.header}>
-        <span className={styles.title}>Generation Settings</span>
+        <div className={styles.tabs} role="tablist">
+          <HelpTip id="generationSettings.tabGeneration">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "generation"}
+              className={styles.tab}
+              onClick={() => setTab("generation")}
+            >
+              Generation Settings
+            </button>
+          </HelpTip>
+          <HelpTip id="generationSettings.tabPreview">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "preview"}
+              className={styles.tab}
+              onClick={() => setTab("preview")}
+            >
+              Preview Options
+            </button>
+          </HelpTip>
+        </div>
         <HelpTip id="generationSettings.close">
           <button
             type="button"
@@ -180,73 +315,93 @@ export function GenerationSettingsPanel({
         </HelpTip>
       </div>
 
-      {/* An explicit row, not three HelpTip spans left to land side by side
+      {/* Both tabs stay rendered, in one grid cell, and the one not shown is
+          hidden with visibility, which keeps its space. So the box is always
+          the size of the larger tab and does not jump when the tab changes.
+          `display: none` or not rendering it would size the box to whichever
+          tab is showing. */}
+      <div className={styles.tabBodies}>
+        <div
+          className={tab === "preview" ? undefined : styles.hiddenTab}
+          aria-hidden={tab !== "preview"}
+        >
+          <PreviewOptions />
+        </div>
+        <div
+          className={tab === "generation" ? undefined : styles.hiddenTab}
+          aria-hidden={tab !== "generation"}
+        >
+          {/* An explicit row, not three HelpTip spans left to land side by side
           on their own inline-block default (HelpTip.module.css). Building on
           that accident is what SettingsDialog.module.css's `.panel > span`
           fix replaced elsewhere. */}
-      <div className={styles.topRow}>
-        <HelpTip id="generationSettings.playerCount">
-          <div className={styles.field}>
-            <label htmlFor="generation-player-count">Players</label>
-            <input
-              id="generation-player-count"
-              className={styles.playerInput}
-              type="number"
-              min={MIN_PLAYER_COUNT}
-              max={MAX_PLAYER_COUNT}
-              // Editable even while a preset is active (2026-09-16): typing a
-              // count here is a deliberate override, and
-              // GenerationSettingsContext's setPlayerCount clears the preset
-              // itself (restoring the teams it displaced) rather than this
-              // component needing to know about presets at all.
-              value={draft}
-              onChange={(event) => {
-                const raw = event.target.value;
-                setDraft(raw);
-                const next = Number(raw);
-                if (
-                  raw !== "" &&
-                  Number.isInteger(next) &&
-                  next >= MIN_PLAYER_COUNT &&
-                  next <= MAX_PLAYER_COUNT
-                ) {
-                  setPlayerCount(next);
-                }
-              }}
-              onBlur={() => {
-                // Left empty or mid-edit invalid: snap the display back to
-                // the last committed count rather than leaving a blank or
-                // out-of-range number showing.
-                setDraft(String(playerCount));
-              }}
-            />
-          </div>
-        </HelpTip>
+          <div className={styles.topRow}>
+            <HelpTip id="generationSettings.playerCount">
+              <div className={styles.field}>
+                <label htmlFor="generation-player-count">Players</label>
+                <input
+                  id="generation-player-count"
+                  className={styles.playerInput}
+                  type="number"
+                  min={MIN_PLAYER_COUNT}
+                  max={MAX_PLAYER_COUNT}
+                  // Editable even while a preset is active (2026-09-16): typing a
+                  // count here is a deliberate override, and
+                  // GenerationSettingsContext's setPlayerCount clears the preset
+                  // itself (restoring the teams it displaced) rather than this
+                  // component needing to know about presets at all.
+                  value={draft}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    setDraft(raw);
+                    const next = Number(raw);
+                    if (
+                      raw !== "" &&
+                      Number.isInteger(next) &&
+                      next >= MIN_PLAYER_COUNT &&
+                      next <= MAX_PLAYER_COUNT
+                    ) {
+                      setPlayerCount(next);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Left empty or mid-edit invalid: snap the display back to
+                    // the last committed count rather than leaving a blank or
+                    // out-of-range number showing.
+                    setDraft(String(playerCount));
+                  }}
+                />
+              </div>
+            </HelpTip>
 
-        <HelpTip id="generationSettings.mapSize">
-          <div className={styles.field}>
-            <label htmlFor="generation-map-size">Map size</label>
-            <MapSizePicker value={mapSize} onChange={setMapSize} />
-          </div>
-        </HelpTip>
+            <HelpTip id="generationSettings.mapSize">
+              <div className={styles.field}>
+                <label htmlFor="generation-map-size">Map size</label>
+                <MapSizePicker value={mapSize} onChange={setMapSize} />
+              </div>
+            </HelpTip>
 
-        {/* A lobby setting like the two fields beside it. The checkbox comes
+            {/* A lobby setting like the two fields beside it. The checkbox comes
             first and the label points at it with htmlFor, the same idiom as
             GeneralSettings, so clicking the words toggles it too. */}
-        <HelpTip id="generationSettings.teamPositions">
-          <div className={styles.field}>
-            <input
-              id="generation-team-positions"
-              type="checkbox"
-              checked={teamPositions}
-              onChange={(event) => setTeamPositions(event.target.checked)}
-            />
-            <label htmlFor="generation-team-positions">Team Positions</label>
+            <HelpTip id="generationSettings.teamPositions">
+              <div className={styles.field}>
+                <input
+                  id="generation-team-positions"
+                  type="checkbox"
+                  checked={teamPositions}
+                  onChange={(event) => setTeamPositions(event.target.checked)}
+                />
+                <label htmlFor="generation-team-positions">
+                  Team Positions
+                </label>
+              </div>
+            </HelpTip>
           </div>
-        </HelpTip>
-      </div>
 
-      <TeamSection />
+          <TeamSection />
+        </div>
+      </div>
     </div>
   );
 }

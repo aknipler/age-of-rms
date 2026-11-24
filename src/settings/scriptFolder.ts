@@ -53,6 +53,12 @@ export const SCRIPTS_SUBPATH = "resources\\_common\\random-map-scripts";
  */
 export const GAMEDATA_SUBPATH = "resources\\_common\\drs\\gamedata_x2";
 
+/**
+ * Where DE keeps its terrain textures. Most sit in its `2x` subfolder and a
+ * few directly in this one (docs/preview-de-textures-design.md Sec.2).
+ */
+export const TERRAIN_TEXTURES_SUBPATH = "resources\\_common\\terrain\\textures";
+
 /** Where Steam itself is normally installed, i.e. where to look for the library list. */
 export const STEAM_ROOT_CANDIDATES: readonly string[] = [
   "C:\\Program Files (x86)\\Steam",
@@ -93,6 +99,11 @@ export function scriptsFolderIn(installFolder: string): string {
 /** `<install>\resources\_common\drs\gamedata_x2`. */
 export function gamedataFolderIn(installFolder: string): string {
   return `${trimTrailingSlash(installFolder)}\\${GAMEDATA_SUBPATH}`;
+}
+
+/** `<install>\resources\_common\terrain\textures`. */
+export function terrainTexturesFolderIn(installFolder: string): string {
+  return `${trimTrailingSlash(installFolder)}\\${TERRAIN_TEXTURES_SUBPATH}`;
 }
 
 /**
@@ -160,6 +171,21 @@ export async function findDeGamedataFolder(
 ): Promise<string | null> {
   for (const install of await candidateInstallFolders(probe)) {
     const candidate = gamedataFolderIn(install);
+    if (await probe.exists(candidate)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * DE's terrain texture folder, or `null` when the game isn't found. The
+ * preview's textured view reads from here (src/preview/render/deTextureSource.ts).
+ * Same candidates and the same sequential probe as `findDeGamedataFolder`.
+ */
+export async function findDeTerrainTexturesFolder(
+  probe: FolderProbe,
+): Promise<string | null> {
+  for (const install of await candidateInstallFolders(probe)) {
+    const candidate = terrainTexturesFolderIn(install);
     if (await probe.exists(candidate)) return candidate;
   }
   return null;

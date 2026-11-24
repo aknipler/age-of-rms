@@ -1,0 +1,42 @@
+/*
+================================================================================
+RMSTEST_86a - GAIA_UPGRADE_UNIT PINETREE PALMTREE
+Feeds: Sec.14.3, the one corpus effect the sprites ignore (about 80 uses,
+GAIA_UPGRADE_UNIT on trees and bushes). A then B: A becomes B.
+Generate at Tiny, 2 players, seed 1000. Save, read with probe_scenario.py, and look.
+Questions and predictions:
+  - Which object does the save hold, PINETREE (350) or PALMTREE (351)?
+    The preview's object stage keeps 350 (it builds A with B's creation draws).
+  - Which picture shows, in the editor and in a started game? The preview draws
+    a pine. If the game shows a palm, the sprites should follow the upgrade.
+86b is the control.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 60
+    base_size 12
+  }
+
+<OBJECTS_GENERATION>
+effect_amount GAIA_UPGRADE_UNIT PINETREE PALMTREE 0
+
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players 0
+}
+
+create_object PINETREE
+{
+  number_of_objects 30
+  set_gaia_object_only
+  min_distance_to_players 8
+}
+

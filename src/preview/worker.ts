@@ -32,6 +32,7 @@ import {
   type GameConstantsForValidate,
 } from "../parser/validate";
 import { truncateAst } from "./generator/truncateAst";
+import { packDeObjects } from "./generator/deObjectsWire";
 import { generatePreview, type PreviewReferenceData } from "./generator/index";
 import type { ObjectConstant } from "./generator/objects";
 import type { TerrainRestriction } from "./generator/forestTreeSuppression";
@@ -91,6 +92,9 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     resourceTotals,
     cliffPieces,
     terrainObjects,
+    standingGraphics,
+    colorMood,
+    timing,
   } = result;
   return {
     dim,
@@ -104,10 +108,18 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     landOrigins,
     resourceTotals,
     cliffPieces,
-    // The canvas draws these. `deObjects` stays behind, since it repeats
-    // them with every scripted object and nothing on the main thread reads
-    // the saved map's own fields.
     terrainObjects,
+    standingGraphics,
+    colorMood,
+    timing,
+    // The textured view draws every object as DE's sprite, which needs the
+    // saved map's own fields (frame, rotation, status). Packed into one
+    // buffer and transferred, since as tens of thousands of small objects
+    // the clone cost about 30 ms on each side per preview.
+    deObjectsPacked:
+      result.deObjects === undefined
+        ? undefined
+        : packDeObjects(result.deObjects),
   };
 }
 
@@ -141,13 +153,22 @@ function parseFor(source: string): ParseResult {
 
 self.onmessage = (event: MessageEvent<PreviewRequest>) => {
   const { id, source, cutOffset, settings, opts } = event.data;
+  // Parsing happens here, before generatePreview, so the hourglass gets its
+  // time from here. A re-roll reuses the last parse and reports 0.
+  const parseStart = performance.now();
   const full = parseFor(source);
+  const parseMs = performance.now() - parseStart;
   const parse = cutOffset === null ? full : truncateAst(full, cutOffset);
   const result = generatePreview(parse, refDb, settings, opts);
+  if (result.timing) result.timing.parseMs = parseMs;
   const response: PreviewResponse = {
     id,
     ok: true,
     result: toWireResult(result),
   };
-  self.postMessage(response);
+  // The transfer list hands the buffer over instead of copying it. The
+  // worker's own view of it is emptied, which is fine since it is never
+  // read again here.
+  const packed = response.result.deObjectsPacked;
+  self.postMessage(response, packed === undefined ? [] : [packed.buffer]);
 };

@@ -45,13 +45,19 @@
   pointer-events: auto;
 }
 
+/* The buttons' 1.25rem height and 1px border (transparent here), so the chip
+   lines up with Export and the buttons beside it. */
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 1.25rem;
+  border: 1px solid transparent;
   background: rgba(0, 0, 0, 0.66);
   color: #fff;
   font-size: 0.62rem;
   letter-spacing: 0.02em;
-  padding: 0.12rem 0.34rem;
+  padding: 0 0.35rem;
   border-radius: 2px;
 }
 
@@ -129,6 +135,15 @@
   pointer-events: auto;
 }
 
+/* HelpTip's wrapper spans are inline, so the chips inside them sat on text
+   baselines and drifted a pixel apart. As flex boxes they centre on the row. */
+.topRight > span,
+.exportWrap > span,
+.bottomRow span:has(> button),
+.bottomRow span:has(> [class*="notice"]) {
+  display: inline-flex;
+}
+
 /* The box under the top right buttons (OverlayCanvas's topRightPanel). The row
    takes the full width of the wrapping flex row so it lands on its own line,
    and passes the pointer through its empty part like the rest of the corner. */
@@ -191,6 +206,7 @@
 }
 
 .zoomButton {
+  box-sizing: border-box;
   width: 1.25rem;
   height: 1.25rem;
   padding: 0;
@@ -211,6 +227,7 @@
    1.25rem square, so it reads as one of this corner's controls rather than a
    different class of button. */
 .exportButton {
+  box-sizing: border-box;
   height: 1.25rem;
   padding: 0 0.35rem;
   font-size: 0.62rem;
@@ -225,4 +242,55 @@
 
 .exportButton:hover {
   background: rgba(0, 0, 0, 0.82);
+}
+
+.exportButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.exportWrap {
+  position: relative;
+  display: inline-block;
+}
+
+/* Opens under the button, right edges aligned, over the map. */
+.exportMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.2rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  min-width: 10rem;
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  font-size: 0.68rem;
+}
+
+.exportGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.exportOption {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.exportOption select {
+  margin-left: auto;
+  font-size: 0.68rem;
+}
+
+.exportSize {
+  opacity: 0.75;
 }

@@ -507,6 +507,9 @@ export function PreviewControls() {
             <MinimapIcon mode={colorMode} />
           </button>
         </HelpTip>
+        {/* DE textures, Small Trees, Terrain Blending and Hide Decorations
+            moved to the settings box's Preview Options tab, the toolbar had
+            grown a row of icons few could tell apart. */}
       </div>
 
       <div className={styles.controlsGroup}>

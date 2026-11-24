@@ -19,6 +19,7 @@ import {
   trackFocusRegion,
 } from "../../../settings/focusRegion";
 import { GenerationSettingsPanel } from "../GenerationSettingsPanel";
+import { PreviewViewProvider } from "../PreviewViewContext";
 
 vi.mock("@tauri-apps/plugin-store", () => ({
   load: vi.fn(async () => ({
@@ -34,11 +35,14 @@ function setup() {
   render(
     <HelpSettingsProvider>
       <GenerationSettingsProvider>
-        {/* The side panel marks itself with this attribute (MapSidePanel). */}
-        <div {...{ [FOCUS_REGION_ATTR]: SIDE_PANEL_REGION }}>
-          <GenerationSettingsPanel onClose={onClose} />
-        </div>
-        <textarea data-testid="editor" />
+        {/* The box's Preview Options tab reads the preview's own settings. */}
+        <PreviewViewProvider>
+          {/* The side panel marks itself with this attribute (MapSidePanel). */}
+          <div {...{ [FOCUS_REGION_ATTR]: SIDE_PANEL_REGION }}>
+            <GenerationSettingsPanel onClose={onClose} />
+          </div>
+          <textarea data-testid="editor" />
+        </PreviewViewProvider>
       </GenerationSettingsProvider>
     </HelpSettingsProvider>,
   );

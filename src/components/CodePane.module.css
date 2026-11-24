@@ -4,6 +4,7 @@
    Without min-width: 0 a flex child refuses to shrink past its intrinsic
    width, and Monaco reports a very large one. */
 .pane {
+  position: relative; /* the Add Template dialog centres on this pane */
   display: flex;
   flex: 1;
   min-height: 0;

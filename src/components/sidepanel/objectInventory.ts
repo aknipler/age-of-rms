@@ -98,6 +98,26 @@ function collectScriptObjectNames(parse: ParseResult): Set<string> {
   return named;
 }
 
+/**
+ * Each `#const NAME value` whose value is a whole number, or another such
+ * name (followed up to a few hops), keyed by NAME. Only the literal forms,
+ * since an expression is not a name for one object.
+ */
+function idsOfScriptConsts(parse: ParseResult): Map<string, number> {
+  const raw = new Map<string, string>();
+  for (const sym of parse.symbols)
+    if (sym.directiveKind === "const" && sym.valueToken !== undefined)
+      if (!raw.has(sym.name))
+        raw.set(sym.name, parse.tokens[sym.valueToken].text);
+  const ids = new Map<string, number>();
+  for (const [name, first] of raw) {
+    let text = first;
+    for (let hop = 0; hop < 8 && raw.has(text); hop++) text = raw.get(text)!;
+    if (/^\d+$/.test(text)) ids.set(name, Number(text));
+  }
+  return ids;
+}
+
 /** How many of each object the generation placed, keyed by the name as written. */
 export function tallySpawned(
   objects: readonly PlacedObject[],
@@ -140,6 +160,26 @@ export function buildObjectInventory(
     }
   const names =
     parse === null ? new Set<string>() : collectScriptObjectNames(parse);
+  // The generator names a placed object by its constant, or by its bare id
+  // when the constants table has no name for it, which is the case for a
+  // script's own `#const PLACEHOLDER_ONGRID 1613`. The script row says
+  // PLACEHOLDER_ONGRID and the placed row says 1613, so the two would never
+  // meet and the script's row would read 0. Fold the id's count into the
+  // script's name for it.
+  if (parse !== null) {
+    const byId = idsOfScriptConsts(parse);
+    for (const name of names) {
+      const id = byId.get(name);
+      if (id === undefined || counts.has(name)) continue;
+      const n = counts.get(String(id));
+      if (n !== undefined) counts.set(name, n);
+    }
+    for (const id of new Set(byId.values())) {
+      const key = String(id);
+      // Keep the bare row only when no script name took its count.
+      if ([...names].some((nm) => byId.get(nm) === id)) counts.delete(key);
+    }
+  }
   for (const name of counts.keys()) names.add(name);
   return [...names]
     .sort((a, b) => a.localeCompare(b))

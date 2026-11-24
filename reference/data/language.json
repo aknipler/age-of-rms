@@ -2283,6 +2283,11 @@
         }
       ],
       "description": "Keeps objects on their own land and this many tiles from its edge. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
+      "requiresNote": "The guide says it needs one of them. What happens without one has not been measured in game, so the line may do nothing.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2308) on 2026-10-25."
     },
@@ -2493,6 +2498,11 @@
       "tokenId": 108,
       "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on the closest free tile to the land's center. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
+      "requiresNote": "The guide says it needs one of them. What happens without one has not been measured in game, so the line may do nothing.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2647) on 2026-10-25."
     },
@@ -2501,6 +2511,11 @@
       "tokenId": 134,
       "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on the free tile closest to the map center. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
+      "requiresNote": "The guide says it needs one of them. What happens without one has not been measured in game, so the line may do nothing.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2664) on 2026-10-25."
     },
@@ -2509,6 +2524,11 @@
       "tokenId": 133,
       "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on the free tile closest to the map edge. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
+      "requiresNote": "The guide says it needs one of them. What happens without one has not been measured in game, so the line may do nothing.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2678) on 2026-10-25."
     },
@@ -2525,6 +2545,11 @@
       "tokenId": 139,
       "tokenIdSource": "equivalencies-2026-11-02",
       "description": "Places the object on only the first matching land when several qualify. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
+      "requiresNote": "The guide says it needs one of them. What happens without one has not been measured in game, so the line may do nothing.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2330) on 2026-10-25."
     },
@@ -3009,6 +3034,11 @@
         }
       ],
       "description": "Requires a walkable path from the object to its land's origin. 0 allows indirect paths, 1 only direct ones, higher values allow more detours. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
+      "requiresNote": "The guide says it needs one of them. What happens without one has not been measured in game, so the line may do nothing.",
       "verified": true,
       "notes": "Description checked against the guide's own entry (guide:2710) on 2026-10-25."
     },

@@ -116,6 +116,14 @@ export type Resolution =
   | { kind: "label" }
   /** Our data knows the name, under a category this slot does not take. */
   | { kind: "otherKind"; category: string }
+  /**
+   * A name only includes/constants.inc defines, with nothing in the script
+   * or its read includes to define it. random_map.def is what every script
+   * gets, so the game does not know this name until the script includes
+   * constants.inc or writes its own `#const`. `row.constId` is the number
+   * constants.inc gives it.
+   */
+  | { kind: "constantsIncOnly"; row: BuiltinRow }
   /** Our data does not know the name. Proves nothing about the game. */
   | { kind: "unknown" };
 
@@ -414,14 +422,23 @@ export function resolveName(
     };
   }
 
+  let constantsIncRow: BuiltinRow | undefined;
   if (slot.kind === "argument") {
     const rows = stat.rowsByName.get(name);
     if (rows) {
+      // A row every script sees wins over its constants.inc twin.
+      const ambient = rows.find(
+        (r) =>
+          slotTakesRow(slot, r) &&
+          !NON_AMBIENT_CONSTANT_CATEGORIES.has(r.category),
+      );
+      if (ambient) return { kind: "builtin", row: ambient };
       const taken = rows.find((r) => slotTakesRow(slot, r));
-      if (taken) return { kind: "builtin", row: taken };
-      // The name IS a game constant, so a script `#const` of it never takes
-      // effect (RMS0302), and the slot is the problem, not the name.
-      return { kind: "otherKind", category: rows[0].category };
+      if (taken) constantsIncRow = taken;
+      else
+        // The name IS a game constant, so a script `#const` of it never takes
+        // effect (RMS0302), and the slot is the problem, not the name.
+        return { kind: "otherKind", category: rows[0].category };
     }
   }
 
@@ -446,6 +463,8 @@ export function resolveName(
     const aliasOf = aliasTarget(stat, script, scoped.symbol, slot);
     return aliasOf ? { ...scoped, aliasOf } : scoped;
   }
+  if (constantsIncRow && scoped.kind === "unknown")
+    return { kind: "constantsIncOnly", row: constantsIncRow };
 
   if (slot.kind === "condition") {
     const labels = stat.language.predefinedLabels ?? [];
@@ -916,7 +935,17 @@ export function unknownNameOffer(
   // less than usual there. Once the files were read, a miss means the same as
   // in a script with no include.
   if (includesUnread(script)) return null;
-  if (resolveName(stat, script, name, at, slot).kind !== "unknown") return null;
+  const resolved = resolveName(stat, script, name, at, slot);
+  if (resolved.kind === "constantsIncOnly") {
+    // Offered with the number constants.inc gives the name, so accepting
+    // writes the line the game needs.
+    const id = resolved.row.constId;
+    if (id === null) return null;
+    return {
+      defaultValue: { value: id, meaning: resolved.row },
+    };
+  }
+  if (resolved.kind !== "unknown") return null;
 
   const typo = didYouMeanFor(stat, script, name, at, slot);
   return {

@@ -6,6 +6,7 @@ import docStringsDataRaw from "../../reference/data/doc-strings.json";
 import { describeScriptName, getNameLookupParse } from "./aoe2RmsCompletion";
 import { insideComment } from "./caretContext";
 import { constantHoverLine } from "./constantHover";
+import { NON_AMBIENT_CONSTANT_CATEGORIES } from "../parser/validate";
 import {
   HELP_MODE_KEY,
   HELP_STORE_FILE,
@@ -119,9 +120,21 @@ const DIRECTIVES_BY_NAME = new Map(
 const CONTROL_KEYWORDS_BY_NAME = new Map(
   languageData.controlKeywords.map((k) => [k.name, k]),
 );
-const CONSTANTS_BY_NAME = new Map(
-  gameConstantsData.constants.map((c) => [c.rmsConstant, c]),
-);
+// One row per name, preferring a row every script sees over its constants.inc
+// twin (`new Map(entries)` alone keeps the LAST row, which is the twin).
+const CONSTANTS_BY_NAME = new Map<
+  string | null,
+  (typeof gameConstantsData.constants)[number]
+>();
+for (const c of gameConstantsData.constants) {
+  const have = CONSTANTS_BY_NAME.get(c.rmsConstant);
+  if (
+    !have ||
+    (NON_AMBIENT_CONSTANT_CATEGORIES.has(have.category) &&
+      !NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category))
+  )
+    CONSTANTS_BY_NAME.set(c.rmsConstant, c);
+}
 const DOC_STRINGS_BY_KEY = new Map(
   docStringsData.entries.map((e) => [e.key, e]),
 );

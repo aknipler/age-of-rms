@@ -553,7 +553,18 @@ export function runDeObjectStage(
       status,
       kind: "script",
     });
-    const name = names.get(b.id) ?? String(b.id);
+    // The name the script wrote ("MY_GOLD" from a `#const`) beats the table's
+    // name for the same id, so the readout shows what the author typed. Only
+    // when the command named this very object: a group names its members by
+    // table name, and a bare number has no name to keep.
+    const desc = b.cmd === undefined ? undefined : descs[b.cmd];
+    const written =
+      desc !== undefined &&
+      desc.objectId === b.id &&
+      !/^-?\d+(\.\d+)?$/.test(desc.name)
+        ? desc.name
+        : undefined;
+    const name = written ?? names.get(b.id) ?? String(b.id);
     placed.push({
       objectRef: name,
       // The tile the object stands on. `PlacedObject` is in tile indices
@@ -588,7 +599,7 @@ export function runDeObjectStage(
                 commandSpan: d.span,
                 stage: "S6",
                 entity: d.name,
-                detail: `${out.placed} of ${out.requested} ${out.requested === 1 ? "placement" : "placements"} found room. The game places the same number here, since this stage follows DE's own.`,
+                detail: `${out.placed} of ${out.requested} ${out.requested === 1 ? "placement" : "placements"} found room.`,
                 occurrences: short,
               },
             ]

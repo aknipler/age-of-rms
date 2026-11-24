@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,26 +18,179 @@ import type {
 } from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
 import {
+  SPRITE_MIN_HALF_WIDTH,
   createBitmapCanvas,
   drawPreview,
 } from "../../preview/render/drawPreview";
+import { SpriteRenderer } from "../../preview/render/spritesGl";
+import { moodTransform } from "../../preview/render/colourMoods";
+import { useMinimapLayer } from "./useMinimapLayer";
 import { buildTerrainBitmap } from "../../preview/render/terrainBitmap";
 import {
+  DE_TILE_ASPECT,
+  TILE_ASPECT,
+  aspectOf,
   clampToCanvas,
   fitViewport,
   isOnMap,
   panBy,
   screenToTile,
   tileToPercent,
+  withAspect,
   zoomAt,
+  type GroundHeights,
   type TilePoint,
   type Viewport,
 } from "../../preview/render/projection";
+import gameConstantsRaw from "../../../reference/data/game-constants.json";
+import type { DecodedImage } from "../../preview/render/dds";
+import {
+  loadDeBlendAtlases,
+  loadDeMasks,
+  loadDeTextures,
+  texturesFolderFound,
+} from "../../preview/render/deTextureSource";
+import { buildBlendBytes } from "../../preview/render/terrainBlends";
+import { TexturedTerrainRenderer } from "../../preview/render/texturedTerrainGl";
+import {
+  buildCornerHeights,
+  buildTerrainTable,
+  buildTileBytes,
+  maskNamesFor,
+  visualTerrainsIn,
+  type TexturedTerrainRow,
+} from "../../preview/render/texturedTiles";
 import { HelpTip } from "../HelpTip";
 import { renderProse } from "../InlineCode";
+import {
+  useHideDecorationsSetting,
+  useHidePlayerCirclesSetting,
+  useSmallTreesSetting,
+  useTerrainBlendsSetting,
+} from "./PreviewViewContext";
+import { useDeSprites } from "./useDeSprites";
 import styles from "./PreviewCanvas.module.css";
 
 const ZOOM_STEP = 1.18;
+
+type ExportArea = "visible" | "map";
+type ExportQuality = "low" | "standard" | "high" | "max";
+
+/**
+ * What Export saves. "visible" is the canvas as framed now, "map" is the whole
+ * diamond fitted edge to edge whatever the current zoom and pan.
+ */
+const EXPORT_AREAS: { id: ExportArea; label: string; helpId: string }[] = [
+  { id: "visible", label: "Visible area", helpId: "preview.exportAreaVisible" },
+  { id: "map", label: "Entire map", helpId: "preview.exportAreaMap" },
+];
+
+/**
+ * Visible area: a multiple of the screen's own pixel density, so Standard is
+ * what the user sees. Entire map: pixels across one tile's half width, so
+ * Standard draws each tile 8 pixels wide.
+ */
+const EXPORT_QUALITIES: {
+  id: ExportQuality;
+  label: string;
+  visibleScale: number;
+  tileHalfWidth: number;
+}[] = [
+  { id: "low", label: "Low", visibleScale: 0.5, tileHalfWidth: 2 },
+  { id: "standard", label: "Standard", visibleScale: 1, tileHalfWidth: 4 },
+  { id: "high", label: "High", visibleScale: 2, tileHalfWidth: 8 },
+  { id: "max", label: "Maximum", visibleScale: 4, tileHalfWidth: 16 },
+];
+
+/** Longest side and total pixels a canvas may have before browsers refuse it. */
+const EXPORT_MAX_SIDE = 16384;
+const EXPORT_MAX_SIDE_GL = 8192; // WebGL's drawing buffer limit is lower
+const EXPORT_MAX_PIXELS = 100_000_000;
+
+interface ExportPlan {
+  /** Output size in pixels. */
+  pixelWidth: number;
+  pixelHeight: number;
+  /** The viewport to paint with, in CSS pixels, and the pixel ratio over it. */
+  viewport: Viewport;
+  ratio: number;
+  /** True when the size was cut back to stay inside the canvas limits. */
+  clamped: boolean;
+}
+
+/**
+ * Works out the output size and the viewport an export paints with. Pure, so
+ * the menu can show the resulting size before anything is drawn.
+ */
+function planExport(
+  area: ExportArea,
+  quality: ExportQuality,
+  dim: number,
+  current: Viewport,
+  devicePixelRatio: number,
+  aspect: number,
+  textured: boolean,
+): ExportPlan {
+  const q = EXPORT_QUALITIES.find((entry) => entry.id === quality)!;
+  const maxSide = textured ? EXPORT_MAX_SIDE_GL : EXPORT_MAX_SIDE;
+  let viewport: Viewport;
+  let ratio: number;
+  if (area === "visible") {
+    viewport = current;
+    ratio = devicePixelRatio * q.visibleScale;
+  } else {
+    // The whole diamond, with a margin of two tiles so the edge tiles are not
+    // cut by the image border. Drawn at ratio 1, with the zoom itself set to
+    // the quality, so the viewport is already in output pixels.
+    const halfWidth = q.tileHalfWidth;
+    const margin = 2 * halfWidth;
+    const width = Math.ceil(2 * dim * halfWidth + 2 * margin);
+    const height = Math.ceil(2 * dim * halfWidth * aspect + 2 * margin);
+    viewport = {
+      width,
+      height,
+      halfWidth,
+      aspect,
+      originX: margin,
+      originY: height / 2,
+    };
+    ratio = 1;
+  }
+  // Shrink to the limits. Scaling the ratio keeps the framing the same.
+  const wantW = viewport.width * ratio;
+  const wantH = viewport.height * ratio;
+  const shrink = Math.min(
+    1,
+    maxSide / Math.max(wantW, wantH),
+    Math.sqrt(EXPORT_MAX_PIXELS / (wantW * wantH)),
+  );
+  ratio *= shrink;
+  return {
+    pixelWidth: Math.max(1, Math.round(viewport.width * ratio)),
+    pixelHeight: Math.max(1, Math.round(viewport.height * ratio)),
+    viewport,
+    ratio,
+    clamped: shrink < 1,
+  };
+}
+
+// Same double cast as PreviewPane.tsx. `npm run validate:reference` is the
+// real guarantee of the shape.
+const TEXTURED_ROWS = (
+  gameConstantsRaw as unknown as { constants: TexturedTerrainRow[] }
+).constants;
+
+/** The textures one map needs, as lower case file names. */
+function textureNamesFor(terrainIds: Iterable<number>): string[] {
+  const ids = new Set(terrainIds);
+  const names = new Set<string>();
+  for (const row of TEXTURED_ROWS) {
+    if (row.category !== "terrain" || row.constId === null) continue;
+    if (ids.has(row.constId) && row.deTextureFile)
+      names.add(row.deTextureFile.toLowerCase());
+  }
+  return [...names].sort();
+}
 
 /**
  * How far the pointer may travel between press and release and still count as
@@ -144,6 +298,13 @@ export interface OverlayCanvasProps {
   ) => void;
   /** The full-fidelity terrain/objects/players/failure-marks layer. Absent draws background + `overlayShapes` only. */
   base?: OverlayCanvasBaseLayer;
+  /**
+   * "de" draws the map at the game's 2:1 squash with the terrain textures
+   * from the user's DE install (docs/preview-de-textures-design.md). Absent
+   * or "flat" is the flat colour view. Every interaction works the same in
+   * both, since the viewport carries the squash (projection.ts).
+   */
+  terrainRender?: "flat" | "de" | "minimap";
   /** Sec.3.4 layer 2, declarative shapes any tool can draw on this canvas. */
   overlayShapes?: readonly OverlayShape[];
   /** Which `HelpTip` id names this canvas, since two surfaces render this component under two different ids. */
@@ -213,7 +374,7 @@ export interface OverlayCanvasProps {
 
 export function OverlayCanvas({
   dim,
-  viewport,
+  viewport: cameraViewport,
   setViewport,
   userFramed: persistedUserFramed,
   setUserFramed: setPersistedUserFramed,
@@ -223,6 +384,7 @@ export function OverlayCanvas({
   hitTestDragStart,
   onDrag,
   base,
+  terrainRender = "flat",
   overlayShapes,
   helpTipId,
   showApproximateBadge,
@@ -296,6 +458,195 @@ export function OverlayCanvas({
     [baseSnapshot, basePalette],
   );
 
+  // --- The textured view (docs/preview-de-textures-design.md) ------------
+
+  const textured = terrainRender === "de";
+  // The minimap view is the flat diamond with its own object layer.
+  const minimapView = terrainRender === "minimap";
+  // The squash this view draws at. Every viewport this component makes or
+  // keeps carries it, which is all hover, click, drag and the overlays need
+  // to follow the view (projection.ts's Viewport.aspect).
+  const aspect = textured ? DE_TILE_ASPECT : TILE_ASPECT;
+
+  // The tile bytes are rebuilt when the map or the palette changes, never
+  // per frame, the same rule as the flat bitmap above.
+  const tileBytes = useMemo(
+    () =>
+      textured && baseSnapshot && basePalette
+        ? buildTileBytes(baseSnapshot, basePalette)
+        : null,
+    [textured, baseSnapshot, basePalette],
+  );
+  const visualIds = useMemo(
+    () => (tileBytes ? visualTerrainsIn(tileBytes) : null),
+    [tileBytes],
+  );
+  // Which neighbours blend into each tile, and the ground's height at each
+  // tile corner for the hill light, also once per map (Sec.10).
+  const blendBytes = useMemo(
+    () =>
+      tileBytes && baseSnapshot
+        ? buildBlendBytes(tileBytes, baseSnapshot.dim, TEXTURED_ROWS)
+        : null,
+    [tileBytes, baseSnapshot],
+  );
+  const cornerHeights = useMemo(
+    () => (textured && baseSnapshot ? buildCornerHeights(baseSnapshot) : null),
+    [textured, baseSnapshot],
+  );
+  // A string, not the array, as the effect's key. Two re-rolls that draw the
+  // same terrains build two equal arrays, and React compares dependencies by
+  // reference, so an array key would reload on every re-roll. A string
+  // compares by value. The masks are part of it, since two terrains can share
+  // a texture and differ in mask.
+  const textureKey = useMemo(
+    () =>
+      visualIds
+        ? [
+            ...textureNamesFor(visualIds),
+            "|",
+            ...maskNamesFor(visualIds, TEXTURED_ROWS),
+          ].join("\n")
+        : "",
+    [visualIds],
+  );
+
+  const [loadedTextures, setLoadedTextures] = useState<{
+    key: string;
+    images: Map<string, DecodedImage>;
+    masks: Map<string, Uint8Array>;
+    atlases: (Uint8Array | null)[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (!textured || textureKey === "") return;
+    // The cancelled flag guards against a slow load finishing after the map
+    // changed. Without it, the older load could land last and set textures
+    // for terrains this map does not have, an async race React cannot catch
+    // for us, since the effect's cleanup runs but the promise does not stop.
+    let cancelled = false;
+    const lines = textureKey.split("\n");
+    const split = lines.indexOf("|");
+    void (async () => {
+      const images = await loadDeTextures(lines.slice(0, split));
+      const masks = await loadDeMasks(lines.slice(split + 1));
+      const atlases = await loadDeBlendAtlases();
+      if (!cancelled)
+        setLoadedTextures({ key: textureKey, images, masks, atlases });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [textured, textureKey]);
+
+  const texturesReady =
+    loadedTextures !== null && loadedTextures.key === textureKey;
+  const terrainTable = useMemo(
+    () =>
+      texturesReady && visualIds && basePalette
+        ? buildTerrainTable(
+            visualIds,
+            TEXTURED_ROWS,
+            basePalette,
+            (name) => loadedTextures.images.has(name),
+            (name) => loadedTextures.masks.has(name),
+          )
+        : null,
+    [texturesReady, visualIds, basePalette, loadedTextures],
+  );
+
+  // Raised ground (Sec.13). The camera the caller holds stays flat, and the
+  // viewport this component draws and hit tests with carries the height
+  // field in the textured view, so the parent's state never keeps a field
+  // from a view that is no longer showing.
+  const ground = useMemo<GroundHeights | undefined>(() => {
+    if (!textured || cornerHeights === null || baseSnapshot === undefined)
+      return undefined;
+    let maxLevel = 0;
+    for (const h of cornerHeights) if (h > maxLevel) maxLevel = h;
+    return { dim: baseSnapshot.dim, corners: cornerHeights, maxLevel };
+  }, [textured, cornerHeights, baseSnapshot]);
+  const viewport = useMemo<Viewport | null>(() => {
+    if (cameraViewport === null) return null;
+    if (ground !== undefined) return { ...cameraViewport, ground };
+    if (cameraViewport.ground === undefined) return cameraViewport;
+    // A copy without the field, rather than setting it to undefined, so the
+    // flat viewport compares like one that never had it.
+    const flat: Viewport = { ...cameraViewport };
+    delete flat.ground;
+    return flat;
+  }, [cameraViewport, ground]);
+
+  // Objects as the game draws them (Sec.12), only in the textured view.
+  const smallTrees = useSmallTreesSetting();
+  const terrainBlends = useTerrainBlendsSetting();
+  const hideDecorations = useHideDecorationsSetting();
+  // The script's colour mood, for the textured view (colourMoods.ts).
+  const mood = useMemo(
+    () => moodTransform(baseResult?.colorMood),
+    [baseResult?.colorMood],
+  );
+  // The minimap view never shows them, the setting covers the other views.
+  // The hook is called first, every render. Written inside the `||` it was
+  // skipped whenever the minimap view was on, which breaks React's rule that
+  // a component calls the same hooks in the same order each time.
+  const hidePlayerCircles = useHidePlayerCirclesSetting();
+  const hidePlayers = minimapView || hidePlayerCircles;
+  const minimap = useMinimapLayer(minimapView, baseResult, baseSnapshot);
+  const sprites = useDeSprites(
+    textured,
+    baseResult,
+    baseHiddenObjects,
+    smallTrees,
+  );
+
+  // The GPU renderer, made the first time the textured view is shown and
+  // kept until this canvas unmounts. A ref, since it is a resource and not
+  // something the component renders from. `false` once creating it failed,
+  // so the attempt is not repeated every frame.
+  const rendererRef = useRef<TexturedTerrainRenderer | null | false>(null);
+  // State beside the ref, only so that creating the renderer schedules a
+  // redraw. The ref holds the object, this says whether it exists.
+  const [glState, setGlState] = useState<"none" | "ready" | "unavailable">(
+    "none",
+  );
+  const glUnavailable = glState === "unavailable";
+  // The sprites' own GPU renderer, made the first time sprites draw, for
+  // the same reasons as the terrain's. `false` once creating it failed, and
+  // then drawPreview draws the sprites on the 2D canvas.
+  const spriteRendererRef = useRef<SpriteRenderer | false | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    if (!textured || rendererRef.current !== null) return;
+    const renderer = TexturedTerrainRenderer.create();
+    rendererRef.current = renderer ?? false;
+    setGlState(renderer === null ? "unavailable" : "ready");
+  }, [textured]);
+  useEffect(
+    () => () => {
+      if (rendererRef.current) rendererRef.current.dispose();
+      rendererRef.current = null;
+      if (spriteRendererRef.current) spriteRendererRef.current.dispose();
+      spriteRendererRef.current = undefined;
+      setGlState("none");
+    },
+    [],
+  );
+
+  // A line over the map whenever the textured view is asked for and cannot
+  // be drawn in full, so flat colours never pass for the textured view.
+  let deNotice: string | null = null;
+  if (textured && base) {
+    if (glUnavailable)
+      deNotice =
+        "DE textures need WebGL2, which this window lacks. Showing flat colours.";
+    else if (textureKey !== "" && !texturesReady)
+      deNotice = "Loading DE textures…";
+    else if (texturesReady && texturesFolderFound() === false)
+      deNotice = "No DE install found. Showing flat colours.";
+  }
+
   // --- Sizing -------------------------------------------------------------
 
   useEffect(() => {
@@ -306,7 +657,7 @@ export function OverlayCanvas({
       if (clientWidth === 0 || clientHeight === 0) return;
       setViewport((previous) => {
         if (previous === null || !userFramedRef.current) {
-          return fitViewport(dim, clientWidth, clientHeight);
+          return fitViewport(dim, clientWidth, clientHeight, undefined, aspect);
         }
         // Keep the user's zoom, just let the canvas change shape under it.
         return { ...previous, width: clientWidth, height: clientHeight };
@@ -317,22 +668,39 @@ export function OverlayCanvas({
     // it a StrictMode double-invoke in development leaves two observers alive
     // on the same node.
     return () => observer.disconnect();
-  }, [dim, setViewport]);
+  }, [dim, aspect, setViewport]);
 
   // A new map (re-roll, or a different size) refits unless the user has
-  // framed the view themselves.
+  // framed the view themselves. A change of view refits the same way.
   useEffect(() => {
     const container = containerRef.current;
     if (container === null || userFramedRef.current) return;
     if (container.clientWidth === 0 || container.clientHeight === 0) return;
     setViewport(
-      fitViewport(dim, container.clientWidth, container.clientHeight),
+      fitViewport(
+        dim,
+        container.clientWidth,
+        container.clientHeight,
+        undefined,
+        aspect,
+      ),
     );
     // Depends on the snapshot too: a fresh generation (same dim, new terrain)
     // should still refit while the user hasn't framed anything yet, matching
     // PreviewCanvas's original dependency on the whole `snapshot` object. The
     // snapshot, not `base`, see the note above `baseSnapshot`.
-  }, [dim, baseSnapshot, setViewport]);
+  }, [dim, baseSnapshot, aspect, setViewport]);
+
+  // A view the user has framed keeps its zoom and centre across a change of
+  // squash (withAspect). The updater form, so this never fights the refit
+  // above when both run for the same toggle.
+  useEffect(() => {
+    setViewport((previous) =>
+      previous === null || aspectOf(previous) === aspect
+        ? previous
+        : withAspect(previous, aspect),
+    );
+  }, [aspect, setViewport]);
 
   const resetView = useCallback(() => {
     const container = containerRef.current;
@@ -340,39 +708,228 @@ export function OverlayCanvas({
     userFramedRef.current = false;
     setPersistedUserFramed(false);
     setViewport(
-      fitViewport(dim, container.clientWidth, container.clientHeight),
+      fitViewport(
+        dim,
+        container.clientWidth,
+        container.clientHeight,
+        undefined,
+        aspect,
+      ),
     );
-  }, [dim, setPersistedUserFramed, setViewport]);
+  }, [dim, aspect, setPersistedUserFramed, setViewport]);
 
-  // Exports exactly what the canvas is currently showing: this zoom, this
-  // pan, this seed, this Current/Final view. WYSIWYG rather than re-rendering
-  // the whole map at a "fit" framing, which would need a second, headless
-  // draw pass through drawPreview with its own viewport, for a feature whose
-  // whole point is "let me save what I'm looking at".
-  //
-  // `toBlob` is canvas's own async, callback-shaped API (there is no
-  // synchronous "give me PNG bytes" method), so it is wrapped in a Promise to
-  // read like the rest of this function. `writeFile` (not `writeTextFile`)
-  // takes raw bytes, hence the `Blob -> ArrayBuffer -> Uint8Array` chain: a
-  // PNG is binary, and `useDocument.ts`'s own writes are the text-only case.
-  const exportPng = useCallback(async () => {
-    const canvas = canvasRef.current;
-    if (canvas === null) return;
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/png"),
+  // The Export menu: open flag and the two choices. Plain state, since they
+  // only matter while this canvas is mounted.
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportArea, setExportArea] = useState<ExportArea>("visible");
+  const [exportQuality, setExportQuality] = useState<ExportQuality>("standard");
+  const exportMenuRef = useRef<HTMLSpanElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  // Close on a press outside the menu or on Escape. Listeners exist only
+  // while it is open, and the cleanup removes them, so a closed menu costs
+  // nothing.
+  useEffect(() => {
+    if (!exportOpen) return;
+    const onDown = (event: PointerEvent) => {
+      if (!exportMenuRef.current?.contains(event.target as Node))
+        setExportOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExportOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [exportOpen]);
+
+  // The size the current choices would save, shown in the menu. Computed only
+  // while the menu is open.
+  const exportSizeText = useMemo(() => {
+    if (!exportOpen || viewport === null) return null;
+    const plan = planExport(
+      exportArea,
+      exportQuality,
+      dim,
+      viewport,
+      window.devicePixelRatio || 1,
+      aspect,
+      textured,
     );
-    if (blob === null) return;
-    const target = await save({
-      filters: [{ name: "PNG Image", extensions: ["png"] }],
-      defaultPath: "map-preview.png",
-    });
-    if (target === null) return; // the user cancelled the save dialog
-    await writeFile(target, new Uint8Array(await blob.arrayBuffer()));
-  }, []);
+    return `${plan.pixelWidth} × ${plan.pixelHeight} px${
+      plan.clamped ? " (reduced to fit)" : ""
+    }`;
+  }, [exportOpen, exportArea, exportQuality, dim, viewport, aspect, textured]);
 
   // --- Drawing ------------------------------------------------------------
 
-  useEffect(() => {
+  // One scene painter for both the on-screen canvas and the exporter, so an
+  // exported image can never drift from what the preview draws. It takes the
+  // context, viewport and pixel ratio as arguments (idiom: pass what varies,
+  // close over what does not), which is what lets Export call it with a
+  // different viewport on an offscreen canvas.
+  const paint = useCallback(
+    (ctx: CanvasRenderingContext2D, vp: Viewport, ratio: number) => {
+      // The base transform: everything downstream then works in CSS pixels and
+      // drawPreview composes its projection on top with `transform`.
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      // The textured terrain is drawn by the GPU first, then handed to
+      // drawPreview to copy in place of the flat bitmap. Anything missing (no
+      // WebGL2, textures still loading) leaves `screenTerrain` unset and the
+      // flat bitmap is drawn at the same squash instead.
+      let screenTerrain: HTMLCanvasElement | undefined;
+      const renderer = rendererRef.current;
+      if (
+        textured &&
+        renderer &&
+        tileBytes &&
+        blendBytes &&
+        cornerHeights &&
+        terrainTable &&
+        loadedTextures &&
+        baseSnapshot
+      ) {
+        renderer.setTiles(tileBytes, baseSnapshot.dim);
+        renderer.setCorners(cornerHeights, baseSnapshot.dim);
+        renderer.setBlends(blendBytes, baseSnapshot.dim);
+        renderer.setTable(
+          terrainTable,
+          loadedTextures.images,
+          loadedTextures.masks,
+        );
+        renderer.setAtlases(loadedTextures.atlases);
+        renderer.blendsOn = terrainBlends;
+        renderer.mood = mood;
+        if (renderer.render(vp, ratio)) screenTerrain = renderer.canvas;
+      }
+      // The sprites on the GPU too, when they draw at this zoom. Without
+      // WebGL2 drawPreview draws them one by one on this canvas instead.
+      let screenSprites: HTMLCanvasElement | undefined;
+      if (
+        textured &&
+        sprites !== undefined &&
+        vp.halfWidth >= SPRITE_MIN_HALF_WIDTH
+      ) {
+        if (spriteRendererRef.current === undefined)
+          spriteRendererRef.current = SpriteRenderer.create() ?? false;
+        const spriteRenderer = spriteRendererRef.current;
+        if (spriteRenderer) {
+          spriteRenderer.setLayer(sprites, vp.ground);
+          spriteRenderer.mood = mood;
+          if (spriteRenderer.render(vp, ratio))
+            screenSprites = spriteRenderer.canvas;
+        }
+      }
+      drawPreview(ctx, vp, {
+        base:
+          baseResult && baseSnapshot && terrain
+            ? {
+                result: baseResult,
+                snapshot: baseSnapshot,
+                terrain,
+                screenTerrain,
+                hiddenObjects: baseHiddenObjects,
+                hideDecorations,
+                minimap,
+                hidePlayers,
+                screenSprites,
+                sprites: textured ? sprites : undefined,
+              }
+            : undefined,
+        overlayShapes,
+        orientation: showOrientation
+          ? { dim, sideNames: showOrientation === "full" }
+          : undefined,
+        highlight,
+        selection: selected,
+      });
+    },
+    [
+      baseResult,
+      baseSnapshot,
+      baseHiddenObjects,
+      terrain,
+      textured,
+      tileBytes,
+      blendBytes,
+      cornerHeights,
+      terrainTable,
+      loadedTextures,
+      terrainBlends,
+      hideDecorations,
+      mood,
+      minimap,
+      hidePlayers,
+      sprites,
+      overlayShapes,
+      showOrientation,
+      dim,
+      highlight,
+      selected,
+    ],
+  );
+
+  // Export. The preview's own picture is drawn into the visible canvas by the
+  // effect below; this draws the same scene again onto a throwaway canvas.
+  const exportPng = useCallback(async () => {
+    if (viewport === null) return;
+    // Open the file dialog first, then build the image while it is open.
+    // The dialog is a native window run by the Rust side, so it stays
+    // responsive while this page is busy; the page only has to send the
+    // request. Starting `save()` before any heavy work, and yielding one
+    // timer tick so the request is really sent, means the dialog appears at
+    // once, and the image is usually done by the time a file is chosen.
+    const savePromise = save({
+      filters: [{ name: "PNG Image", extensions: ["png"] }],
+      defaultPath:
+        exportArea === "map" ? "map-preview-entire.png" : "map-preview.png",
+    });
+    const blobPromise = (async (): Promise<Blob | null> => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const plan = planExport(
+        exportArea,
+        exportQuality,
+        dim,
+        viewport,
+        window.devicePixelRatio || 1,
+        aspect,
+        textured,
+      );
+      const out = document.createElement("canvas");
+      out.width = plan.pixelWidth;
+      out.height = plan.pixelHeight;
+      const ctx = out.getContext("2d");
+      if (ctx === null) return null;
+      paint(ctx, plan.viewport, plan.ratio);
+      // `toBlob` is canvas's own async, callback-shaped API (there is no
+      // synchronous "give me PNG bytes" method), so it is wrapped in a
+      // Promise. The encoding itself runs off the main thread.
+      const made = await new Promise<Blob | null>((resolve) =>
+        out.toBlob(resolve, "image/png"),
+      );
+      // Free the big backing store now rather than waiting for the collector.
+      out.width = 0;
+      out.height = 0;
+      return made;
+    })();
+    // A rejection with no one awaiting it yet (the user still choosing) would
+    // be reported as unhandled; the real handling is the await below.
+    blobPromise.catch(() => {});
+    const target = await savePromise;
+    if (target === null) return; // cancelled; the finished image is dropped
+    const blob = await blobPromise;
+    if (blob === null) return;
+    // `writeFile` (not `writeTextFile`) takes raw bytes, hence the
+    // `Blob -> ArrayBuffer -> Uint8Array` chain.
+    await writeFile(target, new Uint8Array(await blob.arrayBuffer()));
+  }, [viewport, exportArea, exportQuality, dim, aspect, textured, paint]);
+
+  // A layout effect, so the redraw for a new size lands before the browser
+  // paints that size. A plain effect runs after the paint, a frame late.
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (canvas === null || viewport === null) return;
     const ratio = window.devicePixelRatio || 1;
@@ -386,37 +943,13 @@ export function OverlayCanvas({
     if (canvas.height !== backingHeight) canvas.height = backingHeight;
     const ctx = canvas.getContext("2d");
     if (ctx === null) return;
-    // The base transform: everything downstream then works in CSS pixels and
-    // drawPreview composes its projection on top with `transform`.
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    drawPreview(ctx, viewport, {
-      base:
-        baseResult && baseSnapshot && terrain
-          ? {
-              result: baseResult,
-              snapshot: baseSnapshot,
-              terrain,
-              hiddenObjects: baseHiddenObjects,
-            }
-          : undefined,
-      overlayShapes,
-      orientation: showOrientation
-        ? { dim, sideNames: showOrientation === "full" }
-        : undefined,
-      highlight,
-      selection: selected,
-    });
+    paint(ctx, viewport, ratio);
   }, [
     viewport,
-    baseResult,
-    baseSnapshot,
-    baseHiddenObjects,
-    terrain,
-    overlayShapes,
-    showOrientation,
-    dim,
-    highlight,
-    selected,
+    paint,
+    // The renderer lives in a ref, so its creation reaches `paint` only
+    // through this state.
+    glState,
   ]);
 
   // --- Zoom ---------------------------------------------------------------
@@ -645,7 +1178,16 @@ export function OverlayCanvas({
         <canvas
           ref={canvasRef}
           className={styles.canvas}
-          style={{ width: "100%", height: "100%" }}
+          // The box takes the size the picture was drawn for, not 100%. With
+          // 100% a drag of the panel divider resized the box at once and the
+          // browser stretched the old picture into it until the redraw
+          // landed, which showed as warping. The container clips, so a box a
+          // frame behind shows a strip of background or a crop instead.
+          style={
+            viewport === null
+              ? { width: "100%", height: "100%" }
+              : { width: viewport.width, height: viewport.height }
+          }
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={(event) => endDrag(event, true)}
@@ -654,7 +1196,7 @@ export function OverlayCanvas({
           onDoubleClick={resetView}
         />
       </HelpTip>
-      {(showApproximateBadge || topLeft) && (
+      {(showApproximateBadge || topLeft || deNotice) && (
         <div
           className={
             hasTopRight
@@ -662,6 +1204,7 @@ export function OverlayCanvas({
               : styles.overlay
           }
         >
+          {deNotice && <span className={styles.banner}>{deNotice}</span>}
           {showApproximateBadge &&
             base?.result.notes
               .filter((note) => note.prominence === "banner")
@@ -697,15 +1240,72 @@ export function OverlayCanvas({
           )}
           {showApproximateBadge && staleNotice}
           {showExportButton && (
-            <HelpTip id="preview.exportPng">
-              <button
-                type="button"
-                className={styles.exportButton}
-                onClick={exportPng}
-              >
-                Export
-              </button>
-            </HelpTip>
+            <span ref={exportMenuRef} className={styles.exportWrap}>
+              <HelpTip id="preview.exportPng">
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  aria-expanded={exportOpen}
+                  onClick={() => setExportOpen((open) => !open)}
+                >
+                  Export
+                </button>
+              </HelpTip>
+              {exportOpen && (
+                <div className={styles.exportMenu} role="dialog">
+                  <div className={styles.exportGroup}>
+                    {EXPORT_AREAS.map((option) => (
+                      <HelpTip key={option.id} id={option.helpId}>
+                        <label className={styles.exportOption}>
+                          <input
+                            type="radio"
+                            name="preview-export-area"
+                            checked={exportArea === option.id}
+                            onChange={() => setExportArea(option.id)}
+                          />
+                          {option.label}
+                        </label>
+                      </HelpTip>
+                    ))}
+                  </div>
+                  <HelpTip id="preview.exportQuality">
+                    <label className={styles.exportOption}>
+                      Quality
+                      <select
+                        value={exportQuality}
+                        onChange={(event) =>
+                          setExportQuality(event.target.value as ExportQuality)
+                        }
+                      >
+                        {EXPORT_QUALITIES.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </HelpTip>
+                  {exportSizeText !== null && (
+                    <div className={styles.exportSize}>{exportSizeText}</div>
+                  )}
+                  <HelpTip id="preview.exportSave">
+                    <button
+                      type="button"
+                      className={styles.exportButton}
+                      disabled={exporting || viewport === null}
+                      onClick={() => {
+                        setExporting(true);
+                        void exportPng()
+                          .then(() => setExportOpen(false))
+                          .finally(() => setExporting(false));
+                      }}
+                    >
+                      {exporting ? "Saving…" : "Save PNG…"}
+                    </button>
+                  </HelpTip>
+                </div>
+              )}
+            </span>
           )}
           {topRightControls}
           {/* A full width item, so it always starts a new line of the
@@ -732,9 +1332,14 @@ export function OverlayCanvas({
           pointer events are off so the map under the gaps still pans, and
           each child turns them back on. */}
       <div className={styles.bottomArea}>
-        {bottomPanel !== undefined && bottomPanel !== null && (
-          <div className={styles.panel}>{bottomPanel}</div>
-        )}
+        {/* Truthiness, not just null and undefined. A caller's
+            `open && <Box />` hands over `false` when closed, and an empty
+            panel still drew its border as a line over the buttons. */}
+        {bottomPanel !== undefined &&
+          bottomPanel !== null &&
+          bottomPanel !== false && (
+            <div className={styles.panel}>{bottomPanel}</div>
+          )}
         <div className={styles.bottomRow}>
           <div className={styles.zoomControls}>
             {bottomControls}

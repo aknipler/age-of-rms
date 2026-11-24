@@ -1,0 +1,50 @@
+/*
+================================================================================
+RMSTEST_87a - GAIA_SET_ATTRIBUTE ROCK ATTR_OCCLUSION_MODE 0
+Feeds: what ATTR_OCCLUSION_MODE changes (19 corpus uses, Mont Saint Michel
+sets 2 on its rocks). The preview draws nothing for it.
+Generate 87a to 87d at Tiny, 2 players, seed 1000. Only the effect line differs.
+Start each as a game and look at villagers standing behind a rock (screen above
+it), and at the rock itself when a villager stands behind it.
+Readings to note per map: is the villager drawn as an outline through the rock,
+is the rock itself drawn as an outline or faded, or neither.
+No prediction, the value's meaning is the question. 87d is the default.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 60
+    base_size 12
+  }
+
+<OBJECTS_GENERATION>
+effect_amount GAIA_SET_ATTRIBUTE ROCK ATTR_OCCLUSION_MODE 0
+
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players 0
+}
+
+create_object ROCK
+{
+  number_of_objects 60
+  set_gaia_object_only
+  min_distance_to_players 5
+  max_distance_to_players 14
+}
+
+create_object VILLAGER
+{
+  set_place_for_every_player
+  number_of_objects 25
+  min_distance_to_players 5
+  max_distance_to_players 14
+}
+

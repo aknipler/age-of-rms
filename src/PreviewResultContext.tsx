@@ -65,6 +65,8 @@ interface PreviewResultProviderProps {
   cutOffset: number | null;
   /** Generate when the script is edited. Absent means on, which is right for the panel's own instance. */
   regenOnEdit?: boolean;
+  /** Time each generation for the hourglass. Absent means off, which is right for the panel's own instance, which has no hourglass. */
+  timing?: boolean;
   children: ReactNode;
 }
 
@@ -125,6 +127,7 @@ function createPreviewResultChannel({
     view,
     cutOffset,
     regenOnEdit = true,
+    timing = false,
     children,
   }: PreviewResultProviderProps): ReactElement {
     const { playerCount, mapSize, teams, teamPositions } =
@@ -176,6 +179,7 @@ function createPreviewResultChannel({
       seed,
       regenOnEdit,
       cutAt,
+      timing,
     );
 
     // No useMemo: unlike the old bare-`result` value, this object IS

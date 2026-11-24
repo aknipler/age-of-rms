@@ -1705,6 +1705,73 @@ Built and never run in the app.
 6. Trigger a What's New announcement with one step only and confirm it shows Finish and nothing else.
 7. In the Code tab, click inside a command in a script with uneven indentation and press Ctrl+Alt+F and use Edit > Toggle Command Layout. Confirm only that command changes shape each time, and that Ctrl+Z puts it back.
 
+## 62. DE textures in the preview, 2026-11-23 (`docs/preview-de-textures-design.md`)
+
+Checked in the browser pane with mocked Tauri IPC and the real textures, never run in the app.
+
+1. Open AD4 - Pag. Click the plain diamond beside the minimap colour button. Confirm it becomes a squashed diamond with DE in it, the map redraws twice as wide as it is tall, and the terrains show their textures within a second or two.
+2. Hover and click tiles near a coast at a close zoom. Confirm the outline sits on the tile under the pointer and the readout names the terrain you see.
+3. Zoom in on a large desert or grass area. Confirm no lines or seams run through it every 10 tiles.
+4. Turn the button off and on with the map zoomed in. Confirm the same place stays in the middle of the canvas.
+5. Open Advanced Tools, Land Placement, with the button on. Confirm the panel's canvas is squashed too, its circles are ellipses around their lands, and dragging a circle moves it to where it is dropped.
+6. Compare a farm and a wet gravel beach, or any texture with a visible grain, against the same spot in game. Note whether the texture runs the same way (Sec.11 item 1).
+7. Use Export with the button on and confirm the PNG shows the textures.
+8. Load a map with pasture terrain. Confirm those tiles draw their textures with no error (BC7, decoded since tier 2).
+
+## 63. DE textures tier 2, blends, layers and hill light, 2026-11-24 (`docs/preview-de-textures-design.md` Sec.10)
+
+The renderer was checked in a standalone page against patterns painted in DE's scenario editor, never run in the app.
+
+1. Open AD4 - Pag with the DE textures button on. Confirm terrain edges fade into each other instead of meeting at hard tile edges, and the map still appears within a second or two.
+2. Hover and click tiles along a blended edge. Confirm the readout still names the tile's own terrain, not the one blended over it.
+3. Find a coast and compare it with the same spot in game. Confirm the water spreads over the land with a soft shore and not the reverse (Sec.11 item 4).
+4. Load a map whose script uses `base_layer` or `terrain_mask`. Confirm the layered tiles show the layer mottled over the terrain beneath, not a solid fill.
+5. Find a hill. Confirm slopes facing the lower left of the screen are darker, slopes facing the right are no brighter than flat ground, and plateau tops match the plain around them.
+6. Load a map with pasture terrain. Confirm the pastures draw their textures.
+7. Switch the colour mode button with the DE button on. Confirm only terrains without a texture change colour.
+8. Use Export with the button on and confirm the PNG shows the blended edges.
+9. Put the preview beside the same map in DE's scenario editor (rev 3, Sec.10.7). Confirm the preview is about as bright as the game, not duller, and a farm's rows are as far apart as in game.
+10. Load a map with `base_layer` of a terrain with no mask in the dat, such as DESERT. Confirm the layer shows as a soft tint over the terrain beneath, not a solid fill.
+
+## 64. DE textures tiers 3 and 4, object sprites and raised ground, 2026-11-24 (`docs/preview-de-textures-design.md` Sec.12, Sec.13)
+
+Checked against the game with the offline comparison script and in Node, never run in the app.
+
+1. Open a forested map with the DE textures button on and zoom in until a tile is a finger wide. Confirm trees, gold, stone, player buildings and cliffs draw as the game's pictures with shadows, buildings in their owner's colour.
+2. Zoom out until tiles are a few pixels. Confirm the objects turn back into their glyphs.
+3. Turn the Small Trees button (beside the DE textures button) on and off. Confirm trees halve in size and the setting is remembered after a restart.
+4. Hide a tree type in the Obj. List. Confirm its sprites disappear.
+5. Find a hill. Confirm the ground rises on screen, objects on it rise with it, and hovering and clicking on the hill's top selects the tile under the pointer, not one in front of or behind it.
+6. Open Land Placement with the DE button on over a hilly map. Confirm the circles and handles sit on the raised ground and dragging still lands where dropped.
+7. Pan and zoom a Giant forest map. Note whether it stays smooth.
+8. Turn the DE button off. Confirm the flat view is as it was, no raised ground and glyphs only.
+
+## 65. DE textures rev 5, sprites in the app, Terrain Blending button, smooth hills, 2026-11-25 (`docs/preview-de-textures-design.md` Sec.14)
+
+Checked against the game with the offline comparison script and in Node, never run in the app.
+
+1. Open a forested map with the DE textures button on and zoom in until a tile is a finger wide. Confirm trees, mines and buildings draw as the game's pictures, not circles.
+2. Click the Terrain Blending button beside Small Trees. Confirm every tile ends at a hard edge, layered tiles keep their mottled layer, and clicking again brings the blends back. Restart and confirm the choice is remembered.
+3. Find a hill and compare it with the same spot in game. Confirm slopes shade smoothly with no stair steps along diagonal edges and no near black faces.
+4. Type in a large script with the textured view off. Note whether typing is as responsive as before.
+5. Open a forested map in the flat view. Confirm forest trees draw as circles the same size as a placed gold pile, and pan and zoom stay smooth on a Giant map.
+6. Open AD4 - Pag at seed 1, 8 players, with the DE textures button on, and zoom in near tile 63, 130. Confirm the tree shadows are soft with no dark square blocks, and no tree has square holes.
+7. Zoom in on a player's town centre. Confirm it draws whole, the main building with its two side shelters, in the player's colour.
+8. Zoom in on a map with invisible marker objects (for example object 1613). Confirm no circle draws where the marker is.
+9. Click the Hide Decorations button beside Terrain Blending, in both views. Confirm grass, rock and flower circles disappear, trees and resources stay, and the setting is remembered after a restart.
+10. With the DE textures button on, zoom out slowly. Confirm sprites switch to circles only when a tile is about 2 pixels wide, and that a Giant forest map pans and zooms smoothly at every zoom with sprites on (they are drawn on the GPU now). Open a new map and note any pause while its sprites load.
+11. Open 24hr_Mont Saint Michel with the DE textures button on and compare with the same seed in game. Confirm the hay stacks draw as the bridge piece the script sets, and the walls, archery range, barracks, blacksmith, stable and driftwood draw as the script's graphics too.
+12. With the DE textures button on, drag the divider between the preview and the panel below it up and down quickly. Confirm the map never stretches or squashes while dragging, at most a strip of background shows at the edge for a moment.
+13. Look at the preview's top right (map size, Export, Help, the cog) and bottom (the placed or failed count, Obj. List, Notes, Legend, zoom). Confirm every chip is the same height and each row sits on one line.
+14. With no Obj. List, Notes or Legend box open, confirm no line shows above the bottom buttons.
+15. Open the cog. Confirm two tabs, Generation Settings and Preview Options, and that Preview Options holds DE textures, Small trees, Terrain blending and Hide decoration circles, the middle two greyed while DE textures is off, each remembered after a restart.
+16. Click the minimap colour button on a forested map, with DE textures on and off. Confirm the flat diamond view, trees and cliffs filling their tiles, cliffs dark brown, food light green, stone grey brown, fish teal, relics white, players' buildings in their colours, and no decorations.
+17. In the minimap view confirm objects are three times their footprint (a town centre covers about 12 tiles across), trees still fill one tile, and no numbered player circles show. Tick Hide player circles in Preview Options and confirm they also go in the flat and DE textures views.
+18. Open the settings box and switch between Generation Settings and Preview Options several times. Confirm the box never changes size.
+19. In the minimap view on a water map, confirm a town centre's square sits on top of any gold or stone beside it, gold on top of stone, deep water fish smaller than shore fish's squares relative to their footprint, and squares at three times the object's footprint.
+20. Open a forested map with DE textures on. Confirm the app stays responsive while textures and sprites load (no stutter while panning). Confirm the hourglass sits beside Obj. List, opens with a bar per section, and that turning off "Time each generation" under Performance in Preview Options greys it out and closes its box.
+21. With DE textures on, open a script with `color_correction CC_NIGHT` (or AD4 - Pag, which sets CC_DESERT). Confirm the map and its sprites take the mood's tint, and a script with none looks as before. Compare the default look with DE at Map lighting on.
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

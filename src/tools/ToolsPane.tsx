@@ -38,7 +38,11 @@ import {
   type ToolParamDef,
 } from "../../tools-api/index";
 import { inProcessRunner } from "./host";
-import { useSelectedTool, useToolHostContext } from "./ToolHostContext";
+import {
+  useSelectedTool,
+  useToolHostContext,
+  useToolParams,
+} from "./ToolHostContext";
 import { buildToolContext } from "./buildToolContext";
 import { useIncludeFiles } from "../useIncludeFiles";
 import {
@@ -97,11 +101,11 @@ export function ToolsPane({
   // dropdown shows has to survive a tab switch the same way the ToolHost and
   // Land Placement's own model do, or returning to this pane always looked
   // like the tool selection had been forgotten. `submitted` (the params
-  // form) deliberately stays local — a report tool's live run is already
-  // torn down on tab-away (the unmount effect below, `host.reset()`), so
-  // there is no output left to match stale params against when you return.
+  // form) is lifted too, per tool (`useToolParams`), so a run's settings are
+  // still there after a trip to Code and back, and switching tools no longer
+  // resets the form.
   const { selectedId, setSelectedId } = useSelectedTool();
-  const [submitted, setSubmitted] = useState<Record<string, unknown>>({});
+  const { submitted, setParam: setSubmittedParam } = useToolParams(selectedId);
 
   // Lifted above the tab switch (ToolHostContext.tsx), land-placement-design.md
   // Sec.3.6: "the model has to be lifted above activeTab or a tab switch
@@ -218,7 +222,6 @@ export function ToolsPane({
     }
     host.reset();
     setSelectedId(id);
-    setSubmitted({});
 
     const target = tools.find((t) => t.manifest.id === id);
     if (target?.kind === "panel") {
@@ -231,7 +234,7 @@ export function ToolsPane({
   };
 
   const setParam = (key: string, value: ParamValue) =>
-    setSubmitted((prev) => ({ ...prev, [key]: value }));
+    setSubmittedParam(key, value);
 
   const run = () => {
     if (!tool || !parseResult) return;

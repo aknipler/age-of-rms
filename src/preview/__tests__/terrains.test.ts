@@ -619,3 +619,18 @@ describe("corpus: applyTerrains never throws", () => {
     );
   }
 });
+
+describe("rice farms count as shallows for the automatic beach", () => {
+  // RMSTEST-RiceFarm-create-beach at seed 675322: land beside a rice farm
+  // is beached by DE, and the preview matched it on all 14,400 tiles once
+  // the five rice farm terrains (63 to 67) carried `isHybrid`.
+  it("beaches the land beside a rice farm, and leaves the farm alone", () => {
+    const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
+    const grid = createTileGrid(6, 62);
+    for (let y = 0; y < 6; y++) grid.terrain[y * 6 + 5] = 64;
+    applyAutomaticBeach(grid, constants);
+    expect(grid.terrain[4]).toBe(BEACH);
+    expect(grid.terrain[5]).toBe(64);
+    expect(grid.terrain[0]).toBe(62);
+  });
+});

@@ -10,8 +10,11 @@ import {
 import { load, type Store } from "@tauri-apps/plugin-store";
 import {
   APP_SETTINGS_STORE_FILE,
+  clampPrefixLength,
   DEFAULT_SHORTEN_LONG_NAMES,
   SHORTEN_LONG_NAMES_KEY,
+  SHORTEN_NAME_LENGTH_KEY,
+  SHORTENED_PREFIX_LENGTH,
 } from "./nameDisplay";
 import {
   AUTHOR_NAME_KEY,
@@ -37,6 +40,9 @@ export interface AppSettingsValue {
   /** Display `#const`/`#define` names longer than six characters as a three-letter prefix (see nameDisplay.ts). */
   shortenLongNames: boolean;
   setShortenLongNames: (shorten: boolean) => void;
+  /** Characters kept before the ellipsis when shortening is on, 2 to 12. */
+  shortenNameLength: number;
+  setShortenNameLength: (length: number) => void;
   /** Who the stamped script header names as the author (see hooks/scriptHeader.ts). Empty until someone fills it in. */
   authorName: string;
   setAuthorName: (name: string) => void;
@@ -87,6 +93,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [shortenLongNames, setShortenState] = useState(
     DEFAULT_SHORTEN_LONG_NAMES,
   );
+  const [shortenNameLength, setShortenLengthState] = useState(
+    SHORTENED_PREFIX_LENGTH,
+  );
   const [authorName, setAuthorState] = useState(DEFAULT_AUTHOR_NAME);
   const [resolveFlash, setResolveFlashState] = useState(DEFAULT_RESOLVE_FLASH);
   const [codePrediction, setCodePredictionState] = useState(
@@ -108,6 +117,11 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
         setStore(loadedStore);
         const saved = await loadedStore.get<unknown>(SHORTEN_LONG_NAMES_KEY);
         if (!cancelled && typeof saved === "boolean") setShortenState(saved);
+        const savedLength = await loadedStore.get<unknown>(
+          SHORTEN_NAME_LENGTH_KEY,
+        );
+        if (!cancelled && typeof savedLength === "number")
+          setShortenLengthState(clampPrefixLength(savedLength));
         // Read as `unknown` and narrowed rather than read as `string`:
         // settings.json is a file on disk that a person can edit, so what comes
         // back is only a claim about the type. Same reason the boolean above is
@@ -137,6 +151,15 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     (next: boolean) => {
       setShortenState(next);
       void store?.set(SHORTEN_LONG_NAMES_KEY, next);
+    },
+    [store],
+  );
+
+  const setShortenNameLength = useCallback(
+    (next: number) => {
+      const clamped = clampPrefixLength(next);
+      setShortenLengthState(clamped);
+      void store?.set(SHORTEN_NAME_LENGTH_KEY, clamped);
     },
     [store],
   );
@@ -181,6 +204,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       shortenLongNames,
       setShortenLongNames,
+      shortenNameLength,
+      setShortenNameLength,
       authorName,
       setAuthorName,
       resolveFlash,
@@ -193,6 +218,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     [
       shortenLongNames,
       setShortenLongNames,
+      shortenNameLength,
+      setShortenNameLength,
       authorName,
       setAuthorName,
       resolveFlash,

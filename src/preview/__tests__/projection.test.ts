@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  DE_TILE_ASPECT,
   MAX_HALF_WIDTH,
   MIN_HALF_WIDTH,
+  TILE_ASPECT,
   clampToCanvas,
   fitViewport,
+  halfHeightOf,
+  withAspect,
   isOnMap,
   latticeToScreen,
   mapBounds,
@@ -171,5 +175,52 @@ describe("clampToCanvas", () => {
   it("leaves a map that is already visible alone", () => {
     const vp = fitViewport(120, 400, 300);
     expect(clampToCanvas(vp, 120)).toBe(vp);
+  });
+});
+
+// docs/preview-de-textures-design.md Sec.3. The textured view draws at the
+// game's 2:1 squash through these same functions, so every hover and drag
+// depends on the round trip holding there too.
+describe("the DE squash", () => {
+  it("round-trips every tile at aspect 0.5", () => {
+    const vp = fitViewport(60, 500, 300, 6, DE_TILE_ASPECT);
+    expect(vp.aspect).toBe(DE_TILE_ASPECT);
+    for (const [x, y] of [
+      [0, 0],
+      [59, 0],
+      [0, 59],
+      [31, 17],
+    ]) {
+      const p = tileToScreen(vp, x, y);
+      const back = screenToTile(vp, p.x, p.y);
+      expect(Math.floor(back.x)).toBe(x);
+      expect(Math.floor(back.y)).toBe(y);
+    }
+  });
+
+  it("draws a tile half as tall as it is wide", () => {
+    const vp = fitViewport(60, 500, 300, 6, DE_TILE_ASPECT);
+    const bounds = mapBounds(vp, 60);
+    expect(bounds.bottom - bounds.top).toBeCloseTo(
+      (bounds.right - bounds.left) / 2,
+    );
+  });
+
+  it("keeps the tile at the centre when the squash changes", () => {
+    const flat = zoomAt(fitViewport(80, 400, 300), 3, 120, 90);
+    const squashed = withAspect(flat, DE_TILE_ASPECT);
+    expect(squashed.halfWidth).toBe(flat.halfWidth);
+    const before = screenToTile(flat, 200, 150);
+    const after = screenToTile(squashed, 200, 150);
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+    // And back again to where it started.
+    const back = withAspect(squashed, TILE_ASPECT);
+    expect(back.originX).toBeCloseTo(flat.originX);
+    expect(back.originY).toBeCloseTo(flat.originY);
+  });
+
+  it("reads a viewport with no aspect as the flat view", () => {
+    expect(halfHeightOf(viewport())).toBe(viewport().halfWidth * TILE_ASPECT);
   });
 });

@@ -10,7 +10,8 @@ import { InlineCode, renderProse } from "../InlineCode";
 import styles from "./PreviewNotes.module.css";
 
 /** Which box is open over the preview's bottom edge. At most one. */
-export type PreviewPanelSection = "help" | "objects" | "notes" | "legend";
+export type PreviewPanelSection =
+  "help" | "timing" | "objects" | "notes" | "legend";
 
 /**
  * The counts the button row and the Notes box share. Computed once here so
@@ -67,6 +68,8 @@ interface PreviewBarControlsProps {
   onToggle: (section: PreviewPanelSection) => void;
   /** How many objects the Obj. List has unticked, for the warning on its button. */
   hiddenObjectCount: number;
+  /** The hourglass button is enabled (Preview Options, Time each generation). Off, it shows greyed out. */
+  showTiming?: boolean;
 }
 
 /**
@@ -86,6 +89,7 @@ export function PreviewBarControls({
   open,
   onToggle,
   hiddenObjectCount,
+  showTiming,
 }: PreviewBarControlsProps) {
   const { drawerNotes, failureCount, placed } = summary;
   return (
@@ -122,6 +126,22 @@ export function PreviewBarControls({
               ⚠
             </span>
           )}
+        </button>
+      </HelpTip>
+      {/* The hourglass: how long the last generation took, by section and
+          command (PreviewTimingPanel). Greyed out, not removed, while timing
+          is off in Preview Options, so the row keeps its shape and the
+          feature stays findable. */}
+      <HelpTip id="preview.timingButton">
+        <button
+          type="button"
+          className={`${styles.barButton} ${styles.squareButton}`}
+          aria-expanded={open === "timing"}
+          aria-label="Generation time"
+          disabled={!showTiming}
+          onClick={() => onToggle("timing")}
+        >
+          ⌛
         </button>
       </HelpTip>
       <HelpTip id="preview.notesDrawer">
@@ -174,7 +194,7 @@ export function PreviewCornerControls({
       <HelpTip id="preview.helpButton">
         <button
           type="button"
-          className={styles.barButton}
+          className={`${styles.barButton} ${styles.squareButton}`}
           aria-expanded={open === "help"}
           aria-label="How to use the map"
           onClick={() => onToggle("help")}
@@ -188,7 +208,7 @@ export function PreviewCornerControls({
       <HelpTip id="preview.generationSettings">
         <button
           type="button"
-          className={`${styles.barButton} ${styles.cogButton}`}
+          className={`${styles.barButton} ${styles.squareButton} ${styles.cogButton}`}
           aria-expanded={settingsOpen}
           onClick={onToggleSettings}
           aria-label="Generation settings"
@@ -201,8 +221,8 @@ export function PreviewCornerControls({
 }
 
 interface PreviewPanelProps {
-  /** Every section but the Obj. List, which PreviewCanvas renders itself since it holds that list's settings. */
-  section: Exclude<PreviewPanelSection, "objects">;
+  /** Every section but the Obj. List and the hourglass, which PreviewCanvas renders itself. */
+  section: Exclude<PreviewPanelSection, "objects" | "timing">;
   result: PreviewWireResult;
   summary: PreviewSummary;
   palette: TerrainPalette;

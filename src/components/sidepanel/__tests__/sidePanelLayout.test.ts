@@ -71,7 +71,7 @@ describe("resolveSidePanelDrag", () => {
   });
 
   it("stops at the maximum instead of following the pointer out", () => {
-    expect(resolveSidePanelDrag(5_000)).toEqual({
+    expect(resolveSidePanelDrag(20_000)).toEqual({
       collapsed: false,
       width: MAX_SIDE_PANEL_WIDTH,
     });

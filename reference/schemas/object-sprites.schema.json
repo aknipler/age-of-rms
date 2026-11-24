@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ageofrms.dev/schemas/object-sprites.schema.json",
+  "title": "Object sprites",
+  "description": "The graphics the preview's DE textures view draws objects with (docs/preview-de-textures-design.md Sec.12). Written by `python tools/extract-constants/extract_constants.py --object-data` from empires2_x2_p1.dat, beside object-data.json. Never edited by hand.",
+  "type": "object",
+  "required": ["note", "sprites"],
+  "additionalProperties": false,
+  "properties": {
+    "note": { "type": "string" },
+    "sprites": {
+      "description": "Graphic id to [file, frames, angles, mirroring, layer, deltas].",
+      "type": "object",
+      "propertyNames": { "pattern": "^[0-9]+$" },
+      "additionalProperties": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "string",
+            "description": "SLD base name in drs/graphics, empty for a graphic with no picture."
+          },
+          {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Frames per angle."
+          },
+          {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Angles, a tree's or a mine's variants among them."
+          },
+          {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The dat's mirroring mode, non zero when later angles are mirrors."
+          },
+          { "type": "integer", "description": "The dat's draw layer." },
+          {
+            "type": "array",
+            "description": "Parts drawn in order, [graphic, x, y], -1 being the graphic itself, offsets in sprite pixels.",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                { "type": "integer" },
+                { "type": "integer" },
+                { "type": "integer" }
+              ],
+              "items": false,
+              "minItems": 3
+            }
+          }
+        ],
+        "items": false,
+        "minItems": 6
+      }
+    }
+  }
+}
