@@ -6,6 +6,7 @@ import type {
 } from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
 import type { TilePoint } from "../../preview/render/projection";
+import type { TerrainShare } from "../../preview/render/terrainStats";
 import { HelpTip } from "../HelpTip";
 import staleStyles from "./PreviewNotes.module.css";
 import { useCurrentFilePath } from "../../settings/DiagnosticDismissalContext";
@@ -48,14 +49,16 @@ interface PreviewCanvasProps {
   hiddenObjects: ReadonlySet<string>;
   /** The settings' player count for the badge's "200×200, 6 players" line; see `OverlayCanvasProps.playerCount` for why it is not read off `result`. */
   playerCount: number;
-  /** Terrain ids actually on the drawn grid, for the Legend box. */
-  terrainsInUse: readonly number[];
+  /** Each terrain on the drawn grid with its share of the tiles, largest first, for the Legend and Terrain Stats box. */
+  terrainShares: readonly TerrainShare[];
   /** Regenerate on Edit is off and the script changed since this map was drawn. */
   stale?: boolean;
   /** Generates from the current script now. Clicking the stale notice calls it. */
   onRegenerate?: () => void;
   /** Drawn in the map's top left corner under any banner notes. The pane puts the hovered or selected tile's details here. */
   topLeft?: ReactNode;
+  /** The command under the caret's tiles, lit over the map (Highlight selected command). */
+  commandHighlight?: { first: Uint32Array; second?: Uint32Array } | null;
 }
 
 /**
@@ -75,10 +78,11 @@ export function PreviewCanvas({
   onTileClick,
   hiddenObjects,
   playerCount,
-  terrainsInUse,
+  terrainShares,
   stale = false,
   onRegenerate,
   topLeft,
+  commandHighlight,
 }: PreviewCanvasProps) {
   // Held above the tab switch (PreviewViewContext.tsx) so zoom/pan survive
   // Breakdown <-> Code instead of resetting to "fit" on every remount.
@@ -115,10 +119,29 @@ export function PreviewCanvas({
     closeDialog: closeSettings,
     toggleDialog: toggleSettings,
   } = useGenerationSettings();
+  // The terrain whose tiles glow, picked from the Terrain Stats box. It
+  // outlives the box on purpose, so a scripter can close it, open Notes or
+  // edit the script and keep the glow as a reference. The chip in the bottom
+  // row names what glows and turns it off once the box is gone.
+  const [glowPick, setGlowPick] = useState<number | null>(null);
   const toggleSection = (section: PreviewPanelSection) => {
     if (section === "help") closeSettings();
     setOpenSection((current) => (current === section ? null : section));
   };
+  // Derived, not synced with an effect. A regeneration that removes the
+  // picked terrain needs no cleanup, since this simply reads null until the
+  // terrain is back. The effect version (watch the shares, call setGlowPick)
+  // would draw one frame with a stale glow and then render again.
+  const glowTerrain =
+    glowPick !== null && terrainShares.some((share) => share.id === glowPick)
+      ? glowPick
+      : null;
+  const terrainRender =
+    colorMode === "minimap" ? "minimap" : deTextures ? "de" : "flat";
+  // The textured view draws terrain as its textures, so a box of flat colour
+  // swatches no longer says what anything on the map is. It becomes stats
+  // alone there. The flat views keep the swatches beside the stats.
+  const legendKind = terrainRender === "de" ? "stats" : "both";
   useEffect(() => {
     if (settingsOpen)
       setOpenSection((current) => (current === "help" ? null : current));
@@ -158,9 +181,9 @@ export function PreviewCanvas({
       base={{ result, snapshot, palette, hiddenObjects }}
       // The minimap button wins over DE textures: it asks for the game's
       // minimap look, which is the flat diamond.
-      terrainRender={
-        colorMode === "minimap" ? "minimap" : deTextures ? "de" : "flat"
-      }
+      terrainRender={terrainRender}
+      glowTerrain={glowTerrain}
+      commandHighlight={commandHighlight}
       helpTipId="preview.canvas"
       showApproximateBadge
       playerCount={playerCount}
@@ -195,6 +218,13 @@ export function PreviewCanvas({
           onToggle={toggleSection}
           hiddenObjectCount={hiddenObjects.size}
           showTiming={recordTiming}
+          legendKind={legendKind}
+          glowName={
+            glowTerrain === null || openSection === "legend"
+              ? undefined
+              : (palette.nameFor(glowTerrain) ?? `terrain ${glowTerrain}`)
+          }
+          onClearGlow={() => setGlowPick(null)}
         />
       }
       // Help opens under its own button in the top right corner, the rest
@@ -208,7 +238,7 @@ export function PreviewCanvas({
             result={result}
             summary={summary}
             palette={palette}
-            terrainsInUse={terrainsInUse}
+            terrainShares={terrainShares}
           />
         ) : null
       }
@@ -232,7 +262,12 @@ export function PreviewCanvas({
               result={result}
               summary={summary}
               palette={palette}
-              terrainsInUse={terrainsInUse}
+              terrainShares={terrainShares}
+              legendKind={legendKind}
+              glowTerrain={glowTerrain}
+              onGlowTerrain={(id) =>
+                setGlowPick((current) => (current === id ? null : id))
+              }
               onHideNote={(id) => hideNote(filePath, id)}
               onRestoreNotes={() => restoreNotes(filePath)}
             />

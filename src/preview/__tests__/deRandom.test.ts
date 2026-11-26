@@ -53,6 +53,28 @@ describe("the game's stream (deRandom.ts)", () => {
     expect(mulHigh32(100, 0xffffffff)).toBe(99);
   });
 
+  it("gives (n * raw) >> 32 exactly for every 32-bit bound, as BigInt does", () => {
+    // The object stage's walk draws with bounds past 2^21, where the product
+    // no longer fits a double. Two streams from one seed give the same raws,
+    // so one checks the other's reductions.
+    const a = createDeStream(77);
+    const b = createDeStream(77);
+    const bounds = [1, 2, 100, 0x1fffff, 0x200000, 0x7fffffff, 0x80000000];
+    bounds.push(0xfffffffe, 0xffffffff, 16_241_983);
+    let x = 2463534242;
+    for (let i = 0; i < 20_000; i++) {
+      x ^= x << 13;
+      x ^= x >>> 17;
+      x ^= x << 5;
+      bounds.push((x >>> 0) >>> (i & 31));
+    }
+    for (const n of bounds) {
+      const raw = a.raw();
+      const want = Number((BigInt(n) * BigInt(raw)) >> 32n);
+      expect(b.bounded(n)).toBe(want);
+    }
+  });
+
   it("reduces by modulo with redraws for the shuffle, and by the low 15 bits for the team draws", () => {
     const shuffle = createDeStream(1000);
     expect([2, 3, 4, 5, 6, 7, 8].map((n) => shuffle.index(n))).toEqual([

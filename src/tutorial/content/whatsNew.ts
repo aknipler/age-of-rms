@@ -354,6 +354,54 @@ const whatsNew0120: TutorialDefinition = {
   ],
 };
 
+// No new controls to point at, so the announcement is the whole tour. The
+// version is the next release's. package.json moves with `npm version` at
+// release time, and the trigger in TutorialContext.tsx only fires once the
+// two agree.
+const whatsNew0130: TutorialDefinition = {
+  id: "whats-new-0.13.0",
+  kind: "feature",
+  title: "What's new in 0.13",
+  blurb:
+    "A textured preview drawn from your DE install, preview options, and better diagnostics.",
+  version: "0.13.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.13",
+      body: [
+        "Hello!",
+        "",
+        "The preview can now show the map as it appears in the game. This feature needs the game installed, the flat view is still there as an option.",
+        "As part of this, there are options for small trees, terrain blending, hiding decorations, player circles and grid lines.",
+        "New features:",
+        "1. Highlighting what a single command did on the map. After turning this on, put the caret on a command and the preview lights the tiles that command produced.",
+        "2. Terrain Stats box (in Preview area) shows how much of the map each terrain covers. Click a terrain in this list to highlight its tiles on the map.",
+        "3. Hourglass icon (in Preview area) shows how long each generation section and each command took, so you can see what makes a big script slow.",
+        "The editor now warns about a name in a terrain, object or constant slot that isn't defined.",
+        "The Advanced Tools have had improvements to UI and functionality across the board.",
+        "The status bar's Player resources numbers should now be accurate.",
+        "Add Template now works from any section and should be usable in Code.",
+        "The game data follows the latest DE patch.",
+        "Lots of other small fixes.",
+        "",
+        "Coming up next.",
+        "(1) adding in community hub for sharing maps (stalled - looking into integrating with an existing AoE2 project),",
+        "(2) version history for scripts (built, needs testing),",
+        "(3) more tutorials! (ideas, but no steps yet)",
+        "(4) improving the Advanced Land Placement tool, (active development)",
+        "(5) any of the bug fixes or QOL improvements that you guys suggest along the way.",
+        "I am still looking into supporting multiple languages. If anyone is interested in helping with that (or with anything else, like making tutorials), please reach out to me on GitHub or Discord.",
+        "",
+        "Thank you for the support!",
+        { kind: "text", text: "Happy scripting,", align: "right" },
+        { kind: "text", text: "Captain Kniples the Fourth", align: "right" },
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
@@ -363,4 +411,5 @@ export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew0100,
   whatsNew0110,
   whatsNew0120,
+  whatsNew0130,
 ];

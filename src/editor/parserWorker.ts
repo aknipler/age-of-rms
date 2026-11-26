@@ -85,6 +85,17 @@ export interface IncludesMessage {
   requested: string[];
 }
 
+/**
+ * The names the user's installed random_map.def defines, read by the main
+ * thread (src/useIncludeFiles.ts) and kept here like the include files.
+ * `names` is null when no install was found. Until one arrives the worker
+ * treats the answer as null, so RMS0324 says only what it checked (rule N).
+ */
+export interface InstalledDefinitionsMessage {
+  kind: "installedDefinitions";
+  names: string[] | null;
+}
+
 /** The full reply. For a big document a ParseDiagnosticsMessage comes just before it (parseResponses.ts). */
 export interface ParseResultMessage {
   kind: "result";
@@ -186,12 +197,23 @@ const liveness = createLivenessScheduler<
   },
 });
 
+// Replaced, never mutated, like includeState. null is no install (or not
+// loaded yet), which RMS0324 reads as rule N.
+let installedDefinitions: ReadonlySet<string> | null = null;
+
 self.onmessage = (
-  event: MessageEvent<ParseRequestMessage | IncludesMessage>,
+  event: MessageEvent<
+    ParseRequestMessage | IncludesMessage | InstalledDefinitionsMessage
+  >,
 ) => {
   // Any message makes a waiting liveness job stale: a parse request is newer
   // text, and an includes message changes what the job would read.
   liveness.cancel();
+  if ("kind" in event.data && event.data.kind === "installedDefinitions") {
+    installedDefinitions =
+      event.data.names === null ? null : new Set(event.data.names);
+    return;
+  }
   // A discriminated union tells the two apart. A parse request has no `kind`,
   // so the `in` check narrows it before either field is read.
   if ("kind" in event.data && event.data.kind === "includes") {
@@ -231,6 +253,7 @@ self.onmessage = (
   const includeIndex = indexFor(includeState, result);
   const semanticDiagnostics = validate(result, validateRefDb, {
     resolvedIncludes: includeIndex,
+    installedDefinitions,
   });
   // The merge happens HERE, at the app boundary, and not in either pure
   // module. Inside src/parser/* the split stays real: parseRms never sees a

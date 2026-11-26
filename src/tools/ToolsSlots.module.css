@@ -7,7 +7,9 @@
   max-width: 70%;
   min-height: 0;
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  /* No border-right here. The resizer beside the column draws the dividing
+     line, as it does for MapSidePanel, so the two do not draw two lines a
+     pixel apart. */
 }
 
 .topRow {
@@ -39,6 +41,8 @@
   top: 0;
   left: 0;
   z-index: 1;
+  /* The resizer is absent while merged, so the column draws its own line. */
+  border-right: 1px solid var(--border);
 }
 
 /* Wraps the map header. Padded on the left while the column is laid over it. */

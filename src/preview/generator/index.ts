@@ -33,6 +33,12 @@ import {
   timeCall,
   type GenerationTiming,
 } from "./generationTiming";
+import {
+  endCommandTiles,
+  recordingCommandTiles,
+  recordTiles,
+  startCommandTiles,
+} from "./commandTiles";
 import { lineNumberOfOffset } from "../../parser/lineIndex";
 import { readColorMood } from "./colorMood";
 import type { LanguageIndex } from "../../parser/language";
@@ -61,6 +67,7 @@ import {
   baseElevationNotes,
   countOwnedTiles,
   cleanTerrainAgainst,
+  zoneByte,
 } from "./lands";
 import { applyElevation } from "./elevation";
 import { applyCliffs, finishTerrainStage } from "./cliffs";
@@ -322,6 +329,11 @@ export function generatePreview(
     ),
   );
 
+  // The per command tile sets for Highlight selected command, only when asked
+  // (commandTiles.ts). It needs the map's size, so it starts here and not
+  // beside startTiming.
+  if (opts.commandTiles) startCommandTiles(instantiated.dim);
+
   const {
     terrainId: baseTerrainId,
     layerId: baseLayerId,
@@ -341,10 +353,27 @@ export function generatePreview(
     const effects = collectEffects(instantiated, constants, catalog);
     catalog.setOverrides(effects);
     // The renderer draws these graphics too (the textured view's sprites).
+    // An upgraded object (`(GAIA_)UPGRADE_UNIT A B`) draws as B: RMSTEST_86a
+    // saved A's id and showed B's picture. B's own override, if the script
+    // gives one, wins over B's dat graphic, and an override on A itself wins
+    // over both.
+    const standingOf = new Map(
+      refDb.objectData.objects.map((o) => [o.id, o.g] as const),
+    );
     const graphicsOf = (scope: "gaia" | "player") =>
       [...effects[scope]]
-        .filter(([, o]) => o.graphic !== undefined)
-        .map(([id, o]) => [id, o.graphic as number] as const);
+        .map(([id, o]) => {
+          const graphic =
+            o.graphic ??
+            (o.upgrade === undefined
+              ? undefined
+              : (effects[scope].get(o.upgrade)?.graphic ??
+                standingOf.get(o.upgrade)));
+          return [id, graphic] as const;
+        })
+        .filter(
+          (pair): pair is readonly [number, number] => pair[1] !== undefined,
+        );
     standingGraphics = {
       gaia: graphicsOf("gaia"),
       player: graphicsOf("player"),
@@ -361,7 +390,10 @@ export function generatePreview(
     ? []
     : undefined;
   const snapshot = (stage: StageId): void => {
-    if (snapshots) snapshots.push(captureSnapshot(stage, grid));
+    if (snapshots)
+      timeCall("Stage snapshot copy", undefined, () =>
+        snapshots.push(captureSnapshot(stage, grid)),
+      );
     // Each stage ends at its snapshot, so the hourglass's sections do too.
     markSection(stage);
   };
@@ -394,6 +426,10 @@ export function generatePreview(
       },
     ),
   );
+  // The same reading serves Highlight selected command, which wants every tile
+  // a land claimed, including ones a later create_terrain paints over.
+  if (recordingCommandTiles())
+    recordLandTiles(landResult.origins, grid, landZone);
   // Read right after growth and before the cleanup pass below, which also
   // clears `landId`. A land the cleanup erases was not buried by a later
   // stamp, and counting it here would give the note the wrong reason. Reading
@@ -403,20 +439,39 @@ export function generatePreview(
   // The cleanup note needs the same before-cleanup reading, to tell a land
   // the cleanup erased from one it only trimmed.
   const ownedAfterGrowth = countOwnedTiles(landResult.origins, grid);
+  // Each land report's growth, from the same reading. Keyed by span because
+  // one create_player_lands makes a land per player under one report.
+  const landReportBySpan = new Map(
+    landResult.reports.map((r) => [
+      `${r.commandSpan.start}-${r.commandSpan.end}`,
+      r,
+    ]),
+  );
+  landResult.origins.forEach((origin, index) => {
+    const report = landReportBySpan.get(
+      `${origin.commandSpan.start}-${origin.commandSpan.end}`,
+    );
+    if (!report) return;
+    report.growth ??= { target: 0, grown: 0 };
+    report.growth.target += origin.target;
+    report.growth.grown += ownedAfterGrowth[index];
+  });
   const waterId = resolveTerrainId(constants, "WATER");
   const cleanup = createCleanupTally(constants);
   // Sec.6.1 rules 9 to 11. Painting, then the cleanup, whose restored tiles
   // spend the base terrain's decoration draws. Heights were written during
   // growth, so base_elevation only has notes left to give.
-  const landStream = finishLandStage(
-    landResult.origins,
-    grid,
-    baseTerrainId,
-    constants,
-    grown,
-    (_tile, formerTerrain, formerLand) =>
-      recordCleanup(cleanup, "S1", baseTerrainId, formerTerrain, formerLand),
-    world,
+  const landStream = timeCall("Land painting and cleanup", undefined, () =>
+    finishLandStage(
+      landResult.origins,
+      grid,
+      baseTerrainId,
+      constants,
+      grown,
+      (_tile, formerTerrain, formerLand) =>
+        recordCleanup(cleanup, "S1", baseTerrainId, formerTerrain, formerLand),
+      world,
+    ),
   );
   const baseElevationNoteList = baseElevationNotes(
     instantiated,
@@ -444,6 +499,13 @@ export function generatePreview(
     ),
   );
   snapshot("S3");
+  if (recordingCommandTiles()) {
+    // Every cliff tile, whichever line of the cliff section made it.
+    const cliffTiles: number[] = [];
+    for (let i = 0; i < grid.cliff.length; i++)
+      if (grid.cliff[i] !== 0) cliffTiles.push(i);
+    recordTiles(-1, "cliff", cliffTiles);
+  }
 
   const terrainsResult = applyTerrains(
     instantiated,
@@ -458,19 +520,25 @@ export function generatePreview(
   // terrain back and the cleanup runs against WATER, then the beach pass,
   // which reads each tile's beach_terrain mark.
   const terrainBeforeEnd = world ? grid.terrain.slice() : undefined;
-  const composites = resolveComposites(grid);
-  finishTerrainStage(
-    grid,
-    cliffsResult.lineTiles,
-    waterId,
-    waterId === undefined
-      ? undefined
-      : (_tile, formerTerrain, formerLand) =>
-          recordCleanup(cleanup, "S4", waterId, formerTerrain, formerLand),
+  const composites = timeCall("Composite terrains", undefined, () =>
+    resolveComposites(grid),
   );
-  const beachedAtTerrainEnd = applyAutomaticBeach(grid, constants, {
-    beachMark: terrainsResult.beachMark,
-  });
+  timeCall("Cliff lines restored, water cleanup", undefined, () =>
+    finishTerrainStage(
+      grid,
+      cliffsResult.lineTiles,
+      waterId,
+      waterId === undefined
+        ? undefined
+        : (_tile, formerTerrain, formerLand) =>
+            recordCleanup(cleanup, "S4", waterId, formerTerrain, formerLand),
+    ),
+  );
+  const beachedAtTerrainEnd = timeCall("Beach pass", undefined, () =>
+    applyAutomaticBeach(grid, constants, {
+      beachMark: terrainsResult.beachMark,
+    }),
+  );
   // A tile the end of the stage changed loses the terrain objects its old
   // terrain made or its new one refuses. Resolving a composite layer is not
   // such a change (write-up 11), so a tile that still holds what its layer
@@ -500,13 +568,14 @@ export function generatePreview(
   // marks (Sec.6.5, rev 11, cn8a and cn8c). RMSTEST_70 first showed the
   // second beach, along a causeway carved through open water.
   let beachedAfterConnections = 0;
-  if (instantiated.sections.has("CONNECTION_GENERATION")) {
-    if (waterId !== undefined)
-      cleanTerrainAgainst(grid, waterId, (i) => {
-        grid.layer[i] = NO_LAYER;
-      });
-    beachedAfterConnections = applyAutomaticBeach(grid, constants);
-  }
+  if (instantiated.sections.has("CONNECTION_GENERATION"))
+    timeCall("Water cleanup and beach pass", undefined, () => {
+      if (waterId !== undefined)
+        cleanTerrainAgainst(grid, waterId, (i) => {
+          grid.layer[i] = NO_LAYER;
+        });
+      beachedAfterConnections = applyAutomaticBeach(grid, constants);
+    });
   if (world && terrainBeforeConnections)
     for (let i = 0; i < grid.terrain.length; i++)
       world.changed(i, terrainBeforeConnections[i], grid.terrain[i]);
@@ -546,12 +615,14 @@ export function generatePreview(
     "objects" | "players" | "reports" | "notes"
   >;
   try {
-    forestWood = computeForestWood(
-      grid,
-      constants,
-      constants,
-      suppression.suppressed,
-      suppression.yieldOverrides,
+    forestWood = timeCall("Forest wood count", undefined, () =>
+      computeForestWood(
+        grid,
+        constants,
+        constants,
+        suppression.suppressed,
+        suppression.yieldOverrides,
+      ),
     );
     if (!catalog)
       objectsResult = applyObjects(
@@ -665,6 +736,8 @@ export function generatePreview(
     ].filter((n): n is SimulationNote => n !== undefined),
   );
 
+  // After S6, when the grid is back to the terrain that is drawn.
+  const commandTiles = endCommandTiles(grid.terrain) ?? undefined;
   const timing: GenerationTiming | undefined =
     endTiming((offset) => lineNumberOfOffset(parse.lineOffsets, offset)) ??
     undefined;
@@ -686,7 +759,46 @@ export function generatePreview(
     standingGraphics,
     colorMood: readColorMood(instantiated, constants),
     timing,
+    commandTiles,
   };
+}
+
+/**
+ * Records each land's own tiles and its zone's tiles for Highlight selected
+ * command. Zones are shared, so several lands can have the same second set,
+ * and that sharing is the point of showing it (avoid_other_land_zones and the
+ * connections read zones, not lands).
+ */
+function recordLandTiles(
+  origins: readonly LandOrigin[],
+  grid: TileGrid,
+  landZone: Int16Array,
+): void {
+  const ownTiles: number[][] = origins.map(() => []);
+  const zoneTiles = new Map<number, number[]>();
+  for (let i = 0; i < grid.landId.length; i++) {
+    const land = grid.landId[i];
+    if (land >= 0 && land < origins.length) ownTiles[land].push(i);
+    const zb = landZone[i];
+    let list = zoneTiles.get(zb);
+    if (list === undefined) zoneTiles.set(zb, (list = []));
+    list.push(i);
+  }
+  const landsInZone = new Map<number, number>();
+  for (const o of origins) {
+    const zb = zoneByte(o.zone);
+    landsInZone.set(zb, (landsInZone.get(zb) ?? 0) + 1);
+  }
+  origins.forEach((o, index) => {
+    const zb = zoneByte(o.zone);
+    recordTiles(
+      o.commandSpan.start,
+      "land",
+      ownTiles[index],
+      zoneTiles.get(zb) ?? [],
+      { zone: o.zone, lands: landsInZone.get(zb) ?? 1 },
+    );
+  });
 }
 
 /**
@@ -744,7 +856,9 @@ function runDeStage(
     table[i] = composites.terrain[i];
   }
   const stream = resumeDeStream(streamState);
-  world.objectStage(stream, grid.terrain, pieces, (i) => table[i]);
+  timeCall("Forest trees and decorations", undefined, () =>
+    world.objectStage(stream, grid.terrain, pieces, (i) => table[i]),
+  );
   return runDeObjectStage({
     script: instantiated,
     constants,

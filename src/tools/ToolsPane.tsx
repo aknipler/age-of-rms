@@ -14,6 +14,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -21,6 +22,7 @@ import {
 import { createPortal } from "react-dom";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../components/HelpTip";
+import { DraftNumberInput } from "../components/DraftNumberInput";
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
@@ -320,6 +322,16 @@ export function ToolsPane({
     }
   }, [pendingRun, parseResult, source, startRun]);
 
+  // A `runOnSelect` tool runs when picked, and when the pane opens on it with
+  // nothing run yet. Keyed on the tool id and the idle phase only, so it fires
+  // once per pick rather than on every keystroke's new parse. `pendingRun`
+  // routes it through the same parse gate as a Run press.
+  const runOnSelect = tool?.manifest.runOnSelect === true;
+  const idle = state.phase === "idle";
+  useEffect(() => {
+    if (runOnSelect && idle && filePath !== null) setPendingRun(true);
+  }, [runOnSelect, idle, selectedId, filePath]);
+
   // The left column App mounts beside the map header, when it is there. The
   // tool picker and Run go in its top row, the description and parameters in
   // its body (ToolsSlots.tsx). With no column (a test, or any caller outside
@@ -618,14 +630,11 @@ export function ToolsPane({
                 {state.settingsSnapshot.mapSize}
               </p>
             )}
-            {state.output.blocks.map((block, i) => (
-              <Block
-                key={i}
-                block={block}
-                lineOffsets={parseResult?.lineOffsets}
-                onJump={onJumpToOffset}
-              />
-            ))}
+            <OutputSections
+              blocks={state.output.blocks}
+              lineOffsets={parseResult?.lineOffsets}
+              onJump={onJumpToOffset}
+            />
           </div>
         </HelpTip>
       )}
@@ -691,13 +700,12 @@ function ParamRow({
       return (
         <label className={styles.paramRow}>
           {label}
-          <input
-            type="number"
+          <DraftNumberInput
             className={styles.input}
             min={def.min}
             max={def.max}
             value={typeof value === "number" ? value : def.default}
-            onChange={(e) => onChange(Number(e.target.value))}
+            onCommit={onChange}
           />
         </label>
       );
@@ -764,6 +772,357 @@ function ParamRow({
   }
 }
 
+/** A heading and the blocks under it, up to the next heading. `heading` is undefined for whatever comes before the first one. */
+interface OutputSection {
+  heading: string | undefined;
+  blocks: OutputBlock[];
+}
+
+function groupSections(blocks: readonly OutputBlock[]): OutputSection[] {
+  const sections: OutputSection[] = [];
+  for (const block of blocks) {
+    if (block.kind === "heading") {
+      sections.push({ heading: block.text, blocks: [] });
+    } else {
+      if (sections.length === 0)
+        sections.push({ heading: undefined, blocks: [] });
+      sections[sections.length - 1].blocks.push(block);
+    }
+  }
+  return sections;
+}
+
+/**
+ * A tool's output as sections that can each be hidden, one per heading block.
+ *
+ * Hidden sections are remembered by heading text, not by position, so a
+ * section hidden before Run stays hidden in the next run's report even when
+ * an earlier section appears or goes. The state lives here and not in the
+ * tool, because hiding is a way of reading the report, not part of it, so
+ * the published block contract needs nothing new for it.
+ */
+function OutputSections({
+  blocks,
+  lineOffsets,
+  onJump,
+}: {
+  blocks: readonly OutputBlock[];
+  lineOffsets: readonly number[] | undefined;
+  onJump: (offset: number) => void;
+}) {
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (heading: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(heading)) next.delete(heading);
+      else next.add(heading);
+      return next;
+    });
+
+  return (
+    <>
+      {groupSections(blocks).map((section, i) => {
+        const body = section.blocks.map((block, j) => (
+          <Block
+            key={j}
+            block={block}
+            lineOffsets={lineOffsets}
+            onJump={onJump}
+          />
+        ));
+        if (section.heading === undefined)
+          return (
+            <div key={i} className={styles.sectionBody}>
+              {body}
+            </div>
+          );
+        const heading = section.heading;
+        const open = !hidden.has(heading);
+        return (
+          <section key={i} className={styles.section}>
+            <StickyBar
+              className={styles.sectionBar}
+              heightVar="--section-bar-height"
+            >
+              <HelpTip id="tools.sectionToggle">
+                <button
+                  type="button"
+                  className={styles.sectionToggle}
+                  aria-expanded={open}
+                  onClick={() => toggle(heading)}
+                >
+                  <span className={styles.sectionCaret} aria-hidden="true">
+                    {open ? "▾" : "▸"}
+                  </span>
+                  <h3 className={styles.heading}>{heading}</h3>
+                </button>
+              </HelpTip>
+            </StickyBar>
+            {open && body.length > 0 && (
+              <div className={styles.sectionBody}>{body}</div>
+            )}
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * A sticky bar that writes its own height onto its parent as `heightVar`, so
+ * the sticky rows below it (a section title, a table header) can sit exactly
+ * under it. Measured rather than written into the CSS, because the bar's real
+ * height comes from its contents, the HelpTip wrapper's line box among them,
+ * and a guessed figure left a gap where the table showed through, or an
+ * overlap. A ResizeObserver keeps it right when the font or the wrapping
+ * changes.
+ */
+function StickyBar({
+  className,
+  heightVar,
+  children,
+}: {
+  className: string | undefined;
+  heightVar: string;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = ref.current;
+    const parent = bar?.parentElement;
+    if (!bar || !parent) return;
+    const write = () =>
+      parent.style.setProperty(heightVar, `${bar.offsetHeight}px`);
+    write();
+    const observer = new ResizeObserver(write);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [heightVar]);
+  return (
+    <div ref={ref} className={className}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A `tabs` block. The chosen tab is kept by label, so a partial report that
+ * adds a tab, or a rerun, leaves the reader on the tab they were reading.
+ * A label that is gone falls back to the first tab.
+ */
+function TabsBlock({
+  tabs,
+  lineOffsets,
+  onJump,
+}: {
+  tabs: readonly { label: string; blocks: OutputBlock[] }[];
+  lineOffsets: readonly number[] | undefined;
+  onJump: (offset: number) => void;
+}) {
+  const [chosen, setChosen] = useState<string | undefined>(undefined);
+  const active = tabs.find((t) => t.label === chosen) ?? tabs[0];
+  return (
+    <div className={styles.outputTabs}>
+      {/* The sticky element is this bar and not the row inside the HelpTip.
+          A sticky box only travels within its parent, and the HelpTip's
+          wrapper is exactly as tall as the row, so the row could never move.
+          This bar's parent is the whole tabs block, so the tabs stay in view
+          for every section of the report. */}
+      <StickyBar className={styles.outputTabBar} heightVar="--tab-bar-height">
+        <HelpTip id="tools.outputTabs">
+          <div className={styles.outputTabRow} role="tablist">
+            {tabs.map((tab) => (
+              <button
+                key={tab.label}
+                type="button"
+                role="tab"
+                aria-selected={tab === active}
+                className={
+                  tab === active
+                    ? `${styles.outputTab} ${styles.outputTabActive}`
+                    : styles.outputTab
+                }
+                onClick={() => setChosen(tab.label)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </HelpTip>
+      </StickyBar>
+      <div role="tabpanel" className={styles.outputTabPanel}>
+        <OutputSections
+          blocks={active.blocks}
+          lineOffsets={lineOffsets}
+          onJump={onJump}
+        />
+      </div>
+    </div>
+  );
+}
+
+type TableOutputBlock = Extract<OutputBlock, { kind: "table" }>;
+
+/** Which column the reader sorted by, and which way. `null` is the tool's own order. */
+type TableSort = { column: number; descending: boolean } | null;
+
+/**
+ * A `table` block. Headers the tool gave `sortKeys` for are buttons: the
+ * first click sorts ascending, the second descending, the third returns to
+ * the tool's own order. Rows are sorted by index, so each row keeps its own
+ * rowSpan and bar wherever it lands.
+ */
+function TableBlock({
+  block,
+  onJump,
+}: {
+  block: TableOutputBlock;
+  onJump: (span: Span) => void;
+}) {
+  const [sort, setSort] = useState<TableSort>(null);
+  const keysFor = (column: number) =>
+    block.sortKeys?.find((k) => k.column === column)?.values;
+
+  const order = block.rows.map((_, i) => i);
+  const keys = sort ? keysFor(sort.column) : undefined;
+  if (sort && keys) {
+    order.sort((a, b) => {
+      const ka = keys[a];
+      const kb = keys[b];
+      // Rows with no value go last whichever way the column is sorted.
+      if (ka === null && kb === null) return a - b;
+      if (ka === null) return 1;
+      if (kb === null) return -1;
+      const byKey = sort.descending ? kb - ka : ka - kb;
+      // Equal keys keep the tool's order, so a sort never shuffles ties.
+      return byKey !== 0 ? byKey : a - b;
+    });
+  }
+  // Beyond the cap the pane says how many are hidden rather than truncating
+  // silently. A table that quietly stops is indistinguishable from a tool
+  // that found fewer results. Capped after sorting, so a sort reaches the
+  // rows the cap would otherwise cut.
+  const { rows: shown, hidden } = tableRowsToRender(
+    order.map((i) => block.rows[i]),
+  );
+
+  const nextSort = (column: number) =>
+    setSort((prev) =>
+      prev?.column !== column
+        ? { column, descending: false }
+        : !prev.descending
+          ? { column, descending: true }
+          : null,
+    );
+  const alignClass = (column: number) => {
+    const align = block.align?.[column];
+    if (align === "center") return styles.alignCenter;
+    if (align === "right") return styles.alignRight;
+    return undefined;
+  };
+
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            {block.columns.map((c, i) => {
+              const label = (
+                <span className={styles.headerLabel} title={c}>
+                  {c}
+                </span>
+              );
+              if (!keysFor(i))
+                return (
+                  <th key={i} className={alignClass(i)}>
+                    {label}
+                  </th>
+                );
+              const arrow =
+                sort?.column === i ? (sort.descending ? "▼" : "▲") : "";
+              return (
+                <th
+                  key={i}
+                  className={alignClass(i)}
+                  aria-sort={
+                    sort?.column === i
+                      ? sort.descending
+                        ? "descending"
+                        : "ascending"
+                      : "none"
+                  }
+                >
+                  <HelpTip id="tools.tableSort">
+                    <button
+                      type="button"
+                      className={styles.sortHeader}
+                      onClick={() => nextSort(i)}
+                    >
+                      {label}
+                      <span className={styles.sortArrow} aria-hidden="true">
+                        {arrow}
+                      </span>
+                    </button>
+                  </HelpTip>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((row, position) => {
+            const i = order[position];
+            const span = block.rowSpans?.[i] ?? null;
+            return (
+              <tr
+                key={i}
+                className={span ? styles.rowLink : undefined}
+                onClick={span ? () => onJump(span) : undefined}
+              >
+                {row.map((cell, j) => {
+                  const bar =
+                    block.bars?.column === j ? block.bars.values[i] : undefined;
+                  if (bar === undefined || bar === null)
+                    return (
+                      <td key={j} className={alignClass(j)}>
+                        {cell}
+                      </td>
+                    );
+                  return (
+                    <td key={j} className={alignClass(j)}>
+                      <span className={styles.barCell}>
+                        <span className={styles.barTrack} aria-hidden="true">
+                          <span
+                            className={`${styles.barFill} ${barTone(bar)}`}
+                            style={{ width: `${bar * 100}%` }}
+                          />
+                        </span>
+                        {cell}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {hidden > 0 && (
+        <p className={styles.description}>
+          Showing the first {shown.length} of {shown.length + hidden} rows.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Green when every attempt placed, yellow from 40%, red below, per the checker's spawn rate bar. */
+function barTone(value: number): string {
+  if (value >= 1) return styles.barFull;
+  if (value >= 0.4) return styles.barPartial;
+  return styles.barLow;
+}
+
 function Block({
   block,
   lineOffsets,
@@ -778,6 +1137,14 @@ function Block({
   switch (block.kind) {
     case "heading":
       return <h3 className={styles.heading}>{block.text}</h3>;
+    case "tabs":
+      return (
+        <TabsBlock
+          tabs={block.tabs}
+          lineOffsets={lineOffsets}
+          onJump={onJump}
+        />
+      );
     case "text":
       return <p className={styles.text}>{block.text}</p>;
     case "keyValue":
@@ -793,46 +1160,8 @@ function Block({
           </tbody>
         </table>
       );
-    case "table": {
-      // Beyond the cap the pane says how many are hidden rather than truncating
-      // silently. A table that quietly stops is indistinguishable from a tool
-      // that found fewer results.
-      const { rows, hidden } = tableRowsToRender(block.rows);
-      return (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                {block.columns.map((c, i) => (
-                  <th key={i}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const span = block.rowSpans?.[i] ?? null;
-                return (
-                  <tr
-                    key={i}
-                    className={span ? styles.rowLink : undefined}
-                    onClick={span ? () => jump(span) : undefined}
-                  >
-                    {row.map((cell, j) => (
-                      <td key={j}>{cell}</td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {hidden > 0 && (
-            <p className={styles.description}>
-              Showing the first {rows.length} of {rows.length + hidden} rows.
-            </p>
-          )}
-        </div>
-      );
-    }
+    case "table":
+      return <TableBlock block={block} onJump={jump} />;
     case "severity":
       return (
         <div className={`${styles.severity} ${styles[block.level]}`}>

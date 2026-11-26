@@ -35,6 +35,7 @@ import {
   type ObjectDef,
 } from "./deObjectData";
 import { Hierarchy, routeAllows } from "./pathSearch";
+import { WeightPicker } from "./weightPicker";
 import { f32Sqrt } from "./float32";
 import type { TerrainObject, TerrainObjectWorld } from "./terrainObjects";
 import { STAGE_OBJECT } from "./terrainObjects";
@@ -178,6 +179,8 @@ export interface Built {
   /** The command that built it, undefined for cliff pieces. */
   cmd?: number;
   wallPiece: boolean;
+  /** The land's player when a player's frame built it, whoever owns it (PlacedObject.forPlayer). */
+  forPlayer?: number;
 }
 
 /** A frame: a land a command runs for (de-connections-objects.md 5.1). */
@@ -195,6 +198,18 @@ interface AreaRecord {
   tiles: [number, number][];
   ix: Map<number, number>;
   total: number;
+}
+
+/** One cached actor-area mask, over the first `n` of `areas`. */
+interface AreaMaskEntry {
+  d: ObjectDesc;
+  slot: number;
+  place: boolean;
+  n: number;
+  /** 1 where the tile passes. */
+  m: Uint8Array;
+  /** 1 where an avoided area covers the tile, which no later area can undo. */
+  av: Uint8Array;
 }
 
 interface PlacedArea {
@@ -275,10 +290,12 @@ export class ObjectStage {
   private pzLast:
     | { rid: number; oi: number; t: number; lv: number; lab: Int32Array }
     | undefined;
-  /** The last actor-area mask built (6.2 step 2.2). */
-  private amLast:
-    | { d: ObjectDesc; slot: number; n: number; place: boolean; m: Uint8Array }
-    | undefined;
+  /**
+   * The actor-area masks built most recently (6.2 step 2.2), newest first.
+   * `areas` only ever grows, so a mask over the first n areas is extended
+   * to more areas by painting only the new ones (`areaMask`).
+   */
+  private amCache: AreaMaskEntry[] = [];
   /** Groups placed so far, for the reports. */
   private placedGroups = 0;
 
@@ -342,6 +359,32 @@ export class ObjectStage {
     if (gx >= 0 && gy >= 0 && gx < this.w && gy < this.h)
       this.grid[gy * this.w + gx].push(b);
     this.walkGridCache = undefined;
+  }
+
+  /**
+   * Whether any object within `r` grid cells passes `test`, for the callers
+   * that only ask whether one exists. `near` would build the whole list
+   * first, and these checks run once per candidate tile.
+   */
+  private someNear(
+    x: number,
+    y: number,
+    r: number,
+    test: (b: Built) => boolean,
+  ): boolean {
+    const cx = Math.floor(x);
+    const cy = Math.floor(y);
+    const gx0 = Math.max(cx - r, 0);
+    const gx1 = Math.min(cx + r, this.w - 1);
+    const gy0 = Math.max(cy - r, 0);
+    const gy1 = Math.min(cy + r, this.h - 1);
+    // Row by row, the grid's own order. The answer does not depend on it.
+    for (let gy = gy0; gy <= gy1; gy++)
+      for (let gx = gx0; gx <= gx1; gx++) {
+        const cell = this.grid[gy * this.w + gx];
+        for (let k = 0; k < cell.length; k++) if (test(cell[k])) return true;
+      }
+    return false;
   }
 
   private near(x: number, y: number, r: number): Built[] {
@@ -469,7 +512,6 @@ export class ObjectStage {
         }
       }
     this.areas.push({ id, x, y, r, slot });
-    this.amLast = undefined;
   }
 
   private lookup(id: number, dispatched: boolean): AreaRecord | undefined {
@@ -487,39 +529,62 @@ export class ObjectStage {
     place: boolean,
   ): Uint8Array {
     const slot = frame ? frame.slot : -1;
-    const hit = this.amLast;
-    if (
-      hit &&
-      hit.d === d &&
-      hit.slot === slot &&
-      hit.n === n &&
-      hit.place === place
-    )
-      return hit.m;
-    const A = this.areas.slice(0, n);
+    const cache = this.amCache;
+    const at = cache.findIndex(
+      (q) => q.d === d && q.slot === slot && q.place === place,
+    );
+    let entry = at >= 0 ? cache[at] : undefined;
+    if (entry !== undefined && entry.n === n) {
+      if (at > 0) cache.unshift(...cache.splice(at, 1));
+      return entry.m;
+    }
     const { w, h } = this;
     const usePlace = place && d.aaIn !== undefined;
-    const m = new Uint8Array(w * h).fill(usePlace ? 0 : 1);
-    const paint: [PlacedArea, number][] = [];
-    if (usePlace)
-      for (const a of A)
-        if (
-          a.id === d.aaIn &&
-          (frame === undefined || a.slot === undefined || a.slot === frame.slot)
-        )
-          paint.push([a, 1]);
-    if (d.avoidAa.length || d.avoidAll)
-      for (const a of A)
-        if (d.avoidAll || d.avoidAa.includes(a.id)) paint.push([a, 0]);
-    for (const [a, v] of paint) {
+    // The tile passes when no avoided area covers it and, under a place rule,
+    // some placing area does. The rebuild this replaces painted every placing
+    // area as 1 and then every avoided one as 0, which is the same rule, so
+    // painting area by area in order gives the same mask. A mask asked for
+    // over fewer areas than the cached one starts again.
+    if (entry === undefined || entry.n > n) {
+      entry = {
+        d,
+        slot,
+        place,
+        n: 0,
+        m: new Uint8Array(w * h).fill(usePlace ? 0 : 1),
+        av: new Uint8Array(w * h),
+      };
+      if (at >= 0) cache.splice(at, 1);
+    } else cache.splice(at, 1);
+    cache.unshift(entry);
+    // Four masks cover the place and avoid questions of the two commands a
+    // placement loop alternates between, and keep the memory small.
+    if (cache.length > 4) cache.length = 4;
+    const { m, av } = entry;
+    const avoids = d.avoidAa.length > 0 || d.avoidAll;
+    for (let ai = entry.n; ai < n; ai++) {
+      const a = this.areas[ai];
+      const placing =
+        usePlace &&
+        a.id === d.aaIn &&
+        (frame === undefined || a.slot === undefined || a.slot === frame.slot);
+      const avoided = avoids && (d.avoidAll || d.avoidAa.includes(a.id));
+      if (!placing && !avoided) continue;
       const x0 = Math.max(a.x - a.r, 0);
       const x1 = Math.min(a.x + a.r, w - 1);
       const y0 = Math.max(a.y - a.r, 0);
       const y1 = Math.min(a.y + a.r, h - 1);
       if (x0 > x1) continue;
-      for (let yy = y0; yy <= y1; yy++) m.fill(v, yy * w + x0, yy * w + x1 + 1);
+      for (let yy = y0; yy <= y1; yy++) {
+        const row0 = yy * w + x0;
+        const row1 = yy * w + x1 + 1;
+        if (avoided) {
+          av.fill(1, row0, row1);
+          m.fill(0, row0, row1);
+        } else for (let i = row0; i < row1; i++) if (!av[i]) m[i] = 1;
+      }
     }
-    this.amLast = { d, slot, n, place, m };
+    entry.n = n;
     return m;
   }
 
@@ -584,14 +649,16 @@ export class ObjectStage {
               break;
             }
       if (!hit)
-        for (const b of this.near(x, y, Math.max(near, far) + 1)) {
-          if (b.dropped) continue;
-          if (member && this.groupIds.has(b)) continue;
-          if (b.def.classId === cls && ok(Math.floor(b.x), Math.floor(b.y))) {
-            hit = true;
-            break;
-          }
-        }
+        hit = this.someNear(
+          x,
+          y,
+          Math.max(near, far) + 1,
+          (b) =>
+            !b.dropped &&
+            !(member && this.groupIds.has(b)) &&
+            b.def.classId === cls &&
+            ok(Math.floor(b.x), Math.floor(b.y)),
+        );
       if (hit) break;
     }
     return d.zoneKind === "require" ? hit : !hit;
@@ -807,9 +874,15 @@ export class ObjectStage {
   ): boolean {
     const coll = !N.pcNone && N.vertical > 0 && (N.ph[0] > 0 || N.ph[1] > 0);
     if (!coll && N.family !== "occupancy") return true;
-    for (const b of this.near(c[0], c[1], 6))
-      if (!b.dropped && this.blocks(N, c, owner, b.def, b.x, b.y, b.owner))
-        return false;
+    if (
+      this.someNear(
+        c[0],
+        c[1],
+        6,
+        (b) => !b.dropped && this.blocks(N, c, owner, b.def, b.x, b.y, b.owner),
+      )
+    )
+      return false;
     const cy = Math.trunc(c[1]);
     const cx = Math.trunc(c[0]);
     for (let ty = Math.max(cy - 3, 0); ty < Math.min(cy + 4, this.h); ty++)
@@ -1102,13 +1175,24 @@ export class ObjectStage {
     // object at every tile, so one mask answers it (write-up 6.4).
     const zones =
       !dyn && stat !== undefined ? this.zoneMask(d, stat) : undefined;
+    // With resolution each tile can pick a different object, but the zone
+    // test reads only the object's half width (`ch[0]`), and nothing is
+    // placed while the candidates are listed. So one mask per half width
+    // answers every pick, and the resolution's draws still happen per tile.
+    const dynZones = new Map<number, Uint8Array>();
     const test = (x: number, y: number): boolean => {
       const i = y * this.w + x;
       if (!this.available[i] || !this.inCircle(d, frame, x, y)) return false;
       const obj = dyn ? this.c.def(this.zoneResolve(d), this.scope) : stat;
       if (hasArea && !this.areaRule(d, frame, x, y, nAreas)) return false;
       if (zones !== undefined) return zones[i] === 1;
-      return obj === undefined || this.inZone(d, x, y, obj, false);
+      if (obj === undefined) return true;
+      let mask = dynZones.get(obj.ch[0]);
+      if (mask === undefined) {
+        mask = this.zoneMask(d, obj);
+        dynZones.set(obj.ch[0], mask);
+      }
+      return mask[i] === 1;
     };
     const lst: number[] = [];
     for (let y = mny; y <= mxy; y++)
@@ -1155,7 +1239,11 @@ export class ObjectStage {
     const root = (s: number): number => Math.trunc(f32Sqrt(s));
     const circ = d.circular && kind !== "edge";
     const mn = d.minP ?? -1;
-    const out: [number, number, number][] = [];
+    // Parallel arrays and a sort of positions rather than a tuple per tile.
+    // The comparator is a strict total order (key, then position), so the
+    // sorted order is the same whichever way it is stored.
+    const keys: number[] = [];
+    const tiles: number[] = [];
     for (const i of lst) {
       const x = i % this.w;
       const y = Math.floor(i / this.w);
@@ -1168,28 +1256,32 @@ export class ObjectStage {
         const s2 = square(x - m) + square(y - m);
         dist = d.circular ? root(s2) : s2;
       } else dist = Math.min(x, this.w - 1 - x, y, this.h - 1 - y);
-      out.push([pref === "near" ? dist : -dist, out.length, i]);
+      keys.push(pref === "near" ? dist : -dist);
+      tiles.push(i);
     }
-    out.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
-    let res = out;
+    const len = keys.length;
+    const ord = new Array<number>(len);
+    for (let k = 0; k < len; k++) ord[k] = k;
+    ord.sort((a, b) => keys[b] - keys[a] || a - b);
     if (d.tileShuffle) {
-      res = [];
+      // Each run of equal keys is shuffled in place, the same swaps the
+      // segment copies made.
       let s = 0;
-      while (s < out.length) {
+      while (s < len) {
         let e = s + 1;
-        while (e < out.length && out[e][0] === out[s][0]) e++;
-        const seg = out.slice(s, e);
-        for (let k = 1; k < seg.length; k++) {
+        while (e < len && keys[ord[e]] === keys[ord[s]]) e++;
+        for (let k = 1; k < e - s; k++) {
           const j = this.st.index(k + 1);
-          const t = seg[k];
-          seg[k] = seg[j];
-          seg[j] = t;
+          const t = ord[s + k];
+          ord[s + k] = ord[s + j];
+          ord[s + j] = t;
         }
-        res.push(...seg);
         s = e;
       }
     }
-    return res.reverse().map((e) => e[2]);
+    const res = new Array<number>(len);
+    for (let q = 0; q < len; q++) res[q] = tiles[ord[len - 1 - q]];
+    return res;
   }
 
   // ---- 5.4 the walk
@@ -1198,42 +1290,40 @@ export class ObjectStage {
     const rec = this.lookup(d.aaIn!, dispatched);
     if (!rec) return [];
     const iters = Math.max(rec.total, nGroups);
-    const weights = rec.tiles.map((t) => t[1]);
-    const restores = new Array<number>(weights.length).fill(0);
+    const n = rec.tiles.length;
+    const tileOf = new Int32Array(n);
+    const restores = new Float64Array(n);
+    let availableWeight = 0;
+    for (let k = 0; k < n; k++) {
+      const t = rec.tiles[k][0];
+      tileOf[k] = t;
+      if (this.available[t]) availableWeight += rec.tiles[k][1];
+    }
+    // `available` does not change during the walk, so this is the share of
+    // draws that will lower a weight. Under 1 in 20, the picker's snapshot
+    // answers most draws without the tree (weightPicker.ts).
+    const picker = new WeightPicker(
+      rec.tiles.map((t) => t[1]),
+      availableWeight * 20 < rec.total,
+    );
     let remaining = rec.total;
-    const last = new Map<number, number>();
+    // Each entry's last iteration that passed, -1 for none. Entries and tiles
+    // are one to one (`rec.ix`), so this stands in for a map keyed by tile.
+    const last = new Float64Array(n).fill(-1);
     const need = d.zones.length > 0 && this.needsResolution(d);
     const stat = d.zones.length
       ? this.c.def(this.rep(d), this.scope)
       : undefined;
     const cen = this.centreLand;
     const e = d.minEdge;
-    // A Fenwick tree over the running weights.
-    const n = weights.length;
-    const tree = new Array<number>(n + 1).fill(0);
-    for (let i = 1; i <= n; i++) {
-      tree[i] += weights[i - 1];
-      const j = i + (i & -i);
-      if (j <= n) tree[j] += tree[i];
-    }
-    let top = 1;
-    while (top <= n) top <<= 1;
+    const available = this.available;
     for (let it = 0; it < iters; it++) {
       if (remaining <= 0) break;
-      const r = this.draw(remaining);
-      let pos = 0;
-      let rest = r;
-      for (let step = top; step; step >>= 1)
-        if (pos + step <= n && tree[pos + step] <= rest) {
-          pos += step;
-          rest -= tree[pos];
-        }
-      const k = pos;
+      const k = picker.pick(this.draw(remaining));
       restores[k]++;
-      const t = rec.tiles[k][0];
-      if (!this.available[t]) continue;
-      weights[k]--;
-      for (let i = k + 1; i <= n; i += i & -i) tree[i]--;
+      const t = tileOf[k];
+      if (!available[t]) continue;
+      picker.take(k);
       remaining--;
       const x = t % this.w;
       const y = Math.floor(t / this.w);
@@ -1248,12 +1338,16 @@ export class ObjectStage {
       let obj = stat;
       if (need) obj = this.c.def(this.zoneResolve(d), this.scope);
       if (obj !== undefined && !this.inZone(d, x, y, obj, false)) continue;
-      last.set(t, it);
+      last[k] = it;
     }
-    for (let k = 0; k < weights.length; k++)
-      rec.tiles[k][1] = weights[k] + restores[k];
+    for (let k = 0; k < n; k++)
+      rec.tiles[k][1] = picker.weight(k) + restores[k];
     rec.total = rec.tiles.reduce((s, t) => s + t[1], 0);
-    return [...last.entries()].sort((a, b) => b[1] - a[1]).map((e2) => e2[0]);
+    const passed: number[] = [];
+    for (let k = 0; k < n; k++) if (last[k] >= 0) passed.push(k);
+    // No two entries share an iteration, so the order is fully determined.
+    passed.sort((a, b) => last[b] - last[a]);
+    return passed.map((k) => tileOf[k]);
   }
 
   // ---- 6.2, 6.3
@@ -1507,6 +1601,15 @@ export class ObjectStage {
           const drawsBefore = this.st.state().count;
           const builtBefore = this.objects.length;
           requested += this.command(d, fr, dispatched);
+          // Tagged after the command rather than threaded through build(),
+          // since everything this frame built (second objects and group
+          // members included) is the tail of `objects` from builtBefore on.
+          // Both frame kinds count. A place_on_specific_land_id frame has a
+          // slot when its land was assigned to a player, and the object is
+          // that player's spawn whether or not set_gaia_object_only made it gaia.
+          if (dispatched && fr !== undefined && fr.slot > 0)
+            for (let i = builtBefore; i < this.objects.length; i++)
+              this.objects[i].forPlayer = fr.slot;
           if (this.trace)
             this.trace(
               `${d.index} ${d.name} ${fr ? fr.slot : "-"} draws ${this.st.state().count - drawsBefore} built ${this.objects

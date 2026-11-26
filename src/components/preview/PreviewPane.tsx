@@ -1,5 +1,14 @@
 import { Fragment, useMemo, useState } from "react";
-import { usePreviewView } from "./PreviewViewContext";
+import {
+  useHighlightCommandSetting,
+  usePreviewView,
+} from "./PreviewViewContext";
+import { useParsedDocumentContext } from "../../ParsedDocumentContext";
+import {
+  highlightFor,
+  type CommandHighlight,
+} from "../../preview/commandHighlight";
+import { unpackCommandTiles } from "../../preview/commandTilesWire";
 import { useGenerationSettings } from "../../generationSettings/GenerationSettingsContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import {
@@ -11,6 +20,7 @@ import {
 import { usePreviewResultContext } from "../../PreviewResultContext";
 import { usePreviewCut } from "../../PreviewCutContext";
 import type { TilePoint } from "../../preview/render/projection";
+import { terrainShares } from "../../preview/render/terrainStats";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
 import { PreviewCanvas } from "./PreviewCanvas";
@@ -22,6 +32,7 @@ import {
   type TileInfo,
 } from "./tileInfo";
 import styles from "./PreviewPane.module.css";
+import { DraftNumberInput } from "../DraftNumberInput";
 
 // Same double-cast reasoning as parserWorker.ts: resolveJsonModule infers a
 // literal type from the file that does not always structurally overlap the
@@ -178,6 +189,41 @@ function RegenIcon() {
 }
 
 /**
+ * The legend beside the tile box for Highlight selected command. Two rows when
+ * two sets take turns, or one line when the command under the caret did not
+ * run. A polite live region, so a screen reader hears the sets change as the
+ * caret moves. Not interactive, so no HelpTip. The rows' `title` carries what
+ * each set means.
+ */
+function HighlightLegend({ highlight }: { highlight: CommandHighlight }) {
+  if (highlight.state === "none") return null;
+  if (highlight.state === "sets" && highlight.legend === undefined) return null;
+  return (
+    <div className={styles.highlightLegend} aria-live="polite">
+      {highlight.state === "notRun" ? (
+        <span>Not run in this generation</span>
+      ) : (
+        highlight.legend?.map((row) => (
+          <div key={row.swatch} className={styles.legendRow} title={row.title}>
+            <span
+              className={
+                row.swatch === "first"
+                  ? `${styles.legendSwatch} ${styles.legendFirst}`
+                  : `${styles.legendSwatch} ${styles.legendSecond}`
+              }
+            />
+            <span>{row.name}</span>
+            <span className={styles.legendCount}>
+              {row.tiles.toLocaleString()}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+/**
  * The Current cut point (Sec.5's pin).
  *
  * Two states, one button. Unpinned, Current follows the caret and the button
@@ -283,15 +329,14 @@ export function PreviewPane() {
   // real generator's collectSnapshots:true returns all six.
   const snapshot = result?.snapshots?.at(-1);
 
-  // The legend only lists terrains the map actually uses. Computed from the
-  // grid rather than from the reference table, so it stays honest when a map
-  // uses three terrains and the DB knows fifteen.
-  const terrainsInUse = useMemo(() => {
-    if (snapshot === undefined) return [];
-    const seen = new Set<number>();
-    for (const id of snapshot.terrain) seen.add(id);
-    return [...seen].sort((a, b) => a - b);
-  }, [snapshot]);
+  // The Legend and Terrain Stats box only lists terrains the map actually
+  // uses, with each one's share of the tiles. Computed from the grid rather
+  // than from the reference table, so it stays honest when a map uses three
+  // terrains and the DB knows fifteen.
+  const shares = useMemo(
+    () => (snapshot === undefined ? [] : terrainShares(snapshot.terrain)),
+    [snapshot],
+  );
 
   // Built here rather than in PreviewCanvas so hover and selection read the
   // same index; the canvas no longer describes tiles at all (tileInfo.ts).
@@ -307,6 +352,35 @@ export function PreviewPane() {
   const marksByTile = useMemo(
     () => indexMarksByTile(result?.failureMarks ?? [], result?.dim ?? 0),
     [result?.failureMarks, result?.dim],
+  );
+
+  // Highlight selected command. Unpacked lazily here, only while the setting
+  // is on, so the packed buffer costs nothing to a user who never turns it on.
+  // The lookup is memoised on the caret, the parse and the result, so a pan or
+  // a hover never re-runs it (those change none of the three).
+  const highlightOn = useHighlightCommandSetting();
+  const { cursorOffset } = usePreviewCut();
+  const parse = useParsedDocumentContext();
+  const commandSets = useMemo(
+    () =>
+      highlightOn && result?.commandTilesPacked !== undefined
+        ? unpackCommandTiles(result.commandTilesPacked)
+        : undefined,
+    [highlightOn, result?.commandTilesPacked],
+  );
+  const highlight = useMemo(
+    () =>
+      highlightOn
+        ? highlightFor(parse, cursorOffset, commandSets)
+        : ({ state: "none" } as CommandHighlight),
+    [highlightOn, parse, cursorOffset, commandSets],
+  );
+  const commandHighlight = useMemo(
+    () =>
+      highlight.state === "sets"
+        ? { first: highlight.first, second: highlight.second }
+        : null,
+    [highlight],
   );
 
   // The tile whose details are on screen. Selection wins over hover for as
@@ -377,43 +451,47 @@ export function PreviewPane() {
           onTileClick={toggleSelectedTile}
           hiddenObjects={hiddenObjects}
           playerCount={playerCount}
-          terrainsInUse={terrainsInUse}
+          terrainShares={shares}
           stale={stale}
           onRegenerate={regenerate}
+          commandHighlight={commandHighlight}
           topLeft={
-            tile !== null && (
-              <div
-                className={
-                  selectedTile !== null
-                    ? `${styles.tileOverlay} ${styles.tileOverlayPinned}`
-                    : styles.tileOverlay
-                }
-              >
-                <div className={styles.readoutHeader}>
-                  <span
-                    className={
-                      selectedTile !== null
-                        ? styles.readoutPinned
-                        : styles.readoutHint
-                    }
-                  >
-                    {selectedTile !== null ? "Selected tile" : "Hovered tile"}
-                  </span>
-                  {selectedTile !== null && (
-                    <HelpTip id="preview.clearSelection">
-                      <button
-                        type="button"
-                        className={styles.clearSelection}
-                        onClick={clearSelectedTile}
-                      >
-                        Clear
-                      </button>
-                    </HelpTip>
-                  )}
+            <>
+              {tile !== null && (
+                <div
+                  className={
+                    selectedTile !== null
+                      ? `${styles.tileOverlay} ${styles.tileOverlayPinned}`
+                      : styles.tileOverlay
+                  }
+                >
+                  <div className={styles.readoutHeader}>
+                    <span
+                      className={
+                        selectedTile !== null
+                          ? styles.readoutPinned
+                          : styles.readoutHint
+                      }
+                    >
+                      {selectedTile !== null ? "Selected tile" : "Hovered tile"}
+                    </span>
+                    {selectedTile !== null && (
+                      <HelpTip id="preview.clearSelection">
+                        <button
+                          type="button"
+                          className={styles.clearSelection}
+                          onClick={clearSelectedTile}
+                        >
+                          Clear
+                        </button>
+                      </HelpTip>
+                    )}
+                  </div>
+                  <TileReadout tile={tile} />
                 </div>
-                <TileReadout tile={tile} />
-              </div>
-            )
+              )}
+              <HighlightLegend highlight={highlight} />
+            </>
           }
         />
         {/* Mounted only while pending, so its fade in (and the delay
@@ -534,16 +612,11 @@ export function PreviewControls() {
               needed. */}
           <label className={styles.seed}>
             Seed
-            <input
-              type="number"
+            <DraftNumberInput
               className={styles.seedInput}
               value={seed}
               min={0}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next))
-                  setSeed(Math.max(0, Math.trunc(next)));
-              }}
+              onCommit={setSeed}
             />
           </label>
         </HelpTip>

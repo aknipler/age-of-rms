@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { GenerationTiming } from "../../preview/generator/generationTiming";
 import { HelpTip } from "../HelpTip";
 import styles from "./PreviewTimingPanel.module.css";
@@ -15,6 +15,21 @@ const SECTION_NAMES: Record<string, string> = {
   S4: "Terrain",
   S5: "Connections",
   S6: "Objects",
+};
+
+/**
+ * What a section's "Other work" row covers, the steps of the stage that no
+ * timed row names (generatePreview in generator/index.ts). The larger steps
+ * have rows of their own, such as the beach pass, so this lists the rest.
+ */
+const OTHER_WORK_NOTES: Record<string, string> = {
+  S0: "object data, effects, terrain object setup",
+  S1: "land outcome counts, base elevation notes",
+  S2: "elevation setup and notes",
+  S3: "stage handover",
+  S4: "terrain setup, terrain objects updated",
+  S5: "connection setup, terrain objects updated, beach layers cleared",
+  S6: "painted terrain view, auto tree scan, object setup",
 };
 
 /** Under 10 ms with a decimal, so a fast section does not read as 0. */
@@ -41,6 +56,18 @@ export function PreviewTimingPanel({
 }) {
   // Which sections are open. Local, since it means nothing once the box closes.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
+  // The box's height, measured once with every section closed and then held,
+  // so opening a section grows the list downward inside the box (with a
+  // scroll bar when it runs out of room) instead of growing the box upward
+  // from the button row and sliding the clicked row away from the pointer.
+  // A layout effect, so the measured height is set before the browser
+  // paints. A plain effect would show one frame at the unlocked height.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [lockedHeight, setLockedHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (lockedHeight === null && panelRef.current !== null)
+      setLockedHeight(panelRef.current.offsetHeight);
+  }, [lockedHeight, timing]);
   if (timing === undefined)
     return <p className={styles.empty}>No timing for this map yet.</p>;
   const toggle = (stage: string) =>
@@ -53,7 +80,11 @@ export function PreviewTimingPanel({
   // The widest section sets the bars' scale.
   const longest = Math.max(1, ...timing.sections.map((s) => s.ms));
   return (
-    <div className={styles.panel}>
+    <div
+      ref={panelRef}
+      className={styles.panel}
+      style={lockedHeight === null ? undefined : { height: lockedHeight }}
+    >
       <div className={styles.total}>
         Generated in {formatMs(timing.totalMs)}
         {timing.parseMs !== undefined && (
@@ -121,7 +152,15 @@ export function PreviewTimingPanel({
                   ))}
                   {other >= OTHER_WORK_MIN_MS && (
                     <li className={`${styles.callRow} ${styles.other}`}>
-                      <span className={styles.callName}>Other work</span>
+                      <span className={styles.callName}>
+                        Other work
+                        {OTHER_WORK_NOTES[section.stage] !== undefined && (
+                          <span className={styles.otherNote}>
+                            {" "}
+                            ({OTHER_WORK_NOTES[section.stage]})
+                          </span>
+                        )}
+                      </span>
                       <span className={styles.line} />
                       <span className={styles.ms}>{formatMs(other)}</span>
                     </li>

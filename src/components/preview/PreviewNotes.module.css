@@ -69,6 +69,16 @@
   cursor: default;
 }
 
+/* Names the glowing terrain while the stats box is closed, in the glow's own
+   gold so the chip and the tiles read as one thing. */
+.glowChip {
+  border-color: var(--terrain-glow);
+  color: var(--terrain-glow);
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .barButton[aria-expanded="true"] {
   background: rgba(255, 255, 255, 0.28);
 }
@@ -159,6 +169,50 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.1rem 0.3rem;
+}
+
+/* A row is a button that lights its terrain's tiles on the map. The button
+   look is reset so the box still reads as a list. */
+.legendRowButton {
+  width: 100%;
+  border: none;
+  border-left: 2px solid transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* HelpTip's wrapper is an inline-block that shrinks to its content, which
+   would leave each row as wide as its own name and the shares unaligned. */
+.legend > li > span {
+  display: block;
+}
+
+.legendRowButton:hover:not(:disabled) {
+  background: var(--accent-bg-subtle);
+}
+
+.legendRowButton:disabled {
+  cursor: default;
+}
+
+.legendRowGlowing {
+  border-left-color: var(--accent);
+  background: var(--accent-bg-subtle);
+}
+
+.legendName {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The terrain's share of the map, right aligned so the column lines up. */
+.legendShare {
+  padding-left: 0.4rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }
 
 .swatch {

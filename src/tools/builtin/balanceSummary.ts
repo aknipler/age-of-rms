@@ -59,6 +59,11 @@ const PLAYER_COUNT_PARAMS: ToolParamDef = {
   minSelected: 1,
 };
 
+/** Tiles from a player's start within which a resource counts as theirs. */
+export const DEFAULT_MAX_DISTANCE = 28;
+const MIN_MAX_DISTANCE = 1;
+const MAX_MAX_DISTANCE = 500;
+
 export const balanceSummaryManifest: ToolManifest = {
   id: "balance-summary",
   name: "Balance Summary",
@@ -94,6 +99,15 @@ export const balanceSummaryManifest: ToolManifest = {
       help: "The first generation's seed; later runs at one player count use baseSeed + 1, baseSeed + 2, and so on, resetting at each player count.",
       default: DEFAULT_BASE_SEED,
     },
+    {
+      key: "maxDistance",
+      type: "integer",
+      label: "Max distance (tiles)",
+      help: "A resource counts for the player whose start is nearest, in a straight line, if it is within this many tiles. Farther ones count for nobody. Each resource counts for one player at most.",
+      default: DEFAULT_MAX_DISTANCE,
+      min: MIN_MAX_DISTANCE,
+      max: MAX_MAX_DISTANCE,
+    },
   ],
 };
 
@@ -117,26 +131,6 @@ function resourceKeyOf(category: string): ResourceKey | undefined {
     : undefined;
 }
 
-/**
- * Nearest player-land origin by straight-line distance. This is the fallback
- * for a resource the script never tied to a player frame at all (no
- * `set_place_for_every_player` / `place_on_specific_land_id`), a real
- * approximation, not a fact read off the script, which is why the report
- * says so once rather than per row (Sec.9's honesty-surface convention).
- */
-function nearestPlayer(
-  x: number,
-  y: number,
-  players: readonly PlayerMarker[],
-): number | undefined {
-  let best: { player: number; dist: number } | undefined;
-  for (const p of players) {
-    const dist = Math.hypot(x - p.x, y - p.y);
-    if (!best || dist < best.dist) best = { player: p.player, dist };
-  }
-  return best?.player;
-}
-
 // ---------------------------------------------------------------------------
 // Cross-run aggregation
 // ---------------------------------------------------------------------------
@@ -149,7 +143,7 @@ interface ResourceCell {
   /** Summed only across runs where it showed up, a "how far, when present" average, which is meaningless to divide by a run that had nothing. */
   nearestDistanceSum: number;
   patchCountSum: number;
-  /** Sums of squares of the three per-run figures, for variance. Same denominators as the sums above. */
+  /** Sums of squares of the three per-run figures, for the standard deviation. Same denominators as the sums above. */
   totalAmountSqSum: number;
   nearestDistanceSqSum: number;
   patchCountSqSum: number;
@@ -194,6 +188,20 @@ function cellFor(
   return cell;
 }
 
+/** The player whose start is nearest to (x, y) in a straight line, and how far. */
+function nearestPlayer(
+  x: number,
+  y: number,
+  players: readonly PlayerMarker[],
+): { player: number; dist: number } | undefined {
+  let best: { player: number; dist: number } | undefined;
+  for (const p of players) {
+    const dist = Math.hypot(x - p.x, y - p.y);
+    if (!best || dist < best.dist) best = { player: p.player, dist };
+  }
+  return best;
+}
+
 /**
  * Folds one generation's placements into `stats`. Exported for its own unit
  * test. The amount/distance/attribution split is the entire point of this
@@ -207,6 +215,7 @@ export function foldGeneration(
   objects: readonly PlacedObject[],
   players: readonly PlayerMarker[],
   refDb: PreviewReferenceData,
+  maxDistance: number = DEFAULT_MAX_DISTANCE,
 ): void {
   const originByPlayer = new Map(players.map((p) => [p.player, p]));
   // Per-run scratch: player -> resource -> running total/nearest/count, folded into `stats` once per player/resource at the end of this function.
@@ -218,14 +227,20 @@ export function foldGeneration(
   for (const obj of objects) {
     const key = resourceKeyOf(obj.category);
     if (!key) continue;
-    const owner = obj.player ?? nearestPlayer(obj.x, obj.y, players);
-    if (owner === undefined) continue;
-    const origin = originByPlayer.get(owner);
-    if (!origin) continue;
+    // The nearest player's start in a straight line, if within maxDistance.
+    // This asks what a player can reach, so neither ownership nor the
+    // command that spawned a resource decides, and one resource counts for
+    // one player at most. Farther than maxDistance from every start counts
+    // for nobody, which keeps the middle of the map out of every player's
+    // figures.
+    const nearest = nearestPlayer(obj.x, obj.y, players);
+    if (nearest === undefined || nearest.dist > maxDistance) continue;
+    const owner = nearest.player;
+    if (!originByPlayer.has(owner)) continue;
 
     const amount =
       objectEntry(obj.objectRef, refDb.constants)?.resourceAmounts?.[key] ?? 0;
-    const dist = Math.hypot(obj.x - origin.x, obj.y - origin.y);
+    const dist = nearest.dist;
 
     let byResource = perRun.get(owner);
     if (!byResource) {
@@ -275,14 +290,18 @@ function round1(n: number): number {
 }
 
 /**
- * Population variance from a sum and a sum of squares over `n` runs
- * (E[x^2] - E[x]^2). Floating point can leave a tiny negative for a figure
- * that never changed, so it is clamped at 0.
+ * Population standard deviation from a sum and a sum of squares over `n`
+ * runs, the square root of E[x^2] - E[x]^2. A standard deviation rather than
+ * the variance it is the root of, because it is in the figure's own units. A
+ * swing of about 1650 wood a run is a variance of about 2.7 million, which
+ * reads as alarming when it is a moderate swing (measured on Menindee).
+ * Floating point can leave a tiny negative variance for a figure that never
+ * changed, so it is clamped at 0 before the root.
  */
-function variance(sum: number, sqSum: number, n: number): number {
+function standardDeviation(sum: number, sqSum: number, n: number): number {
   if (n <= 0) return 0;
   const mean = sum / n;
-  return Math.max(0, sqSum / n - mean * mean);
+  return Math.sqrt(Math.max(0, sqSum / n - mean * mean));
 }
 
 function buildPlayerCountSection(
@@ -316,7 +335,7 @@ function buildPlayerCountSection(
       const n = runsPerPlayerCount;
       const avgAmount = Math.round(cell.totalAmountSum / n);
       const amountVar = Math.round(
-        variance(cell.totalAmountSum, cell.totalAmountSqSum, n),
+        standardDeviation(cell.totalAmountSum, cell.totalAmountSqSum, n),
       );
       const withAny = cell.runsWithAny;
       const avgNearest =
@@ -325,7 +344,7 @@ function buildPlayerCountSection(
         withAny > 0
           ? String(
               round1(
-                variance(
+                standardDeviation(
                   cell.nearestDistanceSum,
                   cell.nearestDistanceSqSum,
                   withAny,
@@ -341,7 +360,11 @@ function buildPlayerCountSection(
         avgNearest,
         nearestVar,
         String(round1(cell.patchCountSum / n)),
-        String(round1(variance(cell.patchCountSum, cell.patchCountSqSum, n))),
+        String(
+          round1(
+            standardDeviation(cell.patchCountSum, cell.patchCountSqSum, n),
+          ),
+        ),
       ]);
     }
   }
@@ -368,18 +391,17 @@ function buildPlayerCountSection(
   }
 
   const blocks: OutputBlock[] = [
-    { kind: "heading", text: `${pc} players` },
     {
       kind: "table",
       columns: [
         "Resource",
         "Player",
         "Avg amount",
-        "Amount variance",
+        "Amount SD",
         "Avg nearest (tiles)",
-        "Nearest variance",
+        "Nearest SD",
         "Objects/run",
-        "Objects variance",
+        "Objects SD",
       ],
       rows,
     },
@@ -389,27 +411,110 @@ function buildPlayerCountSection(
   return blocks;
 }
 
+/**
+ * The Average tab. Per resource, what one player gets on average across every
+ * run at every player count, and the player and count that got the least and
+ * the most. One row per resource, since a player number is a different start
+ * at each count, so a row per player would compare unlike things.
+ */
+function buildAverageSection(
+  stats: BalanceStats,
+  counts: readonly number[],
+  runsPerPlayerCount: number,
+): OutputBlock[] {
+  const rows: string[][] = [];
+  for (const key of RESOURCE_KEYS) {
+    let amountSum = 0;
+    let nearestSum = 0;
+    let nearestRuns = 0;
+    let objectSum = 0;
+    let playerRuns = 0;
+    let least: { avg: number; player: number; pc: number } | undefined;
+    let most: { avg: number; player: number; pc: number } | undefined;
+    for (const pc of counts) {
+      for (const [player, byResource] of stats.get(pc) ?? new Map()) {
+        const cell: ResourceCell = byResource.get(key) ?? emptyCell();
+        amountSum += cell.totalAmountSum;
+        objectSum += cell.patchCountSum;
+        nearestSum += cell.nearestDistanceSum;
+        nearestRuns += cell.runsWithAny;
+        playerRuns += runsPerPlayerCount;
+        const avg = cell.totalAmountSum / runsPerPlayerCount;
+        if (!least || avg < least.avg) least = { avg, player, pc };
+        if (!most || avg > most.avg) most = { avg, player, pc };
+      }
+    }
+    if (playerRuns === 0 || amountSum === 0) continue;
+    rows.push([
+      RESOURCE_LABEL[key],
+      String(Math.round(amountSum / playerRuns)),
+      least
+        ? `${Math.round(least.avg)} (player ${least.player}, ${least.pc} players)`
+        : "\u2014",
+      most
+        ? `${Math.round(most.avg)} (player ${most.player}, ${most.pc} players)`
+        : "\u2014",
+      nearestRuns > 0 ? String(round1(nearestSum / nearestRuns)) : "\u2014",
+      String(round1(objectSum / playerRuns)),
+    ]);
+  }
+  if (rows.length === 0)
+    return [
+      {
+        kind: "text",
+        text: "No resource was within the max distance of any player in these runs.",
+      },
+    ];
+  return [
+    {
+      kind: "table",
+      columns: [
+        "Resource",
+        "Avg amount per player",
+        "Least",
+        "Most",
+        "Avg nearest (tiles)",
+        "Objects/run per player",
+      ],
+      rows,
+    },
+  ];
+}
+
 export function buildBalanceOutput(
   stats: BalanceStats,
   selectedCounts: readonly number[],
   runsPerPlayerCount: number,
+  maxDistance: number = DEFAULT_MAX_DISTANCE,
 ): OutputBlock[] {
-  const blocks: OutputBlock[] = [
-    { kind: "heading", text: "Balance summary" },
+  // Average first, then one tab per count that has run, the same layout as
+  // the consistency checker. A partial report grows its tabs as each count's
+  // batch finishes.
+  // Every count passed has run (the run loop passes only finished counts),
+  // so one that placed nothing for anyone still gets its tab, which says so.
+  const ran = selectedCounts;
+  const tabs = [
     {
-      kind: "text",
-      text: "Objects/run counts each placed resource object (one mine, one bush, one tree), not clusters. Variance is taken across the generations, so a low figure means the player gets nearly the same result every time. A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance, an approximation, since the script itself does not say whose it is.",
+      label: "Average",
+      blocks: buildAverageSection(stats, ran, runsPerPlayerCount),
     },
-  ];
-  for (const pc of selectedCounts) {
-    blocks.push(
-      ...buildPlayerCountSection(
+    ...ran.map((pc) => ({
+      label: `${pc} players`,
+      blocks: buildPlayerCountSection(
         pc,
         stats.get(pc) ?? new Map(),
         runsPerPlayerCount,
       ),
-    );
-  }
+    })),
+  ];
+  const blocks: OutputBlock[] = [
+    { kind: "heading", text: "Balance summary" },
+    {
+      kind: "text",
+      text: `Each resource counts for the player whose start is nearest in a straight line, if it is within ${maxDistance} tiles, and for nobody if it is farther from every start. A resource counts once at most. Objects/run counts each placed resource object (one mine, one bush, one tree), not clusters. SD is the standard deviation across the generations, in the column's own units, so a low figure means the player gets nearly the same result every time.`,
+    },
+  ];
+  if (ran.length > 0) blocks.push({ kind: "tabs", tabs });
   return blocks;
 }
 
@@ -451,12 +556,27 @@ async function runBalanceSummary(
   const selectedCounts = resolvePlayerCounts(ctx.params.playerCounts);
   const runsPerPlayerCount =
     typeof ctx.params.runsPerPlayerCount === "number"
-      ? ctx.params.runsPerPlayerCount
+      ? // Clamped here as well as in the box, since a saved parameter set
+        // can still carry a value from before the bounds changed.
+        Math.min(
+          MAX_RUNS_PER_PLAYER_COUNT,
+          Math.max(
+            MIN_RUNS_PER_PLAYER_COUNT,
+            Math.trunc(ctx.params.runsPerPlayerCount),
+          ),
+        )
       : DEFAULT_RUNS_PER_PLAYER_COUNT;
   const baseSeed =
     typeof ctx.params.baseSeed === "number"
       ? ctx.params.baseSeed
       : DEFAULT_BASE_SEED;
+  const maxDistance =
+    typeof ctx.params.maxDistance === "number"
+      ? Math.min(
+          MAX_MAX_DISTANCE,
+          Math.max(MIN_MAX_DISTANCE, ctx.params.maxDistance),
+        )
+      : DEFAULT_MAX_DISTANCE;
 
   const refDb: PreviewReferenceData = toolPreviewReferenceData(
     ctx.referenceData,
@@ -498,6 +618,7 @@ async function runBalanceSummary(
         outcome.result.objects,
         outcome.result.players,
         refDb,
+        maxDistance,
       );
       completed++;
       emit({
@@ -517,6 +638,7 @@ async function runBalanceSummary(
             stats,
             selectedCounts.slice(0, i + 1),
             runsPerPlayerCount,
+            maxDistance,
           ),
         },
       });
@@ -526,7 +648,12 @@ async function runBalanceSummary(
   emit({
     type: "result",
     output: {
-      blocks: buildBalanceOutput(stats, selectedCounts, runsPerPlayerCount),
+      blocks: buildBalanceOutput(
+        stats,
+        selectedCounts,
+        runsPerPlayerCount,
+        maxDistance,
+      ),
     },
   });
 }

@@ -245,6 +245,12 @@ export interface ToolManifest {
    * bounded, one-shot computation those deadlines already cover.
    */
   surface?: "report" | "panel";
+  /**
+   * Run as soon as the tool is selected, with no Run press. For a quick,
+   * read-only report tool such as Constants Usage, where the press only gets
+   * in the way. Run stays available for a rerun after an edit.
+   */
+  runOnSelect?: boolean;
   // v1.1 external tools add: entry (executable + args), language, author, homepage.
 }
 
@@ -410,6 +416,23 @@ export type OutputBlock =
       columns: string[];
       rows: string[][];
       rowSpans?: (Span | null)[];
+      /**
+       * A bar drawn beside one column's text, filled to a fraction from 0 to
+       * 1, one value per row (`null` for none). The pane colours it green
+       * when full, yellow from 0.4 and red below. Optional, so a tool that
+       * omits it renders exactly as before.
+       */
+      bars?: { column: number; values: (number | null)[] };
+      /** One entry per column, `"left"` where absent. */
+      align?: ("left" | "center" | "right")[];
+      /**
+       * Columns the reader can sort by clicking the header. Each names its
+       * column and gives one number per row to sort on (`null` sorts last).
+       * Numbers rather than the cell text, so "9.5%" sorts below "10.0%" and
+       * a command column can sort by line. The rows arrive in the default
+       * order, which a third click on a header returns to.
+       */
+      sortKeys?: { column: number; values: (number | null)[] }[];
     }
   | {
       kind: "severity";
@@ -419,6 +442,14 @@ export type OutputBlock =
     }
   /** Clickable — jumps the Code tab to span.start via useSharedSelection's anchor. */
   | { kind: "codeRef"; text: string; span: Span }
+  /**
+   * Several views of one report, one shown at a time, such as a total and
+   * one view per player count. Each tab's blocks count toward
+   * `LIMITS.maxBlocksPerOutput` like top-level ones. A tab may not hold
+   * another `tabs` block or a `mapOverlay`, since the canvas reads overlays
+   * from the top level only.
+   */
+  | { kind: "tabs"; tabs: { label: string; blocks: OutputBlock[] }[] }
   /**
    * land-placement-design.md Sec.3.4 layer 2 — declarative drawing on the
    * preview canvas, over ANY transport including external. `shapes` is ONE

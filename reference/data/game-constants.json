@@ -32047,8 +32047,8 @@
       "terrainRestrictionId": 7,
       "habitat": "land",
       "classId": 10,
-      "resourceStorages": [{ "type": 0, "amount": 340, "resource": "food" }],
-      "resourceAmounts": { "food": 340 },
+      "resourceStorages": [{ "type": 0, "amount": 400.0, "resource": "food" }],
+      "resourceAmounts": { "food": 400.0 },
       "verified": true,
       "notes": "Gaia roster row, tools/extract-constants --roster 2026-08-12; name is the dat's internal Unit.name verbatim (no display string, no RMS constant). Update 185872 (2026-09-22), applied 2026-10-03. random_map.def now names it WALRUS, and descriptiveName is DE's own display string. | storage: raw slots [0]=340 read 2026-10-03 by tools/extract-constants --storages. | habitat: 'land' derived from terrain restriction 7 (119 terrains permitted; closest of the coarse classes, differing on 8; runner-up any at 15). Derived 2026-10-03 by tools/extract-constants --terrain-table."
     },
@@ -47674,11 +47674,11 @@
     {
       "constId": 16,
       "idSource": "extracted",
-      "rmsConstant": "FORTRESS",
+      "rmsConstant": "MAP_FORTRESS",
       "descriptiveName": "Fortress",
       "category": "mapType",
       "verified": true,
-      "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
+      "notes": "Name -> id pair read from random_map.def, renamed by the DE patch of 2026-10-28 (was FORTRESS), applied 2026-11-25. NOT joined against empires2_x2_p1.dat. Ids in this family are not unique against terrain, object or the other extracted-name families."
     },
     {
       "constId": 17,
@@ -47926,11 +47926,11 @@
     {
       "constId": 123,
       "idSource": "extracted",
-      "rmsConstant": "BOGLAND",
+      "rmsConstant": "MAP_BOGLAND",
       "descriptiveName": "Bogland",
       "category": "mapType",
       "verified": true,
-      "notes": "Name -> id pair read from random_map.def, added by hand 2026-10-03 for Update 185872 (2026-09-22), applied 2026-10-03. --misc-constants skips a name that exists under any category, and BOGLAND already had a constants.inc terrainAlias row."
+      "notes": "Name -> id pair read from random_map.def, renamed by the DE patch of 2026-10-28 (was BOGLAND), applied 2026-11-25. NOT joined against empires2_x2_p1.dat. Ids in this family are not unique against terrain, object or the other extracted-name families."
     },
     {
       "constId": 25,
@@ -48754,11 +48754,11 @@
     {
       "constId": 148,
       "idSource": "extracted",
-      "rmsConstant": "COASTAL_FOREST",
+      "rmsConstant": "MAP_COASTAL_FOREST",
       "descriptiveName": "Coastal Forest",
       "category": "mapType",
       "verified": true,
-      "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-10-03. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
+      "notes": "Name -> id pair read from random_map.def, renamed by the DE patch of 2026-10-28 (was COASTAL_FOREST), applied 2026-11-25. NOT joined against empires2_x2_p1.dat. Ids in this family are not unique against terrain, object or the other extracted-name families."
     },
     {
       "constId": 149,
@@ -54442,51 +54442,6 @@
       "notes": "Name -> id pair read from constants.inc by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions. File comment: \"Doesn't allow blending. Legacy terrain that is identical to UNDERBRUSH_JUNGLE.\" (not yet promoted to description — review by hand)."
     },
     {
-      "constId": 63,
-      "idSource": "extracted",
-      "rmsConstant": "RICE_FARM",
-      "descriptiveName": "Rice Farm",
-      "category": "terrainAlias",
-      "verified": true,
-      "notes": "Name -> id pair read from constants.inc by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
-    },
-    {
-      "constId": 64,
-      "idSource": "extracted",
-      "rmsConstant": "RICE_FARM_DEAD",
-      "descriptiveName": "Rice Farm Dead",
-      "category": "terrainAlias",
-      "verified": true,
-      "notes": "Name -> id pair read from constants.inc by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
-    },
-    {
-      "constId": 65,
-      "idSource": "extracted",
-      "rmsConstant": "RICE_FARM_EMPTY",
-      "descriptiveName": "Rice Farm Empty",
-      "category": "terrainAlias",
-      "verified": true,
-      "notes": "Name -> id pair read from constants.inc by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
-    },
-    {
-      "constId": 66,
-      "idSource": "extracted",
-      "rmsConstant": "RICE_FARM_SEEDS",
-      "descriptiveName": "Rice Farm Seeds",
-      "category": "terrainAlias",
-      "verified": true,
-      "notes": "Name -> id pair read from constants.inc by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
-    },
-    {
-      "constId": 67,
-      "idSource": "extracted",
-      "rmsConstant": "RICE_FARM_SPROUTS",
-      "descriptiveName": "Rice Farm Sprouts",
-      "category": "terrainAlias",
-      "verified": true,
-      "notes": "Name -> id pair read from constants.inc by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
-    },
-    {
       "constId": 69,
       "idSource": "extracted",
       "rmsConstant": "CORRUPTION",
@@ -56103,6 +56058,43 @@
       "category": "resourceAmountType",
       "verified": true,
       "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-08-30. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
+    },
+
+    {
+      "constId": 1,
+      "idSource": "extracted",
+      "rmsConstant": "UNDEADFLAG_SHOW_UNDEAD_GRAPHIC",
+      "descriptiveName": "Show Undead Graphic",
+      "category": "undeadFlag",
+      "verified": true,
+      "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-11-25. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
+    },
+    {
+      "constId": 2,
+      "idSource": "extracted",
+      "rmsConstant": "UNDEADFLAG_IGNORE_KILL_STATS",
+      "descriptiveName": "Ignore Kill Stats",
+      "category": "undeadFlag",
+      "verified": true,
+      "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-11-25. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
+    },
+    {
+      "constId": 4,
+      "idSource": "extracted",
+      "rmsConstant": "UNDEADFLAG_GARRISON_INVINCIBILITY",
+      "descriptiveName": "Garrison Invincibility",
+      "category": "undeadFlag",
+      "verified": true,
+      "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-11-25. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
+    },
+    {
+      "constId": 8,
+      "idSource": "extracted",
+      "rmsConstant": "UNDEADFLAG_TEMPORARY_NOT_TRACKED",
+      "descriptiveName": "Temporary Not Tracked",
+      "category": "undeadFlag",
+      "verified": true,
+      "notes": "Name -> id pair read from random_map.def by tools/extract-constants --misc-constants 2026-11-25. NOT joined against empires2_x2_p1.dat — ids in this family are not unique against terrain, object or the other extracted-name families, so this row states only that the name and id exist together in the game's own definitions."
     }
   ],
   "terrainRestrictions": [

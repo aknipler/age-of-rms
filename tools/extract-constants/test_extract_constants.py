@@ -1533,10 +1533,27 @@ MISC_SAMPLE_DEF = """\
 /* Magic Number Constants      */
 /*-----------------------------*/
 #const RANDOM_OBJECT 32767
+
+/*-----------------------------*/
+/* Undead Flag Constants       */
+/*-----------------------------*/
+#const UNDEADFLAG_SHOW_UNDEAD_GRAPHIC 1
+#const UNDEADFLAG_IGNORE_KILL_STATS 2
 """
 
 
 class TestMiscFamilyConstants(unittest.TestCase):
+    def test_picks_up_the_undead_flag_family(self):
+        families = misc_family_constants(MISC_SAMPLE_DEF)
+        self.assertEqual(
+            families["undeadFlag"],
+            {"UNDEADFLAG_SHOW_UNDEAD_GRAPHIC": 1, "UNDEADFLAG_IGNORE_KILL_STATS": 2},
+        )
+        self.assertEqual(
+            misc_descriptive_name("UNDEADFLAG_IGNORE_KILL_STATS", "undeadFlag"),
+            "Ignore Kill Stats",
+        )
+
     def test_picks_up_all_six_families(self):
         families = misc_family_constants(MISC_SAMPLE_DEF)
         self.assertEqual(families["mapType"], {"ARABIA": 9, "ARENA": 29})

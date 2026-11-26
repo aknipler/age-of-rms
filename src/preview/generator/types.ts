@@ -13,6 +13,8 @@
 // Nothing in here is implementation. The generator (4.3) fills these in;
 // 4.2 renders them.
 
+import type { CommandTiles } from "./commandTiles";
+import type { PackedCommandTiles } from "../commandTilesWire";
 import type { GenerationTiming } from "./generationTiming";
 import type { ArgNode, Span } from "../../parser/types";
 import type { CommandDef } from "../../parser/language";
@@ -98,6 +100,8 @@ export interface PreviewOptions {
   objectTrace?: (line: string) => void;
   /** Records how long each section and command took (`PreviewResult.timing`), for the preview's hourglass. */
   timing?: boolean;
+  /** Records which tiles each command produced (`PreviewResult.commandTiles`), for Highlight selected command. */
+  commandTiles?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -505,6 +509,13 @@ export interface CommandReport {
   attempted: number;
   placed: number;
   failures: PlacementFailure[];
+  /**
+   * S1 only. The tiles this command's lands were to grow to, summed over its
+   * lands, and the tiles they hold once every land has grown (a later land
+   * can take an earlier one's tiles). A land always gets its origin, so
+   * `placed` says little about a land, and this is the figure that does.
+   */
+  growth?: { target: number; grown: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -518,6 +529,15 @@ export interface PlacedObject {
   y: number;
   /** Owning player, absent for gaia/neutral placements. */
   player?: number;
+  /**
+   * The player whose land a `set_place_for_every_player` or
+   * `place_on_specific_land_id` command placed this for, whoever owns it.
+   * Absent for a land with no player. A separate field from `player` because the two
+   * disagree on the common case of gaia sheep, deer and gold placed once per
+   * player with `set_gaia_object_only`. Those are owned by nobody yet still
+   * spawn per player, and the status bar's Player figure counts them.
+   */
+  forPlayer?: number;
   /**
    * Renderer glyph/colour class, "resource-gold", "unit", "building", ...
    * (Sec.12 item 8). A plain `string`, NOT a closed union, and the contrast
@@ -676,6 +696,11 @@ export interface PreviewResult {
    */
   timing?: GenerationTiming;
   /**
+   * The tiles each command produced, when `PreviewOptions.commandTiles` asked
+   * for them (commandTiles.ts).
+   */
+  commandTiles?: CommandTiles[];
+  /**
    * The mood the script's last `color_correction` names (the
    * `colorCorrection` constants, CC_DEFAULT 0). The textured view tints the
    * map with it (colourMoods.ts). Absent when the script names none.
@@ -751,7 +776,12 @@ export interface CliffPiece {
  * the same "one contract, two costs" split `tools-api-design.md` Sec.1
  * already runs on, landing here first.
  */
-export type PreviewWireResult = Omit<PreviewResult, "grid" | "deObjects"> & {
+export type PreviewWireResult = Omit<
+  PreviewResult,
+  "grid" | "deObjects" | "commandTiles"
+> & {
+  /** `commandTiles` packed for transfer (`commandTilesWire.ts`), unpacked where the highlight reads it. */
+  commandTilesPacked?: PackedCommandTiles;
   /**
    * `deObjects` packed into one transferred buffer (`deObjectsWire.ts`),
    * which the textured view's sprites unpack. As objects it cost about 30 ms

@@ -6,6 +6,8 @@
 import { describe, expect, it } from "vitest";
 import {
   candidateScriptFolders,
+  checkInstallFolder,
+  findDeInstallFolder,
   findDeScriptsFolder,
   installFolderIn,
   parseSteamLibraryPaths,
@@ -166,5 +168,51 @@ describe("candidateScriptFolders", () => {
     expect(installFolderIn("E:\\SteamLibrary\\")).toBe(
       "E:\\SteamLibrary\\steamapps\\common\\AoE2DE",
     );
+  });
+});
+
+describe("the chosen install folder and the drive search", () => {
+  const XBOX = "E:\\XboxGames\\Age of Empires II Definitive Edition";
+  const gamedata = (install: string) =>
+    `${install}\\resources\\_common\\drs\\gamedata_x2`;
+
+  it("tries the folder chosen in Settings before any search", async () => {
+    const chosen = "F:\\Games\\AoE2DE";
+    const disk = fakeDisk({}, [
+      gamedata(chosen),
+      gamedata(installFolderIn(DEFAULT_LIBRARY)),
+    ]);
+    expect(await findDeInstallFolder(disk, chosen)).toBe(chosen);
+  });
+
+  it("accepts the Xbox app's game folder, whose files are one level down in Content", async () => {
+    const disk = fakeDisk({}, [gamedata(`${XBOX}\\Content`)]);
+    expect(await checkInstallFolder(disk, XBOX)).toBe(`${XBOX}\\Content`);
+    expect(await checkInstallFolder(disk, "E:\\Nothing")).toBeNull();
+  });
+
+  it("finds an Xbox app install on another drive with nothing chosen", async () => {
+    const disk = fakeDisk({}, ["E:\\", gamedata(`${XBOX}\\Content`)]);
+    expect(await findDeInstallFolder(disk)).toBe(`${XBOX}\\Content`);
+  });
+
+  it("finds a Steam library on another drive through that drive's own Steam list", async () => {
+    // VDF escapes backslashes, so the file holds two for each one in the path.
+    const vdf = `"libraryfolders"\n{\n\t"0"\n\t{\n\t\t"path"\t\t"G:\\\\Games\\\\Lib"\n\t}\n}\n`;
+    const install = installFolderIn("G:\\Games\\Lib");
+    const disk = fakeDisk({ "D:\\Steam\\config\\libraryfolders.vdf": vdf }, [
+      "D:\\",
+      gamedata(install),
+    ]);
+    expect(await findDeInstallFolder(disk)).toBe(install);
+  });
+
+  it("does not search the drives when the common places already found the game", async () => {
+    const disk = fakeDisk({}, [
+      "E:\\",
+      gamedata(installFolderIn(DEFAULT_LIBRARY)),
+    ]);
+    await findDeInstallFolder(disk);
+    expect(disk.probed).not.toContain("E:\\");
   });
 });

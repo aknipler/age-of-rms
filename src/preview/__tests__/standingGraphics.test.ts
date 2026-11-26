@@ -70,6 +70,19 @@ effect_amount GAIA_SET_ATTRIBUTE HAY_STACK ATTR_STANDING_GRAPHIC ${BRIDGE_PIECE}
     expect(result.standingGraphics?.player).toEqual([]);
   });
 
+  it("draws an upgraded object as its target, as RMSTEST_86a showed", () => {
+    // PINETREE (350) upgraded to PALMTREE (351): the save keeps 350, the
+    // game draws a palm. 351's own graphic, from the dat.
+    const palmGraphic = objectData.objects.find((o) => o.id === 351)?.g;
+    const result = generate(`
+<LAND_GENERATION>
+  base_terrain GRASS
+effect_amount GAIA_UPGRADE_UNIT PINETREE PALMTREE 0
+`);
+    expect(result.standingGraphics?.gaia).toContainEqual([350, palmGraphic]);
+    expect(result.standingGraphics?.player).toEqual([]);
+  });
+
   it("gives a plain SET_ATTRIBUTE to players and Gaia both", () => {
     const result = generate(`
 <LAND_GENERATION>

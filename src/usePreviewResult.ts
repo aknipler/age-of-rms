@@ -109,6 +109,7 @@ export function usePreviewResult(
   regenOnEdit = true,
   cutOffset: number | null = null,
   timing = false,
+  commandTiles = false,
 ): PreviewResultState {
   // Read when a request is sent, not a dependency of the request effect: a
   // ref, so turning the hourglass on or off does not regenerate the map by
@@ -132,6 +133,7 @@ export function usePreviewResult(
     seed: number;
     includeFiles: unknown;
     tick: number;
+    commandTiles: boolean;
   } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   // Only the most recently SENT request's id is "current". This mirrors
@@ -278,7 +280,8 @@ export function usePreviewResult(
       last.settings === settings &&
       last.seed === seed &&
       last.includeFiles === includeFiles &&
-      last.tick === manualTick
+      last.tick === manualTick &&
+      last.commandTiles === commandTiles
     ) {
       if (last.source !== source || last.cutOffset !== cutOffset)
         setStale(true);
@@ -292,6 +295,7 @@ export function usePreviewResult(
         seed,
         includeFiles,
         tick: manualTick,
+        commandTiles,
       };
       setStale(false);
       const id = latestRequestIdRef.current + 1;
@@ -308,6 +312,7 @@ export function usePreviewResult(
           collectSnapshots: true,
           includeFiles,
           timing: timingRef.current,
+          commandTiles,
         },
       });
     }, DEBOUNCE_MS);
@@ -319,6 +324,9 @@ export function usePreviewResult(
     seed,
     includeFiles,
     manualTick,
+    // Unlike timing, this one is a dependency: it changes what the worker
+    // records, so switching it on has to generate once to have sets to show.
+    commandTiles,
     regenOnEdit,
     postRequest,
   ]);

@@ -353,6 +353,13 @@ export const DIAGNOSTIC_CODES: Record<
     summary: "Branch never runs because a flag is always defined above",
     dismissible: true,
   },
+  // The summary's severity is the common case (rule W). The builder below sets
+  // the real severity per rule, since four of the five rules differ.
+  RMS0324: {
+    severity: "warning",
+    summary:
+      "Name in a terrain, object or constant slot is not defined anywhere this script can see",
+  },
 };
 
 /** Whether the user may hide this code from the warning itself. */
@@ -1035,6 +1042,60 @@ export function undefinedName(
   );
   diagnostic.suggestion = suggestion;
   return softenForIncludes(diagnostic, includesUnread);
+}
+
+/**
+ * Which rule of docs/undefined-name-warning-brief.md Sec.4.3 applies. A string
+ * union rather than an enum, so the tests and the validator can name a rule by
+ * its letter and TypeScript still checks every case is handled.
+ *
+ * U unread include, N no install to read, I inside an if branch, C only
+ * constants.inc defines it, W defined nowhere.
+ */
+export type UndefinedSlotRule = "U" | "N" | "I" | "C" | "W";
+
+/**
+ * RMS0324. One builder for five rules, because the rules share a code and
+ * differ in severity and wording. Severity comes from the rule, not from the
+ * summary entry (Sec.5 item 1). `suggestion`, when given, is appended to rules
+ * I and W only and set on the diagnostic so the existing quick fix (the one
+ * RMS0300 uses) replaces the word.
+ */
+export function undefinedSlotName(
+  token: Token,
+  rule: UndefinedSlotRule,
+  suggestion?: string,
+): Diagnostic {
+  const name = token.text;
+  const didYouMean = suggestion ? ` Did you mean "${suggestion}"?` : "";
+  let message: string;
+  let severity: Diagnostic["severity"] = "warning";
+  switch (rule) {
+    case "U":
+      message = `"${name}" isn't defined in this file. It may come from an include file Age of RMS couldn't read.`;
+      severity = "info";
+      break;
+    case "N":
+      message = `Age of RMS's game data has no "${name}", and nothing in this script defines it.`;
+      severity = "info";
+      break;
+    case "I":
+      message = `"${name}" is not defined in random_map.def or in any file this script includes, so if this branch runs, this line has no ${name} to use.${didYouMean}`;
+      severity = "info";
+      break;
+    case "C":
+      message = `Only includes/constants.inc defines "${name}". Add #include_drs includes/constants.inc above this line, or define ${name} with #const.`;
+      break;
+    case "W":
+      message = `"${name}" is not defined in random_map.def or in any file this script includes, so this line has no ${name} to use.${didYouMean}`;
+      break;
+  }
+  const diagnostic = makeDiagnostic("RMS0324", message, toSpan(token));
+  diagnostic.severity = severity;
+  if (suggestion && (rule === "I" || rule === "W")) {
+    diagnostic.suggestion = suggestion;
+  }
+  return diagnostic;
 }
 
 export function duplicateDefinition(

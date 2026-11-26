@@ -14,6 +14,7 @@ import type {
 import type { ParseResult } from "../../../parser/types";
 import {
   TOOLS_API_VERSION,
+  type OutputBlock,
   type PublishedGameConstants,
   type ToolContext,
   type ToolMessage,
@@ -45,6 +46,13 @@ const players: PlayerMarker[] = [
   { player: 2, x: 90, y: 90 },
 ];
 
+/** Every block, with a tabs block's tabs opened out in order. */
+function flat(blocks: OutputBlock[]): OutputBlock[] {
+  return blocks.flatMap((b) =>
+    b.kind === "tabs" ? b.tabs.flatMap((t) => flat(t.blocks)) : [b],
+  );
+}
+
 describe("balanceSummary manifest", () => {
   it("registers cleanly", () => {
     expect(validateManifest(balanceSummary.manifest)).toEqual([]);
@@ -52,34 +60,56 @@ describe("balanceSummary manifest", () => {
 });
 
 describe("foldGeneration", () => {
-  it("attributes a frame-placed resource to the frame's player, not the nearest one", () => {
-    // Placed under player 1's frame but sitting geometrically closer to player 2.
+  it("counts a resource for the nearest start, whoever spawned or owns it", () => {
+    // Spawned for player 1 and owned by player 1, but nearer player 2's start.
     const objects: PlacedObject[] = [
-      { objectRef: "GOLD", x: 80, y: 80, player: 1, category: "resource-gold" },
-    ];
-    const stats = new Map();
-    foldGeneration(stats, 2, objects, players, refDb);
-    // A cell always exists once its player/resource pair has been touched by
-    // any fold (zeroed, not absent, see foldGeneration's own doc); "did not
-    // happen" reads as runsWithAny 0, not as a missing map entry.
-    expect(stats.get(2)?.get(1)?.get("gold")?.runsWithAny).toBe(1);
-    expect(stats.get(2)?.get(2)?.get("gold")?.runsWithAny).toBe(0);
-  });
-
-  it("falls back to the nearest player for a resource with no frame", () => {
-    const objects: PlacedObject[] = [
-      { objectRef: "GOLD", x: 88, y: 92, category: "resource-gold" },
+      {
+        objectRef: "GOLD",
+        x: 80,
+        y: 80,
+        player: 1,
+        forPlayer: 1,
+        category: "resource-gold",
+      },
     ];
     const stats = new Map();
     foldGeneration(stats, 2, objects, players, refDb);
     expect(stats.get(2)?.get(2)?.get("gold")?.runsWithAny).toBe(1);
-    expect(stats.get(2)?.get(1)?.get("gold")?.runsWithAny).toBe(0);
+    expect(stats.get(2)?.get(1)?.get("gold")?.runsWithAny ?? 0).toBe(0);
+  });
+
+  it("counts nothing farther than the max distance from every start", () => {
+    // (50, 50) is about 57 tiles from both starts.
+    const objects: PlacedObject[] = [
+      { objectRef: "GOLD", x: 50, y: 50, category: "resource-gold" },
+    ];
+    const near = new Map();
+    foldGeneration(near, 2, objects, players, refDb, 28);
+    expect(near.get(2)?.get(1)?.get("gold")?.runsWithAny ?? 0).toBe(0);
+    expect(near.get(2)?.get(2)?.get("gold")?.runsWithAny ?? 0).toBe(0);
+    const far = new Map();
+    foldGeneration(far, 2, objects, players, refDb, 60);
+    expect(far.get(2)?.get(1)?.get("gold")?.runsWithAny).toBe(1);
+    // Once only, never for both players.
+    expect(far.get(2)?.get(2)?.get("gold")?.runsWithAny ?? 0).toBe(0);
   });
 
   it("sums amount across multiple patches and tracks the nearest, not the farthest", () => {
     const objects: PlacedObject[] = [
-      { objectRef: "GOLD", x: 12, y: 10, player: 1, category: "resource-gold" }, // distance 2
-      { objectRef: "GOLD", x: 30, y: 10, player: 1, category: "resource-gold" }, // distance 20
+      {
+        objectRef: "GOLD",
+        x: 12,
+        y: 10,
+        forPlayer: 1,
+        category: "resource-gold",
+      }, // distance 2
+      {
+        objectRef: "GOLD",
+        x: 30,
+        y: 10,
+        forPlayer: 1,
+        category: "resource-gold",
+      }, // distance 20
     ];
     const stats = new Map();
     foldGeneration(stats, 2, objects, players, refDb);
@@ -100,7 +130,7 @@ describe("foldGeneration", () => {
           objectRef: "GOLD",
           x: 10,
           y: 10,
-          player: 1,
+          forPlayer: 1,
           category: "resource-gold",
         },
       ],
@@ -110,7 +140,7 @@ describe("foldGeneration", () => {
     foldGeneration(stats, 2, [], players, refDb); // a second generation placing nothing for player 1
     const cell = stats.get(2)!.get(1)!.get("gold")!;
     expect(cell.runsWithAny).toBe(1);
-    const blocks = buildBalanceOutput(stats, [2], 2);
+    const blocks = flat(buildBalanceOutput(stats, [2], 2));
     const table = blocks.find(
       (b) =>
         b.kind === "table" &&
@@ -121,7 +151,7 @@ describe("foldGeneration", () => {
 
   it("ignores a non-resource object entirely", () => {
     const objects: PlacedObject[] = [
-      { objectRef: "SCOUT", x: 11, y: 10, player: 1, category: "unit" },
+      { objectRef: "SCOUT", x: 11, y: 10, forPlayer: 1, category: "unit" },
     ];
     const stats = new Map();
     foldGeneration(stats, 2, objects, players, refDb);
@@ -133,12 +163,12 @@ describe("foldGeneration", () => {
 });
 
 describe("buildBalanceOutput", () => {
-  it("reports variance across runs, and none for a figure that never changes", () => {
+  it("reports the standard deviation across runs, in the figure's own units, and none for a figure that never changes", () => {
     const gold: PlacedObject = {
       objectRef: "GOLD",
       x: 10,
       y: 10,
-      player: 1,
+      forPlayer: 1,
       category: "resource-gold",
     };
     const varied = new Map();
@@ -148,16 +178,17 @@ describe("buildBalanceOutput", () => {
     foldGeneration(steady, 2, [gold], players, refDb);
     foldGeneration(steady, 2, [gold], players, refDb);
     const rowOf = (stats: Map<number, Map<number, Map<never, never>>>) => {
-      const table = buildBalanceOutput(stats, [2], 2).find(
-        (b) => b.kind === "table",
+      const table = flat(buildBalanceOutput(stats, [2], 2)).find(
+        (b) => b.kind === "table" && b.rows.some((r) => r[1] === "Player 1"),
       );
       if (!table || table.kind !== "table") throw new Error("no table");
       return table.rows.find((r) => r[0] === "Gold" && r[1] === "Player 1")!;
     };
-    // Columns: Resource, Player, Avg amount, Amount variance, ...
+    // Columns: Resource, Player, Avg amount, Amount SD, ...
     const mixed = rowOf(varied);
-    // Values A and 0 give variance (A/2)^2, which is the mean squared.
-    expect(Number(mixed[3])).toBe(Number(mixed[2]) ** 2);
+    // Values A and 0 have mean A/2 and standard deviation A/2, so the two
+    // columns match. A variance would have read (A/2)^2.
+    expect(Number(mixed[3])).toBe(Number(mixed[2]));
     expect(Number(mixed[3])).toBeGreaterThan(0);
     expect(rowOf(steady)[3]).toBe("0");
   });
@@ -172,14 +203,14 @@ describe("buildBalanceOutput", () => {
           objectRef: "GOLD",
           x: 10,
           y: 10,
-          player: 1,
+          forPlayer: 1,
           category: "resource-gold",
         },
       ],
       players,
       refDb,
     );
-    const blocks = buildBalanceOutput(stats, [2], 1);
+    const blocks = flat(buildBalanceOutput(stats, [2], 1));
     const table = blocks.find((b) => b.kind === "table");
     expect(
       table && table.kind === "table"
@@ -188,8 +219,28 @@ describe("buildBalanceOutput", () => {
     ).toBe(false);
   });
 
+  it("puts an Average tab first and a tab per player count", () => {
+    const stats = new Map();
+    const gold: PlacedObject = {
+      objectRef: "GOLD",
+      x: 10,
+      y: 10,
+      category: "resource-gold",
+    };
+    foldGeneration(stats, 2, [gold], players, refDb);
+    foldGeneration(stats, 4, [gold], players, refDb);
+    const tabs = buildBalanceOutput(stats, [2, 4], 1).find(
+      (b) => b.kind === "tabs",
+    );
+    expect(tabs?.kind === "tabs" && tabs.tabs.map((t) => t.label)).toEqual([
+      "Average",
+      "2 players",
+      "4 players",
+    ]);
+  });
+
   it("says so when a selected player count placed nothing", () => {
-    const blocks = buildBalanceOutput(new Map(), [4], 3);
+    const blocks = flat(buildBalanceOutput(new Map(), [4], 3));
     expect(
       blocks.some(
         (b) =>

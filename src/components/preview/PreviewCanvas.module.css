@@ -28,6 +28,15 @@
   cursor: grabbing;
 }
 
+/* The Terrain Stats glow, laid exactly over the map canvas. It never takes
+   the pointer, so hover, click and drag still reach the map under it. */
+.glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
 .overlay {
   position: absolute;
   inset: 0;

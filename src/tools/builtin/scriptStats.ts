@@ -38,6 +38,8 @@ export const scriptStatsManifest: ToolManifest = {
   // read-source is implied by read-ast and the host auto-grants it; declared
   // here anyway because this manifest is what an implementer copies.
   capabilities: ["read-ast", "read-source"],
+  // Counting the parse is instant, so the report appears when the tool is picked.
+  runOnSelect: true,
   params: [
     {
       key: "listSections",

@@ -12,6 +12,11 @@ import {
 import type { TerrainBitmap } from "./terrainBitmap";
 import { spriteKey, type SpriteImage, type SpritePart } from "./objectSprites";
 import { drawMinimapLayer, type MinimapLayer } from "./minimapLayer";
+import {
+  gridLineAlpha,
+  visibleLatticeRange,
+  type GridLineStrength,
+} from "./gridLines";
 
 // The canvas half of the renderer. Everything that touches a 2D context lives
 // here; the maths, the colours and the bitmap are pure modules next door.
@@ -183,6 +188,8 @@ export interface PreviewScene {
    * mark the map and the side names would sit under its circles.
    */
   orientation?: { dim: number; sideNames: boolean };
+  /** Lines along every tile edge, so a scripter can count tiles. Absent or "none" draws nothing. */
+  gridLines?: { strength: GridLineStrength };
   /** Tile under the pointer, drawn with an outline. */
   highlight?: { x: number; y: number } | null;
   /** Tile the user clicked, drawn with its own heavier outline and kept until they click it again. */
@@ -208,6 +215,16 @@ export function drawPreview(
   if (scene.base) {
     drawTerrain(ctx, viewport, scene.base);
     drawMapEdge(ctx, viewport, scene.base.snapshot.dim);
+    // Right after the edge and before every object layer, so a line never
+    // cuts through a tree, a town centre, a player circle or a failure mark.
+    if (scene.gridLines !== undefined) {
+      drawGridLines(
+        ctx,
+        viewport,
+        scene.base.snapshot.dim,
+        scene.gridLines.strength,
+      );
+    }
     const sprites = scene.base.sprites;
     if (scene.base.minimap !== undefined) {
       drawMinimapLayer(ctx, viewport, scene.base.minimap);
@@ -328,6 +345,58 @@ function drawMapEdge(
   ctx.lineTo(south.x, south.y);
   ctx.closePath();
   ctx.strokeStyle = MAP_EDGE;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+/**
+ * A line along every tile edge, as one stroked path.
+ *
+ * On the flat views a lattice line is straight on screen, so two end points
+ * draw it and a Giant map stays at 482 short lines. With raised ground each
+ * point is lifted by the ground under it (latticeToScreen does that), so a line
+ * bends over a hill and needs a point at every lattice step to follow it.
+ */
+export function drawGridLines(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  dim: number,
+  strength: GridLineStrength,
+): void {
+  const alpha = gridLineAlpha(strength, viewport.halfWidth);
+  if (alpha <= 0) return;
+  const { x0, x1, y0, y1 } = visibleLatticeRange(viewport, dim);
+  const flat = viewport.ground === undefined;
+  ctx.beginPath();
+  // Lines of constant x, running along y.
+  for (let x = x0; x <= x1; x++) {
+    const start = latticeToScreen(viewport, x, y0);
+    ctx.moveTo(start.x, start.y);
+    if (flat) {
+      const end = latticeToScreen(viewport, x, y1);
+      ctx.lineTo(end.x, end.y);
+    } else {
+      for (let y = y0 + 1; y <= y1; y++) {
+        const p = latticeToScreen(viewport, x, y);
+        ctx.lineTo(p.x, p.y);
+      }
+    }
+  }
+  // Lines of constant y, running along x.
+  for (let y = y0; y <= y1; y++) {
+    const start = latticeToScreen(viewport, x0, y);
+    ctx.moveTo(start.x, start.y);
+    if (flat) {
+      const end = latticeToScreen(viewport, x1, y);
+      ctx.lineTo(end.x, end.y);
+    } else {
+      for (let x = x0 + 1; x <= x1; x++) {
+        const p = latticeToScreen(viewport, x, y);
+        ctx.lineTo(p.x, p.y);
+      }
+    }
+  }
+  ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
   ctx.lineWidth = 1;
   ctx.stroke();
 }
@@ -920,13 +989,20 @@ function drawTileOutline(
   stroke: string,
   lineWidth: number,
 ): void {
-  const halfHeight = halfHeightOf(viewport);
-  const centre = tileToScreen(viewport, x, y);
+  // Each corner goes through latticeToScreen on its own, so on raised ground
+  // every corner takes its own height and the outline lies on the slope. A
+  // flat diamond offset from the lifted centre floats over a sloped tile.
+  // The ground blends heights bilinearly, which is linear along a tile edge,
+  // so straight lines between the lifted corners follow the drawn edges.
+  const west = latticeToScreen(viewport, x, y);
+  const north = latticeToScreen(viewport, x + 1, y);
+  const east = latticeToScreen(viewport, x + 1, y + 1);
+  const south = latticeToScreen(viewport, x, y + 1);
   ctx.beginPath();
-  ctx.moveTo(centre.x - viewport.halfWidth, centre.y);
-  ctx.lineTo(centre.x, centre.y - halfHeight);
-  ctx.lineTo(centre.x + viewport.halfWidth, centre.y);
-  ctx.lineTo(centre.x, centre.y + halfHeight);
+  ctx.moveTo(west.x, west.y);
+  ctx.lineTo(north.x, north.y);
+  ctx.lineTo(east.x, east.y);
+  ctx.lineTo(south.x, south.y);
   ctx.closePath();
   ctx.strokeStyle = stroke;
   ctx.lineWidth = lineWidth;

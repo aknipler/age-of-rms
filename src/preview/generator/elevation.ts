@@ -26,6 +26,7 @@
 // of the lists has its bottom edge at x + r rather than y + r, which is the
 // whole of the "diagonal bias" the earlier statistical model fitted by hand.
 
+import { traceCommandTiles } from "./commandTiles";
 import { timeCommand } from "./generationTiming";
 import type {
   CommandReport,
@@ -663,10 +664,16 @@ export function applyElevation(
 
   const outcomes = new Map<InstantiatedCommand, LayerOutcome[]>();
   for (const layer of layers) {
-    const outcome = timeCommand(layer.cmd, () =>
-      growLayer(layer, grid, weight, lists, stream),
-    );
-    smoothElevation(grid.elevation, dim);
+    // The trace wraps the smoothing too, since the heights a command leaves
+    // are the grown ones after smoothing. timeCommand stays inside it, so the
+    // hourglass row is the growth alone, as before.
+    const outcome = traceCommandTiles(layer.cmd, "elevation", grid, () => {
+      const grown = timeCommand(layer.cmd, () =>
+        growLayer(layer, grid, weight, lists, stream),
+      );
+      smoothElevation(grid.elevation, dim);
+      return grown;
+    });
     const list = outcomes.get(layer.cmd) ?? [];
     list.push(outcome);
     outcomes.set(layer.cmd, list);

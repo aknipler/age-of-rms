@@ -51,7 +51,7 @@ import {
 
 export const DEFAULT_PLAYER_COUNTS = [2, 4, 6, 8] as const;
 export const DEFAULT_RUNS_PER_PLAYER_COUNT = 15;
-export const MIN_RUNS_PER_PLAYER_COUNT = 5;
+export const MIN_RUNS_PER_PLAYER_COUNT = 1;
 export const MAX_RUNS_PER_PLAYER_COUNT = 200;
 export const DEFAULT_BASE_SEED = 1;
 /** [tune]: a ceiling on `runsPerPlayerCount * playerCounts.length`, so a future default change is caught, see Sec.8 item 5. */
@@ -168,6 +168,45 @@ function buildOutput(inputs: OutputInputs): OutputBlock[] {
   const { ctx, parse, staticFindings, aggregate, selectedCounts, reasonCtx } =
     inputs;
   const mapSizeName = ctx.settings?.mapSize.name ?? "?";
+  const tableOptions = {
+    source: parse.source,
+    reasonCtx,
+    suppressedActorAreaMissing: suppressedActorAreaSpans(staticFindings),
+    hideHealthy: inputs.hideHealthy,
+    lineOffsets: parse.lineOffsets,
+  };
+  // Total reads every count and names the worst one per row. Each count's
+  // own tab reads that count alone. Only counts that have run get a tab, so
+  // a partial report grows its tabs as the batches finish.
+  const counted = [...selectedCounts]
+    .filter((pc) => aggregate.runsAt(pc) > 0)
+    .sort((a, b) => a - b);
+  const tabs: OutputBlock[] =
+    counted.length === 0
+      ? []
+      : [
+          {
+            kind: "tabs",
+            tabs: [
+              {
+                label: "Total",
+                blocks: buildFindingTables(aggregate, {
+                  ...tableOptions,
+                  selectedCounts,
+                  showWorstCount: true,
+                }),
+              },
+              ...counted.map((pc) => ({
+                label: `${pc} players`,
+                blocks: buildFindingTables(aggregate, {
+                  ...tableOptions,
+                  selectedCounts: [pc],
+                  showWorstCount: false,
+                }),
+              })),
+            ],
+          },
+        ];
   return [
     buildSummaryHeader({
       playerCounts: selectedCounts,
@@ -177,18 +216,12 @@ function buildOutput(inputs: OutputInputs): OutputBlock[] {
       totalGenerations: inputs.totalGenerations,
       elapsedMs: Date.now() - inputs.startedAt,
     }),
+    ...tabs,
     ...buildStaticFindingBlocks(
       staticFindings,
       selectedCounts,
       parse.lineOffsets,
     ),
-    ...buildFindingTables(aggregate, {
-      source: parse.source,
-      selectedCounts,
-      reasonCtx,
-      suppressedActorAreaMissing: suppressedActorAreaSpans(staticFindings),
-      hideHealthy: inputs.hideHealthy,
-    }),
     ...buildNotesBlocks(aggregate.noteGroups(), parse.lineOffsets),
   ];
 }
@@ -212,7 +245,15 @@ async function runChecker(
   const selectedCounts = resolvePlayerCounts(ctx.params.playerCounts);
   const runsPerPlayerCount =
     typeof ctx.params.runsPerPlayerCount === "number"
-      ? ctx.params.runsPerPlayerCount
+      ? // Clamped here as well as in the box, since a saved parameter set
+        // can still carry a value from before the bounds changed.
+        Math.min(
+          MAX_RUNS_PER_PLAYER_COUNT,
+          Math.max(
+            MIN_RUNS_PER_PLAYER_COUNT,
+            Math.trunc(ctx.params.runsPerPlayerCount),
+          ),
+        )
       : DEFAULT_RUNS_PER_PLAYER_COUNT;
   const baseSeed =
     typeof ctx.params.baseSeed === "number"

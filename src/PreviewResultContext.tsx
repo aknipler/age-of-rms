@@ -67,6 +67,8 @@ interface PreviewResultProviderProps {
   regenOnEdit?: boolean;
   /** Time each generation for the hourglass. Absent means off, which is right for the panel's own instance, which has no hourglass. */
   timing?: boolean;
+  /** Record each command's tiles for Highlight selected command. Changing it regenerates once. */
+  commandTiles?: boolean;
   children: ReactNode;
 }
 
@@ -128,6 +130,7 @@ function createPreviewResultChannel({
     cutOffset,
     regenOnEdit = true,
     timing = false,
+    commandTiles = false,
     children,
   }: PreviewResultProviderProps): ReactElement {
     const { playerCount, mapSize, teams, teamPositions } =
@@ -180,6 +183,7 @@ function createPreviewResultChannel({
       regenOnEdit,
       cutAt,
       timing,
+      commandTiles,
     );
 
     // No useMemo: unlike the old bare-`result` value, this object IS

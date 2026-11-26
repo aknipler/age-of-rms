@@ -8,10 +8,11 @@ import {
 import ParserWorker from "./editor/parserWorker?worker";
 import type {
   IncludesMessage,
+  InstalledDefinitionsMessage,
   ParseRequestMessage,
   ParseResponseMessage,
 } from "./editor/parserWorker";
-import { useIncludeLoad } from "./useIncludeFiles";
+import { useIncludeLoad, useInstalledDefinitions } from "./useIncludeFiles";
 import type { Diagnostic, ParseResult } from "./parser/types";
 import { PERF_TRACE, perfLog } from "./perfTrace";
 import {
@@ -143,6 +144,9 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
   // The script's #include_drs files, read from the user's install
   // (docs/include-resolution-design.md Sec.4.1).
   const includeLoad = useIncludeLoad(content);
+  // The names the installed random_map.def defines, for RMS0324. Read once
+  // per session, whatever the script includes.
+  const installedDefinitions = useInstalledDefinitions();
 
   useEffect(() => {
     const worker = new ParserWorker();
@@ -337,6 +341,24 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
     // last time" test on purpose.
     sendParseRequest(contentRef.current, false);
   }, [includeLoad, workerGeneration, sendParseRequest]);
+
+  // The installed definitions travel the same way the include files do, as a
+  // message the long-lived worker keeps. `undefined` means still loading, so
+  // nothing is sent and the worker's default (not loaded, which reads as no
+  // install) stands until the answer arrives. A Set does not clone through
+  // postMessage cheaply to read back, so it goes as an array.
+  useEffect(() => {
+    const worker = workerRef.current;
+    if (installedDefinitions === undefined || worker === null) return;
+    const message: InstalledDefinitionsMessage = {
+      kind: "installedDefinitions",
+      names: installedDefinitions === null ? null : [...installedDefinitions],
+    };
+    worker.postMessage(message);
+    // Same reason as the includes message: the checks can now say something
+    // different about the text already parsed.
+    sendParseRequest(contentRef.current, false);
+  }, [installedDefinitions, workerGeneration, sendParseRequest]);
 
   const reparseNow = useCallback(
     (source: string) => {

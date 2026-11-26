@@ -17,6 +17,7 @@ import {
   LAST_SCRIPT_FOLDER_KEY,
   type FolderProbe,
 } from "../settings/scriptFolder";
+import { chosenInstallFolder } from "../settings/installFolder";
 import {
   buildScriptHeader,
   HEADER_SEPARATOR,
@@ -53,7 +54,10 @@ async function dialogStartFolder(): Promise<string | undefined> {
     });
     const remembered = await store.get<string>(LAST_SCRIPT_FOLDER_KEY);
     if (remembered && (await exists(remembered))) return remembered;
-    return (await findDeScriptsFolder(TAURI_PROBE)) ?? undefined;
+    return (
+      (await findDeScriptsFolder(TAURI_PROBE, chosenInstallFolder())) ??
+      undefined
+    );
   } catch {
     // Every branch above is a nicety. A store that won't load or a probe that
     // throws must not be able to stop someone opening a file.

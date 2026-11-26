@@ -27,7 +27,13 @@ import {
 import { lineNumberOfOffset } from "./lineIndex";
 import { editDistanceCapped } from "./parser";
 import { isDefinedAbove } from "./scope";
-import type { DirectiveNode, Item, ParseResult, SymbolInfo } from "./types";
+import type {
+  ArgNode,
+  DirectiveNode,
+  Item,
+  ParseResult,
+  SymbolInfo,
+} from "./types";
 import {
   CATEGORY_ALIAS_OF,
   CONSTANT_SLOT_CATEGORY,
@@ -255,6 +261,60 @@ export function buildScriptNameIndex(parse: ParseResult): ScriptNameIndex {
   const symbolsByName = new Map<string, SymbolInfo[]>();
   for (const s of parse.symbols) pushTo(symbolsByName, s.name, s);
   return { parse, symbolsByName, includes: parse.includeIndex };
+}
+
+/**
+ * Every name the parse binds through an argument the language data marks
+ * `definesName` (today `create_object_group`'s group name), anywhere in the
+ * file and through every block, `if` and `start_random` branch.
+ *
+ * Anywhere and not "above the use" on purpose. Whether DE needs a group
+ * defined above its use is unmeasured (CREATION_PLAN A.5), and RMS0324 must
+ * stay silent when unsure (docs/undefined-name-warning-brief.md Sec.4.2).
+ * A recursive walk over a discriminated union is the idiom here, the
+ * `switch` on `item.kind` is checked for exhaustiveness by the compiler.
+ */
+export function boundNamesIn(parse: ParseResult): Set<string> {
+  const names = new Set<string>();
+  const addArgs = (args: readonly ArgNode[]): void => {
+    for (const arg of args) {
+      if (!arg.def?.definesName) continue;
+      const text =
+        typeof arg.value === "string"
+          ? arg.value
+          : parse.tokens[arg.firstToken]?.text;
+      if (text) names.add(text);
+    }
+  };
+  const walk = (items: readonly Item[]): void => {
+    for (const item of items) {
+      switch (item.kind) {
+        case "command":
+          addArgs(item.args);
+          if (item.block) walk(item.block.items);
+          break;
+        case "attribute":
+          addArgs(item.args);
+          break;
+        case "directive":
+        case "raw":
+          break;
+        case "if":
+          for (const branch of item.branches) walk(branch.items);
+          break;
+        case "random":
+          walk(item.preamble);
+          for (const branch of item.branches) walk(branch.items);
+          break;
+        case "orphanBlock":
+          walk(item.block.items);
+          break;
+      }
+    }
+  };
+  walk(parse.script.preamble);
+  for (const section of parse.script.sections) walk(section.items);
+  return names;
 }
 
 /**

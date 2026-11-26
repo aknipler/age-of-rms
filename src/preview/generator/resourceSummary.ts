@@ -94,11 +94,14 @@ function effectiveAmounts(
  * fix here), not a call site to copy. Passing them resolves e.g. Menindee's
  * `#const TREE_AUTUMN 1248` idiom to a real yield instead of none.
  *
- * D4: player attribution reads the placement's own `obj.player`, set during
- * S6 from `set_place_for_every_player`/`place_on_specific_land_id` — no
- * nearest-player-by-distance fallback (that heuristic is `balanceSummary.ts`'s
- * own, for a different report, and widening scope to add it here was not
- * asked for).
+ * D4: player attribution reads the placement's own `obj.forPlayer`, the
+ * player a `set_place_for_every_player` command spawned it for, or whose land
+ * a `place_on_specific_land_id` command named. Ownership
+ * (`obj.player`) is the wrong key. A gaia sheep placed once per player is
+ * that player's food though nobody owns it, and Namatjira's 7 gaia sheep per
+ * player went to Neutral while only the 1 owned sheep counted. An object on
+ * a specific land with no player counts as Neutral. No nearest-player-by-distance fallback (that heuristic
+ * is `balanceSummary.ts`'s own, for a different report).
  *
  * D-3 (Ash): the counting pass is shared with what a future Reference Table
  * hookup could reuse — one walk builds a count keyed by (objectRef,
@@ -115,14 +118,15 @@ export function computeResourceSummary(
   aliases: ReadonlyMap<string, string> | undefined,
   overrides: YieldOverrideMap,
 ): ResourceTotals {
-  // Owner bucket: the player number, or "neutral" for a gaia/unowned placement.
+  // Bucket: the player the object spawned for, or "neutral" for one placed
+  // once for the whole map. Named `owner` for history, it is not ownership.
   type OwnerKey = number | "neutral";
   const counts = new Map<
     string,
     { objectRef: string; owner: OwnerKey; count: number }
   >();
   for (const obj of objects) {
-    const owner: OwnerKey = obj.player ?? "neutral";
+    const owner: OwnerKey = obj.forPlayer ?? "neutral";
     const key = `${obj.objectRef}::${owner}`;
     const existing = counts.get(key);
     if (existing) existing.count++;

@@ -32,6 +32,10 @@ export interface AggregateCell {
   placed: number;
   /** Coalesced by bucket, matching `pushFailure`'s own within-run shape, carried across every run that contributed. */
   failures: Map<FailureBucket, PlacementFailure>;
+  /** S1 only, summed over the runs like attempted and placed (CommandReport.growth). */
+  growth?: { target: number; grown: number };
+  /** How many runs hit each bucket at least once, for the report's "(2 of 5)". `failures` keeps the occurrence totals. */
+  bucketRuns: Map<FailureBucket, number>;
 }
 
 export interface AggregateRow {
@@ -95,12 +99,21 @@ export class MonteCarloAggregate {
           attempted: 0,
           placed: 0,
           failures: new Map(),
+          bucketRuns: new Map(),
         };
         row.cells.set(playerCount, cell);
       }
+      // One report per span per run, so each bucket in it is one run.
+      for (const bucket of new Set(report.failures.map((f) => f.bucket)))
+        cell.bucketRuns.set(bucket, (cell.bucketRuns.get(bucket) ?? 0) + 1);
       cell.runsContaining++;
       cell.attempted += report.attempted;
       cell.placed += report.placed;
+      if (report.growth) {
+        cell.growth ??= { target: 0, grown: 0 };
+        cell.growth.target += report.growth.target;
+        cell.growth.grown += report.growth.grown;
+      }
       for (const f of report.failures) {
         const existing = cell.failures.get(f.bucket);
         if (existing)

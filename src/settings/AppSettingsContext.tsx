@@ -21,6 +21,8 @@ import {
   AUTHOR_NAME_MAX_LENGTH,
   DEFAULT_AUTHOR_NAME,
 } from "./authorName";
+import { INSTALL_FOLDER_KEY } from "./scriptFolder";
+import { setChosenInstallFolder } from "./installFolder";
 
 /**
  * App-wide display preferences that don't belong to one subsystem.
@@ -59,6 +61,13 @@ export interface AppSettingsValue {
   /** Which keys take the highlighted entry of the Code tab's suggestion list (see SUGGESTION_KEYS). */
   suggestionKeys: SuggestionKeys;
   setSuggestionKeys: (keys: SuggestionKeys) => void;
+  /**
+   * The AoE2 DE install folder typed or picked in Settings > General, for an
+   * install the automatic search misses. Empty means search. Mirrored into
+   * installFolder.ts, where the module-level readers of the install see it.
+   */
+  installFolder: string;
+  setInstallFolder: (folder: string) => void;
 }
 
 /**
@@ -104,6 +113,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [suggestionKeys, setSuggestionKeysState] = useState<SuggestionKeys>(
     DEFAULT_SUGGESTION_KEYS,
   );
+  const [installFolder, setInstallFolderState] = useState("");
   const [store, setStore] = useState<Store | null>(null);
 
   // `cancelled` guards the async settle against an unmount between the load
@@ -140,6 +150,11 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
         const savedKeys = await loadedStore.get<unknown>(SUGGESTION_KEYS_KEY);
         if (!cancelled && isSuggestionKeys(savedKeys))
           setSuggestionKeysState(savedKeys);
+        const savedInstall = await loadedStore.get<unknown>(INSTALL_FOLDER_KEY);
+        if (!cancelled && typeof savedInstall === "string") {
+          setInstallFolderState(savedInstall);
+          setChosenInstallFolder(savedInstall);
+        }
       },
     );
     return () => {
@@ -200,6 +215,15 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setInstallFolder = useCallback(
+    (next: string) => {
+      setInstallFolderState(next);
+      setChosenInstallFolder(next);
+      void store?.set(INSTALL_FOLDER_KEY, next.trim());
+    },
+    [store],
+  );
+
   const value = useMemo<AppSettingsValue>(
     () => ({
       shortenLongNames,
@@ -214,6 +238,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       setCodePrediction,
       suggestionKeys,
       setSuggestionKeys,
+      installFolder,
+      setInstallFolder,
     }),
     [
       shortenLongNames,
@@ -228,6 +254,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       setCodePrediction,
       suggestionKeys,
       setSuggestionKeys,
+      installFolder,
+      setInstallFolder,
     ],
   );
 

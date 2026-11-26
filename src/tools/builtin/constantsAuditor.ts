@@ -35,12 +35,14 @@ export const constantsAuditorManifest: ToolManifest = {
   description:
     "Lists every #const and #define in the script, and flags names that are never used again or that are used but never defined.",
   capabilities: ["read-ast", "read-source"],
+  // A read of the parse alone, quick on any script, so it runs when picked.
+  runOnSelect: true,
   params: [
     {
       key: "hideHealthy",
       type: "boolean",
       label: "Hide constants with no problems",
-      help: "Leave out rows for constants that are defined once and used at least once, with no #undefine attempt against them. The report always says how many were hidden.",
+      help: "Leave out rows for constants that are defined once and used at least once. The report always says how many were hidden.",
       // Default ON for the same reason as the consistency checker's own
       // hideHealthy: most scripts define far more constants than they ever
       // misuse, and this tool exists to surface the ones that are not fine.
@@ -297,7 +299,7 @@ export function buildConstantsAuditOutput(
     const hidden = allRows.length - shownRows.length;
     blocks.push({
       kind: "text",
-      text: `${hidden} of ${allRows.length} constant${allRows.length === 1 ? "" : "s"} hidden. Defined, used, and never targeted by #undefine.`,
+      text: `${hidden} of ${allRows.length} constant${allRows.length === 1 ? "" : "s"} hidden (defined and used).`,
     });
   }
 

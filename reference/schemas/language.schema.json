@@ -206,6 +206,10 @@
           "type": "boolean",
           "description": "Whether this trailing argument may repeat. Schema action item; honored by the parser if present."
         },
+        "definesName": {
+          "type": "boolean",
+          "description": "True when this argument is a definition site for a name the author invents, such as create_object_group's groupName. A later terrain, object or constant slot may then name it (RMS0324 stays silent)."
+        },
         "cautionBelow": {
           "type": "number",
           "description": "If set, values below this threshold are still valid RMS (unlike min, which is a hard documented floor) but carry a real risk worth flagging live (e.g. a negative border value that can crash the game if it pushes the land origin off-map). Requires cautionMessage."

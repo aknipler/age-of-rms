@@ -27,6 +27,14 @@ interface SidePanelResizerProps {
    * ref genuinely is null between render and commit, and the type says so.
    */
   panelRef: RefObject<HTMLDivElement | null>;
+  /**
+   * Whether this handle can hide the panel, by its button or by a drag past
+   * the minimum. Off for the Advanced Tools column, which holds the tool
+   * picker and Run and has no reopener, so hiding it would strand the tab.
+   */
+  collapsible?: boolean;
+  /** The separator's accessible name. */
+  label?: string;
 }
 
 /**
@@ -50,7 +58,11 @@ interface SidePanelResizerProps {
  * call PreviewPane made when it reused `breakdown.sidePanel.previewToggle`
  * rather than minting a second id for one toggle.
  */
-export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
+export function SidePanelResizer({
+  panelRef,
+  collapsible = true,
+  label = "Resize the map panel",
+}: SidePanelResizerProps) {
   const { width, setWidth, commitWidth, setCollapsed } = useSidePanelLayout();
   const [dragging, setDragging] = useState(false);
   // Mirrors `dragging` for the pointermove handler. Reading the `dragging`
@@ -86,9 +98,13 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
     if (!draggingRef.current) return;
     const panel = panelRef.current;
     if (panel === null) return;
-    const outcome = resolveSidePanelDrag(
-      event.clientX - panel.getBoundingClientRect().left,
-    );
+    const raw = event.clientX - panel.getBoundingClientRect().left;
+    const outcome = resolveSidePanelDrag(raw);
+    if (outcome.collapsed && !collapsible) {
+      // No collapse here, so a drag past the minimum stays at the minimum.
+      setWidth(MIN_SIDE_PANEL_WIDTH);
+      return;
+    }
     if (outcome.collapsed) {
       // Dragged past the minimum by more than the margin: treat it as a
       // collapse and let go of the pointer, so the user is not still dragging
@@ -127,7 +143,7 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
       }
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize the map panel"
+      aria-label={label}
       aria-valuenow={width}
       aria-valuemin={MIN_SIDE_PANEL_WIDTH}
       aria-valuemax={MAX_SIDE_PANEL_WIDTH}
@@ -138,20 +154,22 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
       onPointerCancel={handlePointerUp}
       onKeyDown={handleKeyDown}
     >
-      <HelpTip id="sidePanel.resizer">
-        <button
-          type="button"
-          className={styles.collapseButton}
-          aria-label="Hide the map panel"
-          // Without this the button's pointerdown bubbles to the separator
-          // above and starts a drag, so the click that should hide the panel
-          // instead resizes it to wherever the pointer happens to be.
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => setCollapsed(true)}
-        >
-          <span aria-hidden="true">‹</span>
-        </button>
-      </HelpTip>
+      {collapsible && (
+        <HelpTip id="sidePanel.resizer">
+          <button
+            type="button"
+            className={styles.collapseButton}
+            aria-label="Hide the map panel"
+            // Without this the button's pointerdown bubbles to the separator
+            // above and starts a drag, so the click that should hide the panel
+            // instead resizes it to wherever the pointer happens to be.
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setCollapsed(true)}
+          >
+            <span aria-hidden="true">‹</span>
+          </button>
+        </HelpTip>
+      )}
     </div>
   );
 }

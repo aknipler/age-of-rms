@@ -34,6 +34,7 @@
 // was fitted to measured counts and each was wrong in kind. Its history is
 // in docs/build-log.md.
 
+import { traceCommandTiles } from "./commandTiles";
 import { timeCommand } from "./generationTiming";
 import type {
   CommandReport,
@@ -619,8 +620,12 @@ export function applyTerrains(
   const lists = new TileLists(LIST_COUNT, n);
   for (const cmd of commands) {
     const pass = readPass(cmd, instantiated, constants, dim);
+    // timeCommand stays outermost so the hourglass counts the trace's own
+    // copying as part of the command, which is what it costs.
     const { seeded, painted, sawBase } = timeCommand(cmd, () =>
-      runPass(pass, grid, sloped, origins, lists, beachMark, stream),
+      traceCommandTiles(cmd, "terrain", grid, () =>
+        runPass(pass, grid, sloped, origins, lists, beachMark, stream),
+      ),
     );
     const failures: PlacementFailure[] = [];
     const { tiles, clumps, percentage } = pass.amount;

@@ -163,7 +163,10 @@ describe("suggestionOffersAt", () => {
     return [
       ...parse.diagnostics,
       ...validate(parse, {
-        language: lang,
+        // The full LanguageData. This once passed the LanguageIndex through
+        // the cast below, which worked only while validate() never read
+        // `commands`. RMS0324 builds its own index from the data.
+        language: langData,
         gameConstants,
       } as unknown as Parameters<typeof validate>[1]),
     ];

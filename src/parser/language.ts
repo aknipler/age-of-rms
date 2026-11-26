@@ -38,6 +38,8 @@ export interface ArgumentDef {
   /** A word Breakdown shows before this argument's field ("with" before replace_terrain's second terrain). Presentation only. */
   leadIn?: string;
   variadic?: boolean; // schema action item, honored if present
+  /** A definition site for a name the author invents (create_object_group's groupName). Read by boundNamesIn. */
+  definesName?: boolean;
   // Advisory range, distinct from min: a value below cautionBelow is still
   // valid RMS (no min violation), but is worth flagging live, e.g. a
   // negative border value that can crash the game if it pushes the land

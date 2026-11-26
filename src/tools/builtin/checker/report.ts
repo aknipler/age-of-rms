@@ -73,10 +73,18 @@ function findWorstCount(
   return { playerCount: best!.pc, state: "rated" };
 }
 
-function formatBuckets(cell: AggregateCell | undefined): string {
+/**
+ * "occupancyFull (2 of 5)": each bucket with how many of the batch's runs hit
+ * it at least once. Runs rather than occurrences, because one bad run can
+ * miss a thousand times and still be one bad run in five, and the reader's
+ * question is how often the map comes out wrong.
+ */
+function formatBuckets(cell: AggregateCell | undefined, runs: number): string {
   if (!cell || cell.failures.size === 0) return "";
-  return [...cell.failures.entries()]
-    .map(([bucket, f]) => `${bucket} ×${f.occurrences ?? 1}`)
+  return [...cell.failures.keys()]
+    .map(
+      (bucket) => `${bucket} (${cell.bucketRuns.get(bucket) ?? 0} of ${runs})`,
+    )
     .join(", ");
 }
 
@@ -221,6 +229,132 @@ export interface FindingTableOptions {
   suppressedActorAreaMissing: ReadonlySet<string>;
   /** Sec.5.1's noise filter: drop rows with nothing to report. The count of dropped rows is always printed (see `buildFindingTables`). */
   hideHealthy: boolean;
+  /** Line starts of `source`, for the land rows' line numbers. Counted from `source` when absent. */
+  lineOffsets?: readonly number[];
+  /** False for a one-count tab, where the Worst player count column would only repeat the tab's own label. Default true. */
+  showWorstCount?: boolean;
+}
+
+/** Offsets where each line of `text` starts, for a caller that passed none. */
+function lineStartsOf(text: string): number[] {
+  const starts = [0];
+  for (let i = 0; i < text.length; i++)
+    if (text.charCodeAt(i) === 10) starts.push(i + 1);
+  return starts;
+}
+
+/**
+ * The share of its target a land command grew to, from the growth summed over
+ * the runs. A target of 0 is a deliberate zero-tile stamp, which grew all it
+ * asked for. `undefined` for a cell with no growth figures.
+ */
+function growthRatio(cell: AggregateCell | undefined): number | undefined {
+  if (!cell?.growth) return undefined;
+  if (cell.growth.target === 0) return 1;
+  return cell.growth.grown / cell.growth.target;
+}
+
+/**
+ * The count a land row reads from. A land always gets its origin, so its
+ * placed rate is 100% whatever happens next, and the count that matters is
+ * the one where it grew least. Ties go to the lowest count, as in
+ * `findWorstCount`.
+ */
+function worstGrowthCount(
+  cells: ReadonlyMap<number, AggregateCell>,
+  selectedCounts: readonly number[],
+): number | undefined {
+  let best: { pc: number; ratio: number } | undefined;
+  for (const pc of [...selectedCounts].sort((a, b) => a - b)) {
+    const ratio = growthRatio(cells.get(pc));
+    if (ratio === undefined) continue;
+    if (!best || ratio < best.ratio) best = { pc, ratio };
+  }
+  return best?.pc;
+}
+
+/** "99.8%, 4231 of 4240 (−9)", the per-run average of what the land grew against what it asked for. */
+function formatGrowth(cell: AggregateCell): string {
+  const runs = Math.max(cell.runsContaining, 1);
+  const grown = Math.round(cell.growth!.grown / runs);
+  const target = Math.round(cell.growth!.target / runs);
+  const difference = grown - target;
+  const signed =
+    difference === 0
+      ? ""
+      : ` (${difference > 0 ? "+" : "−"}${Math.abs(difference)})`;
+  const percent = ((growthRatio(cell) ?? 1) * 100).toFixed(1);
+  return `${percent}%, ${grown} of ${target}${signed}`;
+}
+
+/**
+ * The Command cell for land, elevation, terrain and object rows: the line,
+ * then what the stage's reader needs to tell one command from the next.
+ *
+ * - Land: the terrain, and `land_position` or `circle_radius` when present.
+ * - Elevation: the height, the terrain it rises on, `number_of_tiles`, `number_of_clumps`.
+ * - Terrain: the command line as written.
+ * - Object: the object, `number_of_objects`, `number_of_groups`,
+ *   `terrain_to_place_on` and `second_object` when present.
+ *
+ * Values come from the source text, so a `rnd(...)` or a `#const` reads as
+ * written rather than as one run's value.
+ */
+function describedLabel(
+  row: AggregateRow,
+  source: string,
+  lineOffsets: readonly number[],
+  instByCount: ReadonlyMap<number, InstantiatedScript>,
+): string {
+  // Cliff and connection rows keep their own label, as before.
+  if (!["S1", "S2", "S4", "S6"].includes(row.stage))
+    return commandLabel(row, source);
+  const line = `line ${lineNumberOfOffset(lineOffsets, row.commandSpan.start)}`;
+  let cmd: ReturnType<typeof findCommandBySpan>;
+  for (const inst of instByCount.values()) {
+    cmd = findCommandBySpan(inst, row.commandSpan);
+    if (cmd) break;
+  }
+  if (!cmd || row.stage === "S4")
+    return `${line} · ${commandLabel(row, source)}`;
+  const tidy = (text: string) => text.replace(/\s+/g, " ").trim();
+  const argsText = (name: string) => {
+    const attribute = cmd.attributes.get(name)?.[0];
+    if (!attribute) return undefined;
+    return tidy(source.slice(attribute.span.start, attribute.span.end)).replace(
+      new RegExp(`^${name}\\s*`),
+      "",
+    );
+  };
+  const firstArg = () => {
+    const span = cmd.args[0]?.source.span;
+    return span ? tidy(source.slice(span.start, span.end)) : undefined;
+  };
+  const parts = [line];
+  const add = (label: string | undefined, value: string | undefined) => {
+    if (value) parts.push(label ? `${label} ${value}` : value);
+  };
+
+  if (row.stage === "S1") {
+    if (cmd.name === "create_player_lands") parts.push("player lands");
+    add(undefined, argsText("terrain_type"));
+    add("land_position", argsText("land_position"));
+    add("circle_radius", argsText("circle_radius"));
+  } else if (row.stage === "S2") {
+    add("height", firstArg());
+    add("on", argsText("base_terrain"));
+    add("number_of_tiles", argsText("number_of_tiles"));
+    add("number_of_clumps", argsText("number_of_clumps"));
+  } else if (row.stage === "S6") {
+    add(undefined, firstArg());
+    add("number_of_objects", argsText("number_of_objects"));
+    add("number_of_groups", argsText("number_of_groups"));
+    add("terrain_to_place_on", argsText("terrain_to_place_on"));
+    add("second_object", argsText("second_object"));
+  } else {
+    return commandLabel(row, source);
+  }
+  return parts.join(" · ");
 }
 
 /**
@@ -254,6 +388,10 @@ function isHealthyRow(
     if (cellStateOf(cell) === "zeroAttempt") return false;
     if (cell!.placed !== cell!.attempted) return false;
     if (cell!.failures.size > 0) return false;
+    // A land that fell short of its target is a finding even though its
+    // origin placed.
+    const ratio = growthRatio(cell);
+    if (ratio !== undefined && ratio < 1) return false;
   }
   if (buildAnnotation(row.cells, opts.selectedCounts) !== undefined)
     return false;
@@ -273,14 +411,22 @@ export function buildFindingTables(
     else byStage.set(row.stage, [row]);
   }
 
+  const showWorstCount = opts.showWorstCount ?? true;
+  const lineOffsets = opts.lineOffsets ?? lineStartsOf(opts.source);
   const blocks: OutputBlock[] = [];
   let hidden = 0;
   for (const stage of ["S1", "S2", "S3", "S4", "S5", "S6"]) {
     const rows = byStage.get(stage);
     if (!rows || rows.length === 0) continue;
+    // Script order. The aggregate keeps rows in the order a run first
+    // reported them, which follows the stage's own work, not the line, and
+    // put line 1000 above line 999.
+    rows.sort((a, b) => a.commandSpan.start - b.commandSpan.start);
 
     const tableRows: string[][] = [];
     const rowSpans: (Span | null)[] = [];
+    const barValues: (number | null)[] = [];
+    const lineKeys: number[] = [];
 
     for (const row of rows) {
       const worst = findWorstCount(row.cells, opts.selectedCounts);
@@ -298,24 +444,39 @@ export function buildFindingTables(
         continue;
       }
 
-      const cell = row.cells.get(worst.playerCount);
+      // A land row reads the count where it grew least (worstGrowthCount),
+      // every other row the count with the lowest spawn rate.
+      const growthCount =
+        stage === "S1"
+          ? worstGrowthCount(row.cells, opts.selectedCounts)
+          : undefined;
+      const shownCount = growthCount ?? worst.playerCount;
+      const cell = row.cells.get(shownCount);
       // Sec.5.1: a row whose `runsContaining` is below the batch size SAYS ITS
       // DENOMINATOR. A rate summed over 1 of 15 runs is ranked against one
       // summed over 15 of 15 by `findWorstCount` above, so the bare
       // percentage is the one number in the table a reader cannot weigh.
-      const runsInBatch = aggregate.runsAt(worst.playerCount);
+      const runsInBatch = aggregate.runsAt(shownCount);
       const denominator =
         cell !== undefined &&
         runsInBatch > 0 &&
         cell.runsContaining < runsInBatch
           ? ` (generated in ${cell.runsContaining} of ${runsInBatch} runs)`
           : "";
-      const spawnRate =
-        worst.state === "rated"
-          ? `${((cell!.placed / cell!.attempted) * 100).toFixed(1)}%${denominator}`
-          : `${NON_NUMERIC}${denominator}`;
+      let rateCell: string;
+      let barValue: number | null;
+      if (growthCount !== undefined && cell?.growth) {
+        rateCell = `${formatGrowth(cell)}${denominator}`;
+        barValue = Math.min(growthRatio(cell) ?? 1, 1);
+      } else if (worst.state === "rated") {
+        rateCell = `${((cell!.placed / cell!.attempted) * 100).toFixed(1)}%${denominator}`;
+        barValue = cell!.placed / cell!.attempted;
+      } else {
+        rateCell = `${NON_NUMERIC}${denominator}`;
+        barValue = null;
+      }
 
-      let buckets = formatBuckets(cell);
+      let buckets = formatBuckets(cell, runsInBatch);
       const suppressed =
         row.stage === "S6" &&
         opts.suppressedActorAreaMissing.has(spanKeyString(row.commandSpan));
@@ -331,29 +492,49 @@ export function buildFindingTables(
       else if (reasonCell !== "" && buckets !== reasonCell)
         buckets = `${buckets} (${reasonCell})`;
 
-      tableRows.push([
-        commandLabel(row, opts.source),
-        spawnRate,
-        String(worst.playerCount),
-        buckets,
-        "simulated",
-      ]);
+      const label = describedLabel(
+        row,
+        opts.source,
+        lineOffsets,
+        opts.reasonCtx.instByCount,
+      );
+      tableRows.push(
+        showWorstCount
+          ? [label, rateCell, String(shownCount), buckets]
+          : [label, rateCell, buckets],
+      );
       rowSpans.push(rowSpanFor(row));
+      // The same fraction the cell prints, none where it prints none.
+      barValues.push(barValue);
+      lineKeys.push(row.commandSpan.start);
     }
 
     if (tableRows.length === 0) continue;
     blocks.push({ kind: "heading", text: `${STAGE_LABELS[stage]} generation` });
+    // No Provenance column. Every row here is simulated, so it only ever
+    // said one word, and the static findings carry their own wording.
+    const rateColumn = stage === "S1" ? "Growth" : "Spawn rate";
+    const worstColumn =
+      stage === "S1" ? "Least grown at player count" : "Worst player count";
+    const bucketColumn = "Failure buckets (No. of runs)";
     blocks.push({
       kind: "table",
-      columns: [
-        "Command",
-        "Spawn rate",
-        "Worst player count",
-        "Failure buckets",
-        "Provenance",
-      ],
+      columns: showWorstCount
+        ? ["Command", rateColumn, worstColumn, bucketColumn]
+        : ["Command", rateColumn, bucketColumn],
       rows: tableRows,
       rowSpans,
+      // Column 1 is the rate.
+      bars: { column: 1, values: barValues },
+      align: showWorstCount
+        ? ["left", "left", "center", "left"]
+        : ["left", "left", "left"],
+      // Command sorts by where the command starts, which is line order, and
+      // the rate by the same fraction its bar shows.
+      sortKeys: [
+        { column: 0, values: lineKeys },
+        { column: 1, values: barValues },
+      ],
     });
   }
 
@@ -362,12 +543,15 @@ export function buildFindingTables(
   // when it was only quiet. Printed even at 0, so the sentence's absence is
   // never what carries the information.
   if (opts.hideHealthy) {
+    const where = showWorstCount
+      ? "at every player count"
+      : "at this player count";
     blocks.push({
       kind: "text",
       text:
         hidden === 1
-          ? "1 command placed everything it attempted at every player count and is hidden."
-          : `${hidden} commands placed everything they attempted at every player count and are hidden.`,
+          ? `1 command placed or grew everything it attempted ${where} and is hidden.`
+          : `${hidden} commands placed or grew everything they attempted ${where} and are hidden.`,
     });
   }
   return blocks;
@@ -567,7 +751,7 @@ export function buildSummaryHeader(opts: SummaryHeaderOptions): OutputBlock {
       ["Elapsed", `${(opts.elapsedMs / 1000).toFixed(1)}s`],
       [
         "About this report",
-        "The Monte Carlo table's rates are estimates from a limited number of samples, not exact probabilities. A command showing 100% is unobserved-to-fail, not proven reliable. The static checks above them are the tool's only guaranteed findings.",
+        "The tables' rates are estimates from a limited number of samples, not exact probabilities. A command showing 100% is unobserved to fail, not proven reliable. Total shows each command at the player count where it did worst, and each player count's tab shows that count alone. Land rows show how much a land grew against the tiles it asked for, as a share and as tiles per run. The static checks below the tables are the tool's only guaranteed findings.",
       ],
     ],
   };

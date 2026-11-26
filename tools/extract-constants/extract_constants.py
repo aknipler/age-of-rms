@@ -361,6 +361,9 @@ MISC_FAMILY_SECTIONS = {
     "PlayerData Constants": "playerDataAttribute",
     "ResourceAmount Constants": "resourceAmountType",
     "Magic Number Constants": "magicNumber",
+    # Added with the 2026-10-28 DE patch. The flag values a script ORs together
+    # for an undead-unit setting. random_map.def gives no more than names and ids.
+    "Undead Flag Constants": "undeadFlag",
 }
 
 #: Floor for each family, well under the measured count (41/54/21/19/6/3 for
@@ -380,6 +383,7 @@ MISC_FAMILY_MIN_COUNTS = {
     "playerDataAttribute": 1,
     "resourceAmountType": 25,
     "magicNumber": 1,
+    "undeadFlag": 2,
 }
 
 
@@ -560,6 +564,7 @@ def misc_descriptive_name(name: str, category: str) -> str:
         "modifyTechAttribute": "ATTR_",
         "resourceAmountType": "AMOUNT_",
         "playerDataAttribute": "DATA_",
+        "undeadFlag": "UNDEADFLAG_",
     }
     stem = name
     if category == "civilization":

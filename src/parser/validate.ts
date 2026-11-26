@@ -25,18 +25,41 @@
 // resolver, never a negative authority. game-constants.json holds 31 constants;
 // the real game has ~130 terrains and hundreds of objects. So finding a name in
 // it proves something ("SNOW is a terrain"), but NOT finding one proves nothing
-// at all. That asymmetry is why the unknown-name check below runs on if/elseif
-// condition labels only, where predefinedLabels + user #defines really are the
-// closed vocabulary, and never on terrain/object slots, where it would false-warn
-// on every constant Phase 4.0 hasn't extracted yet. Goal #5 (no false alarms on
-// legal maps) outranks coverage.
+// at all. That asymmetry is why the unknown-name check for if/elseif condition
+// labels (RMS0300) only fires on a near miss, and why a name in a terrain,
+// object or constant slot was left alone for months.
+//
+// RMS0324 now checks those slots, because the old worry stopped being true.
+// game-constants.json grew from 31 rows to about 4,400, and the editor reads
+// the script's include files and the installed random_map.def. A measured run
+// over 92,000 name slot words (docs/undefined-name-warning-brief.md Sec.3.1)
+// left five groups, and each has its own rule so the old false alarms cannot
+// come back. Group names are bound by create_object_group (rule G). Names a
+// DE update added are read from the installed file (rule D). A name under an
+// `if` drops to info (rule I). A name only constants.inc defines gets its own
+// wording (rule C). A script with an include nobody read, or no install, says
+// less (rules U and N). Goal #5 (no false alarms on legal maps) still
+// outranks coverage, and the corpus gate pins every site.
 
 import * as d from "./diagnostics";
 import { walkComments, type CommentMarker } from "./commentWalk";
 import { lineNumberOfOffset } from "./lineIndex";
-import { NUMERIC_ARGUMENT_TYPES } from "./language";
+import {
+  buildLanguageIndex,
+  NUMERIC_ARGUMENT_TYPES,
+  type LanguageIndex,
+} from "./language";
 import { isDefinedAbove } from "./scope";
-import type { IncludeIndex } from "./includeIndex";
+import { includeKey, type IncludeIndex } from "./includeIndex";
+import {
+  boundNamesIn,
+  buildScriptNameIndex,
+  buildStaticNameIndex,
+  closestBuiltin,
+  resolveName,
+  type ScriptNameIndex,
+  type StaticNameIndex,
+} from "./nameLookup";
 import { editDistanceCapped, isFamilySibling } from "./parser";
 import type { ArgumentType, LanguageData, PredefinedLabel } from "./language";
 import type {
@@ -265,6 +288,22 @@ class Validator {
   // RMS0312) never report one at the directive that brought it in.
   private readonly includedSymbols = new Set<SymbolInfo>();
 
+  // RMS0324's inputs (docs/undefined-name-warning-brief.md Sec.4). `scriptNames`
+  // is rebuilt for this parse, `stat` and `langIndex` come from a cache shared
+  // across calls, and `boundNames` is every group name this script or its
+  // include files bind (rule G).
+  private readonly stat: StaticNameIndex;
+  private readonly langIndex: LanguageIndex;
+  private readonly scriptNames: ScriptNameIndex;
+  private readonly boundNames: ReadonlySet<string>;
+  private readonly installedDefinitions: ReadonlySet<string> | null;
+  // Whether the script itself names includes/constants.inc (rule C).
+  private readonly includesConstantsInc: boolean;
+  // How many `if` branches enclose the item being walked. A counter and not a
+  // flag, so leaving an inner branch does not clear the outer one. start_random
+  // branches are not counted, they do run (Sec.4.3).
+  private ifDepth = 0;
+
   // Grouped rather than a plain name->symbol map: a name legitimately has
   // several definitions (exclusive if/elseif branches), and both the
   // duplicate check and the use-before-definition check need to reason over
@@ -363,8 +402,28 @@ class Validator {
     private readonly result: ParseResult,
     refDb: ValidateReferenceDb,
     resolvedIncludes?: IncludeIndex,
+    installedDefinitions?: ReadonlySet<string> | null,
   ) {
     this.tokens = result.tokens;
+    const shared = sharedIndexesFor(refDb);
+    this.stat = shared.stat;
+    this.langIndex = shared.langIndex;
+    // `includes` comes from the option and not from `result.includeIndex`,
+    // which the worker only sets AFTER validate() returns.
+    this.scriptNames = {
+      ...buildScriptNameIndex(result),
+      includes: resolvedIncludes,
+    };
+    this.boundNames = new Set([
+      ...boundNamesIn(result),
+      ...(resolvedIncludes?.boundNames ?? []),
+    ]);
+    this.installedDefinitions = installedDefinitions ?? null;
+    this.includesConstantsInc = result.includes.some(
+      (inc) =>
+        result.tokens[inc.directiveToken]?.text === "#include_drs" &&
+        includeKey(inc.path) === "includes/constants.inc",
+    );
     this.includesUnread =
       resolvedIncludes === undefined
         ? result.includes.length > 0
@@ -971,7 +1030,7 @@ class Validator {
         // the name being DEFINED, not a reference to resolve (flagging it
         // would report every definition as undefined), and for the #include
         // pair it is a file path.
-        this.checkArgs(item.args.slice(1));
+        for (const arg of item.args.slice(1)) this.checkArg(arg, item);
         break;
       case "if": {
         this.checkChainReachability(item);
@@ -987,7 +1046,11 @@ class Validator {
               : this.tokens[branch.condition].text;
           this.withGuards(
             [...negated, ...(condition === undefined ? [] : [condition])],
-            () => this.walkItems(branch.items),
+            () => {
+              this.ifDepth += 1;
+              this.walkItems(branch.items);
+              this.ifDepth -= 1;
+            },
           );
           if (condition !== undefined) negated.push(`!${condition}`);
         }
@@ -1259,7 +1322,11 @@ class Validator {
     for (const arg of args) this.checkArg(arg);
   }
 
-  private checkArg(arg: ArgNode): void {
+  // `owner` is set only for a directive's own arguments, which is how rule V
+  // knows it is looking at a `#const` value. Not an optional second parameter
+  // on a function handed to map or forEach by name (CLAUDE.md): checkArgs
+  // loops, and the directive case calls this directly.
+  private checkArg(arg: ArgNode, owner?: DirectiveNode): void {
     this.checkRndRange(arg);
 
     const type = arg.def?.type;
@@ -1286,6 +1353,107 @@ class Validator {
     }
     this.checkEmptyClass(token);
     this.checkUseBeforeDefinition(token, arg.firstToken);
+    if (
+      type === "terrainConstant" ||
+      type === "objectConstant" ||
+      type === "otherConstant"
+    )
+      this.checkUndefinedSlotName(token, arg, owner);
+  }
+
+  /**
+   * RMS0324 (docs/undefined-name-warning-brief.md Sec.4). A word in a terrain,
+   * object or constant slot that nothing this script can see defines.
+   *
+   * Two halves, in the brief's order. Silence first (4.2), because the
+   * positive resolver rule says only a HIT proves anything. Then, for what is
+   * left, the severity and wording rules (4.3), where each rule says exactly
+   * what was and was not checked.
+   */
+  private checkUndefinedSlotName(
+    token: Token,
+    arg: ArgNode,
+    owner: DirectiveNode | undefined,
+  ): void {
+    const name = token.text;
+    // A token holding a parenthesis or comma is an rnd() or expression the
+    // parser could not read as numbers, `rnd(-A,A)` with a #const inside is
+    // the corpus case (Bulls_Eyes). It is not a name, so there is nothing to
+    // look up. Measured: three false sites before this line.
+    if (name.includes("(") || name.includes(",")) return;
+    // Rule V. `#const restricted_terrain_distance max_distance_to_other_zones`
+    // renames a keyword, a different construct that is not a constant at all.
+    // Looked up in the language index, never a hardcoded list.
+    if (
+      owner !== undefined &&
+      (this.langIndex.commandsByName.has(name) ||
+        this.langIndex.attributesByName.has(name) ||
+        this.langIndex.directivesByName.has(name))
+    )
+      return;
+
+    const resolution = resolveName(
+      this.stat,
+      this.scriptNames,
+      name,
+      token.start,
+      { kind: "argument", def: arg.def! },
+    );
+    // Anything but a miss proves the name exists or is somebody else's
+    // diagnostic (otherKind is RMS0205, definedBelow is RMS0303).
+    if (resolution.kind !== "unknown" && resolution.kind !== "constantsIncOnly")
+      return;
+    // Rule G. A group name, anywhere in the file, since whether DE needs the
+    // group above its use is unmeasured (CREATION_PLAN A.5).
+    if (this.boundNames.has(name)) return;
+    // Rule D. The installed random_map.def, read for real.
+    if (this.installedDefinitions?.has(name)) return;
+
+    // Rule U, then N, I, C, W. The first that applies decides.
+    let rule: d.UndefinedSlotRule;
+    if (this.includesUnread) rule = "U";
+    else if (this.installedDefinitions === null) rule = "N";
+    else if (this.ifDepth > 0) rule = "I";
+    else if (
+      resolution.kind === "constantsIncOnly" &&
+      !this.includesConstantsInc
+    )
+      rule = "C";
+    else rule = "W";
+    const suggestion =
+      rule === "I" || rule === "W"
+        ? this.nearUndefinedName(name, arg, arg.firstToken)
+        : undefined;
+    this.diagnostics.push(d.undefinedSlotName(token, rule, suggestion));
+  }
+
+  /**
+   * The name a typo most likely meant, for rules I and W. A built-in first
+   * (edit distance 2, `closestBuiltin`'s rule 1 only, since its looser rules
+   * suggest words that merely share a part), then the script's own `#const`
+   * names above the use within one edit. A family sibling is never offered,
+   * `BIRD_A` for `BIRD_B` would swap one real name for another.
+   */
+  private nearUndefinedName(
+    name: string,
+    arg: ArgNode,
+    tokenIndex: number,
+  ): string | undefined {
+    const builtin = arg.def
+      ? closestBuiltin(this.stat, name, arg.def)
+      : undefined;
+    if (builtin?.rule === 1 && !isFamilySibling(name, builtin.row.name))
+      return builtin.row.name;
+    const lower = name.toLowerCase();
+    for (const [candidate, symbols] of this.symbolsByName) {
+      if (!symbols.some((s) => s.directiveKind === "const")) continue;
+      if (!symbols.some((s) => s.nameToken < tokenIndex)) continue;
+      if (Math.abs(candidate.length - name.length) > 1) continue;
+      if (editDistanceCapped(lower, candidate.toLowerCase(), 1) > 1) continue;
+      if (isFamilySibling(name, candidate)) continue;
+      return candidate;
+    }
+    return undefined;
   }
 
   /**
@@ -1640,6 +1808,37 @@ class Validator {
 export interface ValidateOptions {
   /** Built when the editor has read the script's `#include_drs` files (src/parser/includeIndex.ts). */
   resolvedIncludes?: IncludeIndex;
+  /**
+   * The names the user's installed random_map.def defines
+   * (src/parser/installedDefinitions.ts). Absent means not loaded yet and null
+   * means no install, and both make RMS0324 say rule N, which claims only what
+   * was checked.
+   */
+  installedDefinitions?: ReadonlySet<string> | null;
+}
+
+// The static name index and the language index are the same for every call
+// with the same reference data, and building 4,400 rows on each keystroke is
+// what the name lookup's two halves exist to avoid (nameLookup.ts, file
+// comment). A WeakMap keyed by the reference object, so a test that builds
+// its own refDb gets its own entry and a dropped one is collected.
+const sharedIndexes = new WeakMap<
+  ValidateReferenceDb,
+  { stat: StaticNameIndex; langIndex: LanguageIndex }
+>();
+function sharedIndexesFor(refDb: ValidateReferenceDb): {
+  stat: StaticNameIndex;
+  langIndex: LanguageIndex;
+} {
+  let shared = sharedIndexes.get(refDb);
+  if (shared === undefined) {
+    shared = {
+      stat: buildStaticNameIndex(refDb.language, refDb.gameConstants.constants),
+      langIndex: buildLanguageIndex(refDb.language),
+    };
+    sharedIndexes.set(refDb, shared);
+  }
+  return shared;
 }
 
 /**
@@ -1657,7 +1856,12 @@ export function validate(
   refDb: ValidateReferenceDb,
   opts: ValidateOptions = {},
 ): Diagnostic[] {
-  const validator = new Validator(result, refDb, opts.resolvedIncludes);
+  const validator = new Validator(
+    result,
+    refDb,
+    opts.resolvedIncludes,
+    opts.installedDefinitions,
+  );
   validator.run();
   return validator.diagnostics;
 }

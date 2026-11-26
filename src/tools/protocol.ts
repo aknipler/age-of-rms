@@ -388,6 +388,64 @@ function checkOutputBlock(block: unknown, index: number): string | null {
         if (!block.rowSpans.every(isSpanOrNull))
           return `${where} (table) has a rowSpan that is neither a Span nor null`;
       }
+      // Same cross-field shape as rowSpans, one value per row, plus a column
+      // that has to exist.
+      if (block.bars !== undefined) {
+        const bars: unknown = block.bars;
+        if (typeof bars !== "object" || bars === null)
+          return `${where} (table) bars must be an object`;
+        const { column, values } = bars as {
+          column: unknown;
+          values: unknown;
+        };
+        if (
+          typeof column !== "number" ||
+          !Number.isInteger(column) ||
+          column < 0 ||
+          column >= block.columns.length
+        )
+          return `${where} (table) bars.column is not one of its columns`;
+        if (!Array.isArray(values) || values.length !== block.rows.length)
+          return `${where} (table) bars.values needs one entry per row`;
+        if (
+          !values.every(
+            (v) => v === null || (typeof v === "number" && v >= 0 && v <= 1),
+          )
+        )
+          return `${where} (table) has a bar value outside 0 to 1`;
+      }
+      if (block.align !== undefined) {
+        const align: unknown = block.align;
+        if (
+          !Array.isArray(align) ||
+          align.length !== block.columns.length ||
+          !align.every((a) => a === "left" || a === "center" || a === "right")
+        )
+          return `${where} (table) align needs left, center or right per column`;
+      }
+      if (block.sortKeys !== undefined) {
+        const sortKeys: unknown = block.sortKeys;
+        if (!Array.isArray(sortKeys))
+          return `${where} (table) sortKeys must be an array`;
+        for (const key of sortKeys as unknown[]) {
+          if (!isRecord(key))
+            return `${where} (table) has a sortKeys entry that is not an object`;
+          const column = key.column;
+          if (
+            typeof column !== "number" ||
+            !Number.isInteger(column) ||
+            column < 0 ||
+            column >= block.columns.length
+          )
+            return `${where} (table) sortKeys names a column it does not have`;
+          if (
+            !Array.isArray(key.values) ||
+            key.values.length !== block.rows.length ||
+            !key.values.every((v: unknown) => v === null || isFiniteNumber(v))
+          )
+            return `${where} (table) sortKeys needs one number or null per row`;
+        }
+      }
       return null;
     }
     case "severity":
@@ -429,16 +487,51 @@ function checkOutputBlock(block: unknown, index: number): string | null {
       }
       return null;
     }
+    case "tabs": {
+      if (!Array.isArray(block.tabs) || block.tabs.length === 0)
+        return `${where} (tabs) has no tabs`;
+      for (let t = 0; t < block.tabs.length; t++) {
+        const tab: unknown = block.tabs[t];
+        if (!isRecord(tab) || typeof tab.label !== "string")
+          return `${where} (tabs) tab ${t} has no label`;
+        if (!Array.isArray(tab.blocks))
+          return `${where} (tabs) tab ${t} has no blocks`;
+        for (let b = 0; b < tab.blocks.length; b++) {
+          const inner: unknown = tab.blocks[b];
+          if (
+            isRecord(inner) &&
+            (inner.kind === "tabs" || inner.kind === "mapOverlay")
+          )
+            return `${where} (tabs) tab ${t} holds a ${String(inner.kind)} block, which tabs cannot hold`;
+          const problem = checkOutputBlock(inner, b);
+          if (problem) return `${where} (tabs) tab ${t}: ${problem}`;
+        }
+      }
+      return null;
+    }
     default:
       return `${where} has an unknown kind ${JSON.stringify(block.kind)}`;
   }
 }
 
+/** Blocks counted toward the cap, a tabs block's own blocks included. Runs after validation, so the shapes are known. */
+function blockCount(blocks: readonly unknown[]): number {
+  let count = 0;
+  for (const block of blocks) {
+    count++;
+    if (isRecord(block) && block.kind === "tabs" && Array.isArray(block.tabs))
+      for (const tab of block.tabs as { blocks?: unknown }[])
+        if (Array.isArray(tab.blocks)) count += tab.blocks.length;
+  }
+  return count;
+}
+
 function checkOutput(output: unknown): string | null {
   if (!isRecord(output)) return "output is not an object";
   if (!Array.isArray(output.blocks)) return "output.blocks is not an array";
-  if (output.blocks.length > LIMITS.maxBlocksPerOutput) {
-    return `output has ${output.blocks.length} blocks, over the ${LIMITS.maxBlocksPerOutput} cap`;
+  const total = blockCount(output.blocks);
+  if (total > LIMITS.maxBlocksPerOutput) {
+    return `output has ${total} blocks, over the ${LIMITS.maxBlocksPerOutput} cap`;
   }
   for (let i = 0; i < output.blocks.length; i++) {
     const problem = checkOutputBlock(output.blocks[i], i);

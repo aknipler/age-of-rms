@@ -8,6 +8,8 @@ import { useAppSettings } from "../../settings/AppSettingsContext";
 import { AUTHOR_NAME_MAX_LENGTH } from "../../settings/authorName";
 import { UNKNOWN_AUTHOR } from "../../hooks/scriptHeader";
 import { HelpTip } from "../HelpTip";
+import { DraftNumberInput } from "../DraftNumberInput";
+import { InstallFolderSetting } from "./InstallFolderSetting";
 import dialogStyles from "../dialog.module.css";
 import styles from "./SettingsDialog.module.css";
 
@@ -57,6 +59,8 @@ export function GeneralSettings() {
         </fieldset>
       </HelpTip>
 
+      <InstallFolderSetting />
+
       <HelpTip id="settings.helpMode">
         <fieldset className={styles.fieldset}>
           <legend className={styles.legend}>Help tips</legend>
@@ -93,17 +97,13 @@ export function GeneralSettings() {
           </div>
           <div className={dialogStyles.optionRow}>
             <label htmlFor="shorten-name-length">Shorten to</label>
-            <input
-              type="number"
+            <DraftNumberInput
               id="shorten-name-length"
               min={MIN_SHORTENED_PREFIX_LENGTH}
               max={MAX_SHORTENED_PREFIX_LENGTH}
               disabled={!shortenLongNames}
               value={shortenNameLength}
-              onChange={(event) => {
-                const typed = event.target.valueAsNumber;
-                if (!Number.isNaN(typed)) setShortenNameLength(typed);
-              }}
+              onCommit={setShortenNameLength}
             />
             <span>characters</span>
           </div>

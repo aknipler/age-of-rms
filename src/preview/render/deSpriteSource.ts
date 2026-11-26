@@ -1,5 +1,6 @@
 import { exists, readFile } from "@tauri-apps/plugin-fs";
 import { deTexturesFolder } from "./deTextureSource";
+import { onInstallFolderChange } from "../../settings/installFolder";
 import { spriteKey, type SpriteImage } from "./objectSprites";
 import { decodeSprite, openSprite } from "./decodeClient";
 // Re-exported for the comparison page, which draws exactly what the app does.
@@ -56,6 +57,13 @@ function loadSld(file: string): Promise<number | null> {
 }
 
 const images = new Map<string, Promise<SpriteImage | null>>();
+
+// Same reset as deTextureSource.ts, for a new install folder from Settings.
+onInstallFolderChange(() => {
+  graphicsFolderPromise = undefined;
+  files.clear();
+  images.clear();
+});
 
 /** One frame of one file in one player's colour, decoded once per session. */
 export function loadSpriteImage(

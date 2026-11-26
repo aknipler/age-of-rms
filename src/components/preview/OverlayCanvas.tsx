@@ -42,6 +42,14 @@ import {
   type TilePoint,
   type Viewport,
 } from "../../preview/render/projection";
+import {
+  alternatingGlow,
+  glowAlpha,
+  glowRuns,
+  maskRuns,
+  traceGlowRuns,
+} from "../../preview/render/terrainStats";
+import { hexToRgbTriplet } from "../../settings/theme";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import type { DecodedImage } from "../../preview/render/dds";
 import {
@@ -65,6 +73,7 @@ import { renderProse } from "../InlineCode";
 import {
   useHideDecorationsSetting,
   useHidePlayerCirclesSetting,
+  useGridLinesSetting,
   useSmallTreesSetting,
   useTerrainBlendsSetting,
 } from "./PreviewViewContext";
@@ -305,6 +314,19 @@ export interface OverlayCanvasProps {
    * both, since the viewport carries the squash (projection.ts).
    */
   terrainRender?: "flat" | "de" | "minimap";
+  /**
+   * A terrain id whose tiles pulse bright and dim over the map (the Terrain
+   * Stats box). Drawn on a canvas of its own over the map, so the pulse
+   * never repaints the terrain and never reaches an exported PNG.
+   */
+  glowTerrain?: number | null;
+  /**
+   * The tiles of the command under the caret (Highlight selected command), as
+   * sorted tile indices. One set pulses teal. With a `second` set the two take
+   * turns, teal then magenta. Drawn on the glow canvas above the terrain glow,
+   * so it never reaches an exported PNG.
+   */
+  commandHighlight?: { first: Uint32Array; second?: Uint32Array } | null;
   /** Sec.3.4 layer 2, declarative shapes any tool can draw on this canvas. */
   overlayShapes?: readonly OverlayShape[];
   /** Which `HelpTip` id names this canvas, since two surfaces render this component under two different ids. */
@@ -385,6 +407,8 @@ export function OverlayCanvas({
   onDrag,
   base,
   terrainRender = "flat",
+  glowTerrain = null,
+  commandHighlight = null,
   overlayShapes,
   helpTipId,
   showApproximateBadge,
@@ -592,6 +616,7 @@ export function OverlayCanvas({
   // a component calls the same hooks in the same order each time.
   const hidePlayerCircles = useHidePlayerCirclesSetting();
   const hidePlayers = minimapView || hidePlayerCircles;
+  const gridLines = useGridLinesSetting();
   const minimap = useMinimapLayer(minimapView, baseResult, baseSnapshot);
   const sprites = useDeSprites(
     textured,
@@ -840,6 +865,7 @@ export function OverlayCanvas({
               }
             : undefined,
         overlayShapes,
+        gridLines: { strength: gridLines },
         orientation: showOrientation
           ? { dim, sideNames: showOrientation === "full" }
           : undefined,
@@ -865,6 +891,7 @@ export function OverlayCanvas({
       hidePlayers,
       sprites,
       overlayShapes,
+      gridLines,
       showOrientation,
       dim,
       highlight,
@@ -950,6 +977,149 @@ export function OverlayCanvas({
     // The renderer lives in a ref, so its creation reaches `paint` only
     // through this state.
     glState,
+  ]);
+
+  // --- Terrain glow (the Terrain Stats box) -------------------------------
+
+  // A second canvas stacked over the map, redrawn every animation frame
+  // while a terrain glows. The obvious alternative is one more layer inside
+  // `paint`, which would put the whole scene, GPU terrain and sprites
+  // included, on a 60 a second loop to change one opacity. Here a frame
+  // costs one `fill` of a path that is only rebuilt when the view moves.
+  const glowCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const glowTiles = useMemo(
+    () =>
+      glowTerrain === null || baseSnapshot === undefined
+        ? null
+        : glowRuns(baseSnapshot.terrain, baseSnapshot.dim, glowTerrain),
+    [glowTerrain, baseSnapshot],
+  );
+  // `Path2D` is built once per view rather than traced inside the frame
+  // callback, since panning moves every point but a pulse frame moves none.
+  const glowPath = useMemo(() => {
+    if (glowTiles === null || glowTiles.length === 0 || viewport === null)
+      return null;
+    const path = new Path2D();
+    traceGlowRuns(path, viewport, glowTiles);
+    return path;
+  }, [glowTiles, viewport]);
+  // When the current pulse began, in a ref so a pan (which rebuilds the path
+  // and restarts the effect below) carries on mid pulse instead of jumping
+  // back to bright on every pointer move.
+  const glowClock = useRef<{
+    tiles: unknown;
+    start: number;
+  } | null>(null);
+  // The command highlight (Highlight selected command) shares this canvas and
+  // this animation loop rather than adding a second mechanism. Its sets arrive
+  // as sorted tile indices, so `maskRuns` stands where `glowRuns` does.
+  const firstRuns = useMemo(
+    () =>
+      commandHighlight == null || baseSnapshot === undefined
+        ? null
+        : maskRuns(commandHighlight.first, baseSnapshot.dim),
+    [commandHighlight, baseSnapshot],
+  );
+  const secondRuns = useMemo(
+    () =>
+      commandHighlight?.second == null || baseSnapshot === undefined
+        ? null
+        : maskRuns(commandHighlight.second, baseSnapshot.dim),
+    [commandHighlight, baseSnapshot],
+  );
+  const pathOf = useCallback(
+    (runs: typeof firstRuns): Path2D | null => {
+      if (runs === null || runs.length === 0 || viewport === null) return null;
+      const path = new Path2D();
+      traceGlowRuns(path, viewport, runs);
+      return path;
+    },
+    [viewport],
+  );
+  const firstPath = useMemo(() => pathOf(firstRuns), [pathOf, firstRuns]);
+  const secondPath = useMemo(() => pathOf(secondRuns), [pathOf, secondRuns]);
+  const anyGlow = glowPath !== null || firstPath !== null;
+  useLayoutEffect(() => {
+    const canvas = glowCanvasRef.current;
+    if (
+      canvas === null ||
+      viewport === null ||
+      (glowPath === null && firstPath === null)
+    )
+      return;
+    const ratio = window.devicePixelRatio || 1;
+    const backingWidth = Math.max(1, Math.round(viewport.width * ratio));
+    const backingHeight = Math.max(1, Math.round(viewport.height * ratio));
+    if (canvas.width !== backingWidth) canvas.width = backingWidth;
+    if (canvas.height !== backingHeight) canvas.height = backingHeight;
+    const ctx = canvas.getContext("2d");
+    if (ctx === null) return;
+    // One clock per terrain glow and per highlight, restarted when either
+    // changes so a newly chosen command begins at 0 and fades in.
+    const clockKey = [glowTiles, firstRuns, secondRuns];
+    const sameKey =
+      Array.isArray(glowClock.current?.tiles) &&
+      (glowClock.current.tiles as unknown[]).every((v, i) => v === clockKey[i]);
+    if (!sameKey)
+      glowClock.current = { tiles: clockKey, start: performance.now() };
+    const start = glowClock.current!.start;
+    // A steady glow for anyone whose system asks for less motion.
+    const still =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    let frame = 0;
+    const draw = (now: number) => {
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, viewport.width, viewport.height);
+      // The three colours are theme tokens (Settings > Theme), read off the
+      // page's CSS variables each frame so an edit shows without a remount.
+      const css = getComputedStyle(document.documentElement);
+      const rgb = (name: string, fallback: string) =>
+        hexToRgbTriplet(css.getPropertyValue(name), fallback);
+      const terrainRgb = rgb("--terrain-glow", "255, 222, 90");
+      const firstRgb = rgb("--highlight-first", "80, 220, 255");
+      const secondRgb = rgb("--highlight-second", "255, 90, 220");
+      // Gold by default rather than white, so the pulse still shows on snow and ice.
+      if (glowPath !== null) {
+        ctx.fillStyle = `rgba(${terrainRgb}, ${still ? 0.45 : glowAlpha(now - start)})`;
+        ctx.fill(glowPath);
+      }
+      // After the terrain glow, so the highlight draws above it and both can
+      // show at once. Teal for the first set and magenta for the second, fixed
+      // colours chosen to read on grass, sand, snow and water and to differ
+      // from the gold terrain glow.
+      if (firstPath !== null) {
+        if (secondPath === null) {
+          // One set, or two that hold the same tiles, pulses its one colour.
+          ctx.fillStyle = `rgba(${firstRgb}, ${still ? 0.45 : glowAlpha(now - start)})`;
+          ctx.fill(firstPath);
+        } else if (still) {
+          ctx.fillStyle = `rgba(${firstRgb}, 0.35)`;
+          ctx.fill(firstPath);
+          ctx.fillStyle = `rgba(${secondRgb}, 0.35)`;
+          ctx.fill(secondPath);
+        } else {
+          const { set, alpha } = alternatingGlow(now - start);
+          ctx.fillStyle =
+            set === 0
+              ? `rgba(${firstRgb}, ${alpha})`
+              : `rgba(${secondRgb}, ${alpha})`;
+          ctx.fill(set === 0 ? firstPath : secondPath);
+        }
+      }
+      if (!still) frame = requestAnimationFrame(draw);
+    };
+    draw(performance.now());
+    // The cleanup is what stops the loop. Without it every pan would start
+    // another loop beside the old one, each still filling its own stale path.
+    return () => cancelAnimationFrame(frame);
+  }, [
+    glowPath,
+    glowTiles,
+    firstPath,
+    secondPath,
+    firstRuns,
+    secondRuns,
+    viewport,
   ]);
 
   // --- Zoom ---------------------------------------------------------------
@@ -1196,6 +1366,14 @@ export function OverlayCanvas({
           onDoubleClick={resetView}
         />
       </HelpTip>
+      {anyGlow && viewport !== null && (
+        <canvas
+          ref={glowCanvasRef}
+          className={styles.glow}
+          style={{ width: viewport.width, height: viewport.height }}
+          aria-hidden="true"
+        />
+      )}
       {(showApproximateBadge || topLeft || deNotice) && (
         <div
           className={

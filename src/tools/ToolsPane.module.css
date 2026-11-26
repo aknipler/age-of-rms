@@ -13,7 +13,17 @@
   min-width: 0;
   gap: 12px;
   overflow: auto;
-  padding: 16px;
+  /* No top padding. A sticky row sticks at the scroll box's top edge, and
+     padding there left a strip the rows scrolled through above it. Covering
+     the strip with a shadow painted over the text above the tabs instead.
+     The ::before spacer gives the same 16px at the top (4px plus the 12px
+     gap) and scrolls away with the content. */
+  padding: 0 16px 16px;
+}
+
+.pane::before {
+  content: "";
+  flex: 0 0 4px;
 }
 
 .controls {
@@ -189,16 +199,111 @@
   font-size: 12px;
 }
 
+/* No gap here. The spacing comes from the sections, one rule each, so every
+   section header has the same room above it and the same small gap below,
+   whatever block comes before it. A single flex gap gave the header the same
+   10px above and below, which read as the header floating between sections. */
 .output {
   display: flex;
   flex-direction: column;
+}
+
+/* Room above every section header except at the top of the output. */
+.section {
+  margin-top: 18px;
+}
+
+.output > .section:first-child {
+  margin-top: 0;
+}
+
+/* The blocks of one section, with the gap the output used to have. */
+.sectionBody {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+/* The small gap under a header is the sticky bar's own bottom padding, so
+   the header row of a table sits flush under the title when both stick. */
+.section > .sectionBody {
+  margin-top: 0;
+}
+
+.description + .sectionBody {
+  margin-top: 10px;
+}
+
+/* A section's title stays in view while the section scrolls past, under the
+   tab bar when there is one. */
+.sectionBar {
+  position: sticky;
+  top: var(--sticky-offset, 0px);
+  z-index: 3;
+  background: var(--bg);
+  padding-bottom: 4px;
+}
+
+/* The header is the whole button, so a click anywhere on the title toggles. */
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sectionCaret {
+  width: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .heading {
   font-size: 14px;
   font-weight: 600;
   margin: 0;
+}
+
+/* Spawn rate bar (OutputBlock table `bars`), sat before the percent. */
+.barCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.barTrack {
+  display: inline-block;
+  width: 48px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+}
+
+.barFull {
+  background: var(--success, #22863a);
+}
+
+.barPartial {
+  background: #e0b400;
+}
+
+.barLow {
+  background: var(--danger, #dc3545);
 }
 
 .text {
@@ -218,9 +323,12 @@
   color: var(--text-muted);
 }
 
+/* No overflow here. A box with overflow is a scroll container, and a sticky
+   header only sticks inside its nearest one, so `overflow-x: auto` held each
+   table's header inside its own table. Long cells wrap instead of scrolling
+   sideways. */
 .tableWrap {
   max-width: 100%;
-  overflow-x: auto;
 }
 
 .table {
@@ -233,6 +341,21 @@
   border-bottom: 1px solid var(--border);
   padding: 4px 10px 4px 0;
   text-align: left;
+  overflow-wrap: break-word;
+}
+
+/* The header row stays in view while its table scrolls past, under the tab
+   bar when there is one (--sticky-offset, set on .outputTabs). A collapsed
+   border does not travel with a sticky cell, so the line under the header is
+   an inset shadow. */
+.table th {
+  position: sticky;
+  /* Below the tab bar and the section title, both measured (StickyBar). */
+  top: calc(var(--sticky-offset, 0px) + var(--section-bar-height, 0px));
+  z-index: 2;
+  background: var(--bg);
+  border-bottom: none;
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 .rowLink {
@@ -291,4 +414,122 @@
 .staleNote {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* A tabs block (Total and one tab per player count in the checker). */
+.outputTabs {
+  display: flex;
+  flex-direction: column;
+  /* The tab bar's measured height (StickyBar in ToolsPane.tsx), so section
+     titles and table headers stick just below it. */
+  --sticky-offset: var(--tab-bar-height, 0px);
+  /* A section title outside the tabs scrolls under the tab bar, so it must
+     not push the headers inside the tabs down. Without this reset a tabs
+     block inside a section (Balance Summary's) inherited that section's
+     title height and its table headers stuck that far below the tabs. A
+     section inside a tab sets its own. */
+  --section-bar-height: 0px;
+}
+
+/* Sticks at the top of the pane for as long as the tabs block is in view. */
+.outputTabBar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--bg);
+}
+
+/* No overflow rule. `overflow-x: auto` on a row this tight drew scroll
+   arrows beside the tabs. The bar's height is measured, so a row that wraps
+   onto a second line still keeps the headers below it. */
+.outputTabRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.outputTab {
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.outputTab:hover {
+  color: inherit;
+}
+
+.outputTabActive {
+  border-color: var(--border);
+  background: var(--surface);
+  color: inherit;
+  font-weight: 600;
+}
+
+.outputTabPanel {
+  display: flex;
+  flex-direction: column;
+  padding-top: 10px;
+}
+
+/* A section at the top of a tab sits right under the tab row. */
+.outputTabPanel > .section:first-child {
+  margin-top: 0;
+}
+
+/* Table column alignment (OutputBlock table `align`). */
+.table .alignCenter {
+  text-align: center;
+}
+
+.table .alignRight {
+  text-align: right;
+}
+
+/* Header text at most two lines. A longer header is cut with an ellipsis
+   and shows in full on hover (its title). Bottom aligned, so a one-line
+   header sits on the same baseline as its two-line neighbours. */
+.table th {
+  vertical-align: bottom;
+}
+
+.headerLabel {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* A sortable header is a button that looks like the header text. */
+.sortHeader {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.sortHeader:hover {
+  text-decoration: underline;
+}
+
+.sortArrow {
+  font-size: 9px;
+  min-width: 9px;
+  color: var(--text-muted);
 }

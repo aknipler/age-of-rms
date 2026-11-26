@@ -21,10 +21,11 @@ export const MIN_SIDE_PANEL_WIDTH = 200;
 
 /**
  * A sanity bound on a stored or dragged width, far above any screen. The
- * real limit is 75% of the window, in CSS (below). A ceiling on the panel, not on the window. The "leave room for the editor"
- * rule is deliberately NOT here: it depends on the window's current width,
+ * real limit lives in CSS and leaves the editor at least 461px. A ceiling on
+ * the panel, not on the window. The "leave room for the editor" rule is
+ * deliberately NOT here because it depends on the window's current width,
  * which this module cannot see and which changes without any drag happening.
- * It lives as `max-width: 75%` in MapSidePanel.module.css instead, one rule,
+ * It lives as `max-width: calc(100% - 462px)` in MapSidePanel.module.css, one rule,
  * in the one place that always knows the answer. Two rules for one constraint
  * is how they drift apart.
  */

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import type { ArgumentDef } from "../language";
 import {
   buildScriptNameIndex,
+  boundNamesIn,
   buildStaticNameIndex,
   closestBuiltin,
   defaultConstValue,
@@ -635,5 +636,33 @@ describe("the hover line for an included name (include-resolution-design Sec.4.6
     ).toBe(
       "`FLAG`, a #define in includes/scaling.inc, brought in by the #include_drs on line 4, inside a branch there, so only some maps define it.",
     );
+  });
+});
+
+describe("boundNamesIn (RMS0324 rule G)", () => {
+  it("binds a create_object_group name, whatever branch it sits in", () => {
+    const parse = parseRms(
+      [
+        "<OBJECTS_GENERATION>",
+        "create_object_group HERD { add_object COW }",
+        "if SOMETHING",
+        "  create_object_group NESTED { add_object SHEEP }",
+        "endif",
+        "start_random",
+        "  percent_chance 50",
+        "  create_object_group RANDOMLY { add_object GOAT }",
+        "end_random",
+        "create_object COW { number_of_objects 1 }",
+        "",
+      ].join("\n"),
+      lang,
+    );
+    // COW is an object NAME in create_object, never a binding, so the set
+    // would catch a walk that collected every first argument by mistake.
+    expect([...boundNamesIn(parse)].sort()).toEqual([
+      "HERD",
+      "NESTED",
+      "RANDOMLY",
+    ]);
   });
 });

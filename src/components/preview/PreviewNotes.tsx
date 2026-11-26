@@ -5,7 +5,12 @@ import {
   HASHED_COLOR_NOTE,
   type TerrainPalette,
 } from "../../preview/render/palette";
+import {
+  formatShare,
+  type TerrainShare,
+} from "../../preview/render/terrainStats";
 import { HelpTip } from "../HelpTip";
+import { HourglassIcon } from "../HourglassIcon";
 import { InlineCode, renderProse } from "../InlineCode";
 import styles from "./PreviewNotes.module.css";
 
@@ -70,7 +75,22 @@ interface PreviewBarControlsProps {
   hiddenObjectCount: number;
   /** The hourglass button is enabled (Preview Options, Time each generation). Off, it shows greyed out. */
   showTiming?: boolean;
+  /** What the legend box holds in the view showing, which names its button. */
+  legendKind: LegendKind;
+  /**
+   * The glowing terrain's name while its box is closed. Shown as a chip that
+   * turns the glow off, since the row that started it is out of sight.
+   */
+  glowName?: string;
+  onClearGlow?: () => void;
 }
+
+/**
+ * What the legend box shows. "stats" is the textured view, where a flat
+ * colour swatch matches nothing on the map, so the box lists each terrain's
+ * share only. "both" is the flat views, which keep the swatches too.
+ */
+export type LegendKind = "stats" | "both";
 
 /**
  * The preview's own buttons for the bottom row of the canvas: the placement
@@ -90,10 +110,25 @@ export function PreviewBarControls({
   onToggle,
   hiddenObjectCount,
   showTiming,
+  legendKind,
+  glowName,
+  onClearGlow,
 }: PreviewBarControlsProps) {
   const { drawerNotes, failureCount, placed } = summary;
   return (
     <>
+      {glowName !== undefined && onClearGlow && (
+        <HelpTip id="preview.glowChip">
+          <button
+            type="button"
+            className={`${styles.barButton} ${styles.glowChip}`}
+            onClick={onClearGlow}
+            aria-label={`Stop highlighting ${glowName}`}
+          >
+            {glowName} ✕
+          </button>
+        </HelpTip>
+      )}
       <HelpTip id="preview.failureCount">
         <span
           className={`${styles.notice} ${
@@ -141,7 +176,7 @@ export function PreviewBarControls({
           disabled={!showTiming}
           onClick={() => onToggle("timing")}
         >
-          ⌛
+          <HourglassIcon />
         </button>
       </HelpTip>
       <HelpTip id="preview.notesDrawer">
@@ -154,14 +189,16 @@ export function PreviewBarControls({
           Notes ({drawerNotes.length})
         </button>
       </HelpTip>
-      <HelpTip id="preview.legend">
+      <HelpTip
+        id={legendKind === "stats" ? "preview.terrainStats" : "preview.legend"}
+      >
         <button
           type="button"
           className={styles.barButton}
           aria-expanded={open === "legend"}
           onClick={() => onToggle("legend")}
         >
-          Legend
+          {legendKind === "stats" ? "Terrain Stats" : "Legend / Terr. Stats"}
         </button>
       </HelpTip>
     </>
@@ -226,8 +263,14 @@ interface PreviewPanelProps {
   result: PreviewWireResult;
   summary: PreviewSummary;
   palette: TerrainPalette;
-  /** Terrain ids actually present on the drawn grid, for the legend. */
-  terrainsInUse: readonly number[];
+  /** Each terrain on the drawn grid with its share of the tiles, largest first. */
+  terrainShares: readonly TerrainShare[];
+  /** Whether the legend box keeps its colour swatches. Absent is "both". */
+  legendKind?: LegendKind;
+  /** The terrain whose tiles glow on the map, marked on its row. */
+  glowTerrain?: number | null;
+  /** A click on a terrain's row. Turns its glow on, or off when it is already on. */
+  onGlowTerrain?: (terrainId: number) => void;
   /** Hides one note for the current script. */
   onHideNote?: (noteId: string) => void;
   /** Brings back every hidden note of the current script. */
@@ -244,11 +287,15 @@ export function PreviewPanel({
   result,
   summary,
   palette,
-  terrainsInUse,
+  terrainShares,
+  legendKind = "both",
+  glowTerrain = null,
+  onGlowTerrain,
   onHideNote,
   onRestoreNotes,
 }: PreviewPanelProps) {
   const { drawerNotes, hiddenCount, failureCount, attempted } = summary;
+  const showSwatches = legendKind === "both";
 
   if (section === "help") {
     return (
@@ -332,40 +379,69 @@ export function PreviewPanel({
           real size.
         </p>
       )}
-      <p className={styles.legendNote}>
-        {renderProse(COLOR_MODE_NOTES[palette.mode])}
-      </p>
+      {showSwatches && (
+        <p className={styles.legendNote}>
+          {renderProse(COLOR_MODE_NOTES[palette.mode])}
+        </p>
+      )}
       <ul className={styles.legend}>
-        {terrainsInUse.map((id) => {
+        {terrainShares.map(({ id, tiles, fraction }) => {
           const source = palette.sourceFor(id);
+          const glowing = glowTerrain === id;
           return (
-            <li key={id} className={styles.legendRow}>
-              <span
-                className={styles.swatch}
-                style={{ background: cssColor(palette.colorFor(id)) }}
-                aria-hidden="true"
-              />
-              {palette.nameFor(id) ?? `terrain ${id}`}
-              {/*
-                Marked only when the colour did NOT come from the selected
-                mode. Labelling every row would be noise; labelling none is
-                how an arbitrary colour passes for a real one.
-              */}
-              {source !== palette.mode && (
-                <span className={styles.legendSource}>
-                  {source === "hashed" || source === "unknown"
-                    ? "no colour in data"
-                    : `${source} colour`}
-                </span>
-              )}
+            <li key={id}>
+              {/* A button per row rather than a click handler on the li, so
+                  the rows take keyboard focus and Enter or Space for free.
+                  aria-pressed tells a screen reader it is a toggle. */}
+              <HelpTip id="preview.terrainRow">
+                <button
+                  type="button"
+                  className={`${styles.legendRow} ${styles.legendRowButton} ${
+                    glowing ? styles.legendRowGlowing : ""
+                  }`}
+                  aria-pressed={glowing}
+                  onClick={() => onGlowTerrain?.(id)}
+                  disabled={onGlowTerrain === undefined}
+                >
+                  {showSwatches && (
+                    <span
+                      className={styles.swatch}
+                      style={{ background: cssColor(palette.colorFor(id)) }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className={styles.legendName}>
+                    {palette.nameFor(id) ?? `terrain ${id}`}
+                  </span>
+                  {/*
+                  Marked only when the colour did NOT come from the selected
+                  mode. Labelling every row would be noise; labelling none is
+                  how an arbitrary colour passes for a real one.
+                */}
+                  {showSwatches && source !== palette.mode && (
+                    <span className={styles.legendSource}>
+                      {source === "hashed" || source === "unknown"
+                        ? "no colour in data"
+                        : `${source} colour`}
+                    </span>
+                  )}
+                  <span
+                    className={styles.legendShare}
+                    title={`${tiles.toLocaleString()} tiles`}
+                  >
+                    {formatShare(fraction)}
+                  </span>
+                </button>
+              </HelpTip>
             </li>
           );
         })}
       </ul>
-      {terrainsInUse.some((id) => {
-        const source = palette.sourceFor(id);
-        return source === "hashed" || source === "unknown";
-      }) && <p className={styles.legendNote}>{HASHED_COLOR_NOTE}</p>}
+      {showSwatches &&
+        terrainShares.some(({ id }) => {
+          const source = palette.sourceFor(id);
+          return source === "hashed" || source === "unknown";
+        }) && <p className={styles.legendNote}>{HASHED_COLOR_NOTE}</p>}
     </>
   );
 }

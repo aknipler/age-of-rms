@@ -198,7 +198,13 @@ function sameDraws(a: CreationDraws, b: CreationDraws): boolean {
 export class ObjectCatalog {
   readonly raw: ReadonlyMap<number, RawObjectRow>;
   private readonly graphicRows = new Map<number, GraphicRow>();
-  private readonly defs = new Map<string, ObjectDef>();
+  // One map per scope keyed by the bare id. The object stage asks for a def
+  // millions of times per map, and a string key would be built and hashed on
+  // every one of those calls.
+  private readonly defs: Record<EffectScope, Map<number, ObjectDef>> = {
+    gaia: new Map(),
+    player: new Map(),
+  };
   private overrides: Record<EffectScope, Map<number, ObjectOverride>> = {
     gaia: new Map(),
     player: new Map(),
@@ -254,7 +260,8 @@ export class ObjectCatalog {
     overrides: Record<EffectScope, Map<number, ObjectOverride>>,
   ): void {
     this.overrides = overrides;
-    this.defs.clear();
+    this.defs.gaia.clear();
+    this.defs.player.clear();
   }
 
   override(id: number, scope: EffectScope): ObjectOverride | undefined {
@@ -263,8 +270,7 @@ export class ObjectCatalog {
 
   /** The object as `scope`'s objects see it. Terrain objects always take "gaia" (write-up 1.5). Undefined for an id the dat lacks. */
   def(id: number, scope: EffectScope = "gaia"): ObjectDef | undefined {
-    const key = `${id}:${scope}`;
-    const cached = this.defs.get(key);
+    const cached = this.defs[scope].get(id);
     if (cached) return cached;
     const r = this.raw.get(id);
     if (r === undefined) return undefined;
@@ -344,7 +350,7 @@ export class ObjectCatalog {
             : 3
           : 0,
     };
-    this.defs.set(key, def);
+    this.defs[scope].set(id, def);
     return def;
   }
 

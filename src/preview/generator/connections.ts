@@ -35,6 +35,7 @@
 // reasonable reading of the guide and each is refuted by a DE map. Its
 // history is in docs/build-log.md.
 
+import { recordPaint } from "./commandTiles";
 import { timeCommand } from "./generationTiming";
 import type {
   CommandReport,
@@ -651,6 +652,14 @@ export function applyConnections(
           if (report) report.placed++;
         }
       for (const i of log.beforeLast.keys()) painted.add(i);
+      // The tiles this command painted and what it left on each. This stage
+      // works on `view` and writes the grid once at the end, so the generic
+      // before and after trace would see nothing. Read before the undo below.
+      if (connection.cmd) {
+        const left = new Map<number, number>();
+        for (const i of log.beforeLast.keys()) left.set(i, view[i]);
+        recordPaint(connection.cmd.span.start, "connection", left);
+      }
       if (undo) for (const [i, before] of log.beforeLast) view[i] = before;
     };
     // The hourglass's row for this connection's command (generationTiming.ts).

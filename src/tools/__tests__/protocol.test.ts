@@ -164,6 +164,33 @@ describe("inbound message validation (Sec.4.2)", () => {
     expect(r.problem).toContain("1 rowSpans for 2 rows");
   });
 
+  it("accepts table bars with one value per row and rejects bad ones", () => {
+    const table = (bars: unknown) =>
+      validateToolMessage({
+        type: "partial",
+        output: {
+          blocks: [
+            {
+              kind: "table",
+              columns: ["a", "rate"],
+              rows: [
+                ["x", "100%"],
+                ["y", "-"],
+              ],
+              bars,
+            } as never,
+          ],
+        },
+      });
+    expect(table({ column: 1, values: [1, null] }).ok).toBe(true);
+    const short = table({ column: 1, values: [1] });
+    expect(!short.ok && short.problem).toContain("one entry per row");
+    const column = table({ column: 2, values: [1, 0] });
+    expect(!column.ok && column.problem).toContain("not one of its columns");
+    const range = table({ column: 1, values: [1.5, 0] });
+    expect(!range.ok && range.problem).toContain("outside 0 to 1");
+  });
+
   it("accepts a rowSpans entry that is null, which means the row has nowhere to jump", () => {
     const r = validateToolMessage({
       type: "partial",

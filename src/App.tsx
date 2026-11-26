@@ -136,6 +136,7 @@ function PreviewResultProviders({
       cutOffset={documentCut.cutOffset}
       regenOnEdit={documentView.regenOnEdit}
       timing={documentView.recordTiming}
+      commandTiles={documentView.highlightCommand}
     >
       {/* No Current/Final toggle of its own. The panel always wants a cut,
           at the end of land generation rather than at the caret, so `view`

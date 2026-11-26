@@ -17,7 +17,9 @@ export default defineConfig({
       ...configDefaults.exclude,
       "src/tools/__tests__/consistencyChecker.measure.test.ts",
       "src/parser/__tests__/includeResolution.measure.test.ts",
+      "src/parser/__tests__/undefinedNames.measure.test.ts",
       "src/parser/liveness/__tests__/liveness.measure.test.ts",
+      "src/preview/__tests__/generationBench.measure.test.ts",
     ],
   },
 });

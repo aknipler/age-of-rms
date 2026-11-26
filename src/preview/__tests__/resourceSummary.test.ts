@@ -21,8 +21,9 @@ const constants: ObjectConstant[] = [
   },
 ];
 
-function placed(objectRef: string, player?: number): PlacedObject {
-  return { objectRef, x: 0, y: 0, player, category: "resource" };
+/** A placement spawned for `forPlayer` (set_place_for_every_player), owned by nobody. */
+function placed(objectRef: string, forPlayer?: number): PlacedObject {
+  return { objectRef, x: 0, y: 0, forPlayer, category: "resource" };
 }
 
 describe("computeResourceSummary", () => {
@@ -48,9 +49,9 @@ describe("computeResourceSummary", () => {
       { player: 2, x: 100, y: 100 },
     ];
     // Both GOLD instances sit at (0,0), nearest to player 1 by distance, but
-    // this one is explicitly OWNED by player 2 — D4 must read that, not distance.
+    // this one was spawned for player 2, and D4 must read that, not distance.
     const objects = [
-      { objectRef: "GOLD", x: 0, y: 0, player: 2, category: "resource" },
+      { objectRef: "GOLD", x: 0, y: 0, forPlayer: 2, category: "resource" },
     ];
     const result = computeResourceSummary(
       objects,
@@ -63,6 +64,49 @@ describe("computeResourceSummary", () => {
     );
     expect(result.player.min.gold).toBe(0); // player 1's own total
     expect(result.player.max.gold).toBe(800); // player 2's own total
+  });
+
+  it("buckets by forPlayer alone, never by owner", () => {
+    // Namatjira's shape: per player 1 owned sheep and 7 gaia sheep, all
+    // spawned by set_place_for_every_player. Ownership must not decide it.
+    const objects: PlacedObject[] = [];
+    for (const p of [1, 2]) {
+      objects.push({
+        objectRef: "SHEEP",
+        x: 0,
+        y: 0,
+        player: p,
+        forPlayer: p,
+        category: "resource",
+      });
+      for (let i = 0; i < 7; i++) objects.push(placed("SHEEP", p));
+    }
+    // An owner with no forPlayer. The stages never produce this, and the
+    // summary must still not fall back to the owner.
+    objects.push({
+      objectRef: "GOLD",
+      x: 0,
+      y: 0,
+      player: 1,
+      category: "resource",
+    });
+    const result = computeResourceSummary(
+      objects,
+      [
+        { player: 1, x: 0, y: 0 },
+        { player: 2, x: 0, y: 0 },
+      ],
+      0,
+      constants,
+      undefined,
+      undefined,
+      new Map(),
+    );
+    expect(result.player.min.food).toBe(800);
+    expect(result.player.max.food).toBe(800);
+    expect(result.player.max.gold).toBe(0);
+    expect(result.neutral.min.gold).toBe(800);
+    expect(result.neutral.min.food).toBe(0);
   });
 
   it("reports the real spread across this generation's players, including one who got nothing", () => {

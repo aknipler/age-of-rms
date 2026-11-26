@@ -1772,6 +1772,60 @@ Checked against the game with the offline comparison script and in Node, never r
 20. Open a forested map with DE textures on. Confirm the app stays responsive while textures and sprites load (no stutter while panning). Confirm the hourglass sits beside Obj. List, opens with a bar per section, and that turning off "Time each generation" under Performance in Preview Options greys it out and closes its box.
 21. With DE textures on, open a script with `color_correction CC_NIGHT` (or AD4 - Pag, which sets CC_DESERT). Confirm the map and its sprites take the mood's tint, and a script with none looks as before. Compare the default look with DE at Map lighting on.
 
+## 66. Terrain Stats and the terrain glow, 2026-11-25
+
+Checked in the browser pane with mocked Tauri IPC on AK_Vanguard (flat minimap colours and DE textures without the install's textures). Never run in the real app.
+
+1. With DE textures off, confirm the bottom row button reads "Legend / Terr. Stats" and its box lists each terrain with a swatch and a percentage, largest first. Hover a percentage and confirm the tooltip gives the tile count.
+2. Turn DE textures on. Confirm the button reads "Terrain Stats" and its box shows the same rows without swatches or the colour mode note.
+3. Click a row. Confirm that terrain's tiles pulse gold, bright and dim, about once a second, on flat ground and on hills (the glow follows raised ground). Click the row again and confirm the glow stops.
+4. With a terrain glowing, pan and zoom. Confirm the glow stays on its tiles and keeps pulsing without restarting.
+5. With a terrain glowing, close the box, open Notes, click into the Code tab and edit a line. Confirm the glow stays through all of it and a gold chip with the terrain's name sits in the bottom row while the box is closed. Click the chip and confirm the glow stops. One bright and dim cycle takes about 2.4 s.
+   5a. Open the hourglass on Namatjira. Confirm the box keeps its height when a section opens, the clicked row stays under the pointer, the list scrolls inside the box, and each "Other work" row says in brackets what it covers. Confirm Terrain shows Beach pass and Composite terrains rows and Objects shows Forest trees and decorations.
+6. Export a PNG while a terrain glows. Confirm the image has no glow.
+7. Turn on Windows' "Animation effects" off setting (reduced motion), reopen the app and click a row. Confirm the glow is steady rather than pulsing.
+
+## 67. Highlight selected command, 2026-11-25 (`docs/highlight-selected-command-brief.md`)
+
+Never run in the real app. Turn on Preview Options, Highlight selected command first. Turning it on regenerates once.
+
+1. Put the caret on a `create_terrain` line. Confirm its placed tiles pulse cyan then its surviving tiles pulse magenta, each fading to nothing before the other starts, and the legend beside the tile box reads "Placed by command" and "Surviving tiles" with counts.
+2. Put the caret on a `create_land` line. Confirm "Grown tiles" then "Zone tiles". On a script with several lands that share the default zone, confirm the legend reads "Zone tiles (zone -10, 3 lands)".
+3. Put the caret on a `create_player_lands` line. Confirm every player's land lights, then every player's zone.
+4. Put the caret on a `create_object` line, including one with `set_place_for_every_player`. Confirm the tiles under every object it placed pulse cyan in one colour and the legend is absent.
+5. Put the caret on a `create_elevation` line. Confirm the tiles it raised pulse in one colour.
+6. Put the caret on a `create_connect_*` line. Confirm "Placed by command" and "Surviving tiles".
+7. Put the caret anywhere inside the cliff section, on the header or a comment. Confirm every cliff tile pulses.
+8. Move the caret between commands. Confirm the highlight swaps without the map regenerating, and that a caret on a line that is not one of these commands shows nothing and no legend.
+9. Select a card in the Breakdown tab and confirm the same highlight follows the selected card.
+10. Put the caret on a command in an untaken `if` branch or an unrolled `start_random` arm. Confirm no highlight and the legend box reads "Not run in this generation".
+11. Select a tile. Confirm the legend sits just below the selected tile box. Hover a legend row and confirm its tooltip defines the set.
+12. With a Terrain Stats row glowing too, confirm both show and the command highlight draws above the gold.
+13. Export a PNG while a highlight shows. Confirm the image has no highlight.
+14. Restart the app and confirm the setting is remembered. With it off, confirm the generation is not slower than before.
+
+## 68. Grid lines, 2026-11-25 (`docs/preview-grid-lines-brief.md`)
+
+Never run in the real app.
+
+1. In Preview Options set Grid lines to Light, Medium and Dark in turn on the flat view. Confirm a dark line along every tile edge at three strengths and that None removes them.
+2. Repeat in the minimap view and in the DE textures view. On a hilly map in the textures view confirm the lines follow the hills.
+3. Zoom out. Confirm the lines fade and are gone by about 2 pixels per tile half width, so no grey wash hides the map.
+4. Confirm objects, sprites, player circles and failure marks draw over the lines.
+5. Export a PNG with Grid lines on and confirm the grid is in the image.
+6. Restart the app and confirm the choice is remembered. Confirm the Land Placement panel shows the grid too.
+
+## 69. Undefined name warning, RMS0324, 2026-11-25 (`docs/undefined-name-warning-brief.md`)
+
+Never run in the real app.
+
+1. Type `create_object MY_GOLD` in the Code tab. A warning squiggle appears, and the light bulb offers `#const MY_GOLD`.
+2. Type `create_terrain FORSET`. Confirm the Did you mean fix is offered and writes FOREST.
+3. Put the same line inside `if X`. Confirm it shows as info, not a warning.
+4. Open `Comeer v1.5.rms`. Confirm five warnings on `PH_GENERIC_OFF` and two on the birds.
+5. In Breakdown, confirm the same card shows the warning.
+6. With the game folder hidden from the app (rename it for the test), restart. Confirm the warning on `MY_GOLD` becomes info with the "game data has no" wording.
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

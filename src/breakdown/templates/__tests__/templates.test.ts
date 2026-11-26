@@ -88,8 +88,14 @@ function scriptClean(src: string) {
  */
 function scriptCleanAllowing(src: string, allowed: readonly string[]) {
   const result = parseRms(src, langData, { builtinConstants });
+  // RMS0324's info rules (U, N, I) say less than a warning because less was
+  // checked. These templates name `#include_drs` files this test never reads
+  // and pass no installed random_map.def, so every name an include defines
+  // reads as info. A WARNING from RMS0324 (rule C or W) is still a failure.
   const all = [...result.diagnostics, ...validate(result, refDb)].filter(
-    (d) => !allowed.includes(d.code),
+    (d) =>
+      !allowed.includes(d.code) &&
+      !(d.code === "RMS0324" && d.severity === "info"),
   );
   expect(all.map((d) => `${d.code} ${d.message}`)).toEqual([]);
   return result;

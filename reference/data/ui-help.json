@@ -169,6 +169,10 @@
       "text": "The name written into the Created by row of the comment this app stamps at the top of a script it creates. Left blank it reads Unknown. Changing it renames the author of scripts saved from now on, not of ones already stamped."
     },
     {
+      "id": "settings.installFolder",
+      "text": "Where AoE2 DE is installed, for include files, terrain textures, sprites and the Open dialog. Empty searches Steam libraries and Xbox app folders on every drive. Set it for a Store, Game Pass or other install the search misses, by choosing the folder with resources in it or the Xbox app's game folder."
+    },
+    {
       "id": "settings.helpMode",
       "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely."
     },
@@ -1001,6 +1005,14 @@
       "text": "Hides the numbered circles that mark each player's start, so the objects under them show. The minimap view always hides them."
     },
     {
+      "id": "preview.highlightCommand",
+      "text": "Lights the tiles the command under the caret produced. Two colours take turns when a command has two sets, explained in the legend beside the tile box. A tile painted with the terrain it already had does not count as placed."
+    },
+    {
+      "id": "preview.gridLines",
+      "text": "Lines along every tile edge. Light to Dark sets how strong they are. They fade out as you zoom out."
+    },
+    {
       "id": "preview.hideDecorations",
       "text": "Hides the circles of decorations that terrains spawn, such as grass, rocks and flowers, so resources and placed objects stand out. They stay in the counts and the tile readout, and their pictures still draw in the DE textures view."
     },
@@ -1010,7 +1022,19 @@
     },
     {
       "id": "preview.legend",
-      "text": "Which terrain each colour stands for, and where the colour came from. A row is marked when its colour did not come from the mode you selected, which happens when the reference data has no colour for that terrain."
+      "text": "Which terrain each colour stands for, and how much of the map each one covers. A row is marked when its colour did not come from the mode you selected, which happens when the reference data has no colour for that terrain."
+    },
+    {
+      "id": "preview.terrainStats",
+      "text": "How much of the map each terrain covers, largest first. Click a terrain to make its tiles pulse on the map."
+    },
+    {
+      "id": "preview.terrainRow",
+      "text": "Makes this terrain's tiles pulse on the map. The glow stays when the box closes. Click again to stop. Hover the share for the tile count."
+    },
+    {
+      "id": "preview.glowChip",
+      "text": "The terrain glowing on the map. Click to stop the glow."
     },
     {
       "id": "preview.zoomIn",
@@ -1087,6 +1111,18 @@
     {
       "id": "tools.output",
       "text": "What the tool reported. Rows and links that point at code jump the Code tab to that spot."
+    },
+    {
+      "id": "tools.outputTabs",
+      "text": "Switches the report's view. Total shows each command at the player count where it did worst. Each player count's tab shows only the runs at that count."
+    },
+    {
+      "id": "tools.tableSort",
+      "text": "Sorts the table by this column. Click again to reverse, and a third time to return to the tool's order. Command sorts by line number."
+    },
+    {
+      "id": "tools.sectionToggle",
+      "text": "Hides or shows this section of the report. A hidden section stays hidden in the next run's report."
     },
     {
       "id": "tools.apply",

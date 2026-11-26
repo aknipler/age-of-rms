@@ -3,6 +3,10 @@ import {
   findDeTerrainTexturesFolder,
   type FolderProbe,
 } from "../../settings/scriptFolder";
+import {
+  chosenInstallFolder,
+  onInstallFolderChange,
+} from "../../settings/installFolder";
 import { UnsupportedDdsError, type DecodedImage } from "./dds";
 import { decodeDds } from "./decodeClient";
 import { BLEND_ATLAS_FILES } from "./terrainBlends";
@@ -26,7 +30,10 @@ const PROBE: FolderProbe = { exists, readTextFile };
  */
 let folderPromise: Promise<string | null> | undefined;
 function texturesFolder(): Promise<string | null> {
-  folderPromise ??= findDeTerrainTexturesFolder(PROBE).catch(() => null);
+  folderPromise ??= findDeTerrainTexturesFolder(
+    PROBE,
+    chosenInstallFolder(),
+  ).catch(() => null);
   return folderPromise;
 }
 
@@ -92,6 +99,16 @@ export function loadDeTexture(name: string): Promise<DecodedImage | null> {
 
 /** One channel, `MASK_SIZE` a side, or null when the file is missing or unreadable. */
 const greyCache = new Map<string, Promise<Uint8Array | null>>();
+
+// A new install folder from Settings drops every cached read, so the next
+// request reads from the new folder. Images a canvas already holds stay until
+// it asks again.
+onInstallFolderChange(() => {
+  folderPromise = undefined;
+  folderFound = null;
+  cache.clear();
+  greyCache.clear();
+});
 
 async function readGreyPng(
   subfolder: "blends" | "masks",

@@ -36,6 +36,9 @@ export type ThemeTokenId =
   | "infoBgSubtle"
   | "canvasBg"
   | "canvasText"
+  | "terrainGlow"
+  | "highlightFirst"
+  | "highlightSecond"
   | "fontMono"
   | "scrollbarTrack"
   | "scrollbarThumb";
@@ -116,6 +119,17 @@ export const THEME_TOKEN_GROUPS: ReadonlyArray<{
     tokens: [
       { id: "canvasBg", label: "Canvas background", kind: "color" },
       { id: "canvasText", label: "Canvas overlay text", kind: "color" },
+      { id: "terrainGlow", label: "Terrain Stats glow", kind: "color" },
+      {
+        id: "highlightFirst",
+        label: "Command highlight (first set)",
+        kind: "color",
+      },
+      {
+        id: "highlightSecond",
+        label: "Command highlight (second set)",
+        kind: "color",
+      },
     ],
   },
   {
@@ -165,6 +179,9 @@ export const DEFAULT_LIGHT_THEME: ThemeTokens = {
   infoBgSubtle: "rgba(23, 162, 184, 0.06)",
   canvasBg: "#14161a",
   canvasText: "#ffffff",
+  terrainGlow: "#ffde5a",
+  highlightFirst: "#50dcff",
+  highlightSecond: "#ff5adc",
   fontMono:
     "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
   scrollbarTrack: "#f0f0f0",
@@ -200,6 +217,9 @@ export const DEFAULT_DARK_THEME: ThemeTokens = {
   infoBgSubtle: "rgba(77, 192, 214, 0.12)",
   canvasBg: "#14161a",
   canvasText: "#ffffff",
+  terrainGlow: "#ffde5a",
+  highlightFirst: "#50dcff",
+  highlightSecond: "#ff5adc",
   fontMono:
     "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
   // "swap the way they currently are" (item 9, UI pass 2026-09-15): a dark
@@ -320,6 +340,18 @@ export function resolveThemeName(
   return (
     customThemes.find((t) => t.id === id)?.name ?? BUILT_IN_THEMES.light.name
   );
+}
+
+/**
+ * A `#rrggbb` colour as the `r, g, b` triplet a canvas `rgba(...)` string
+ * needs, because a canvas fill can't take a CSS variable plus a separate
+ * alpha. An unparseable value (a draft token mid-typing) returns `fallback`.
+ */
+export function hexToRgbTriplet(hex: string, fallback: string): string {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return fallback;
+  const n = parseInt(m[1], 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
 }
 
 function camelToKebab(id: string): string {

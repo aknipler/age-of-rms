@@ -19,6 +19,12 @@ const TERRAIN_BLENDS_KEY = "previewTerrainBlends";
 const HIDE_DECORATIONS_KEY = "previewHideDecorations";
 const HIDE_PLAYER_CIRCLES_KEY = "previewHidePlayerCircles";
 const RECORD_TIMING_KEY = "previewRecordTiming";
+const GRID_LINES_KEY = "previewGridLines";
+const HIGHLIGHT_COMMAND_KEY = "previewHighlightCommand";
+import {
+  isGridLineStrength,
+  type GridLineStrength,
+} from "../../preview/render/gridLines";
 import {
   DEFAULT_TERRAIN_COLOR_MODE,
   type TerrainColorMode,
@@ -119,6 +125,16 @@ export interface PreviewViewValue {
   hidePlayerCircles: boolean;
   setHidePlayerCircles: (on: boolean) => void;
   /**
+   * Light the tiles the command under the caret (Code) or the selected card
+   * (Breakdown) produced. Off by default and remembered. Turning it on makes
+   * the worker record which tiles each command changed, so it regenerates once.
+   */
+  highlightCommand: boolean;
+  setHighlightCommand: (on: boolean) => void;
+  /** Lines along every tile edge, none by default and remembered. */
+  gridLines: GridLineStrength;
+  setGridLines: (strength: GridLineStrength) => void;
+  /**
    * Time each generation for the hourglass (generationTiming.ts). On by
    * default. Off, the worker records nothing and the hourglass button goes.
    */
@@ -207,6 +223,10 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
   const decorationsChosenRef = useRef(false);
   const [hidePlayerCircles, setHidePlayerCirclesState] = useState(false);
   const playerCirclesChosenRef = useRef(false);
+  const [highlightCommand, setHighlightCommandState] = useState(false);
+  const highlightChosenRef = useRef(false);
+  const [gridLines, setGridLinesState] = useState<GridLineStrength>("none");
+  const gridLinesChosenRef = useRef(false);
   const [recordTiming, setRecordTimingState] = useState(true);
   const timingChosenRef = useRef(false);
   useEffect(() => {
@@ -243,6 +263,16 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
           typeof savedPlayerCircles === "boolean"
         )
           setHidePlayerCirclesState(savedPlayerCircles);
+        const savedHighlight = await loaded.get<unknown>(HIGHLIGHT_COMMAND_KEY);
+        if (cancelled) return;
+        if (!highlightChosenRef.current && typeof savedHighlight === "boolean")
+          setHighlightCommandState(savedHighlight);
+        // A stored value is `unknown` until the guard has checked it, so a
+        // hand-edited or older settings file cannot put a bad string in state.
+        const savedGrid = await loaded.get<unknown>(GRID_LINES_KEY);
+        if (cancelled) return;
+        if (!gridLinesChosenRef.current && isGridLineStrength(savedGrid))
+          setGridLinesState(savedGrid);
         const savedTiming = await loaded.get<unknown>(RECORD_TIMING_KEY);
         if (cancelled) return;
         if (!timingChosenRef.current && typeof savedTiming === "boolean")
@@ -294,6 +324,21 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
   const setHidePlayerCircles = useCallback((on: boolean) => {
     playerCirclesChosenRef.current = true;
     setHidePlayerCirclesState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null)
+      void deStore.set(HIGHLIGHT_COMMAND_KEY, highlightCommand);
+  }, [deStore, highlightCommand]);
+  const setHighlightCommand = useCallback((on: boolean) => {
+    highlightChosenRef.current = true;
+    setHighlightCommandState(on);
+  }, []);
+  useEffect(() => {
+    if (deStore !== null) void deStore.set(GRID_LINES_KEY, gridLines);
+  }, [deStore, gridLines]);
+  const setGridLines = useCallback((strength: GridLineStrength) => {
+    gridLinesChosenRef.current = true;
+    setGridLinesState(strength);
   }, []);
   useEffect(() => {
     if (deStore !== null) void deStore.set(RECORD_TIMING_KEY, recordTiming);
@@ -381,6 +426,10 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
       setHideDecorations,
       hidePlayerCircles,
       setHidePlayerCircles,
+      highlightCommand,
+      setHighlightCommand,
+      gridLines,
+      setGridLines,
       recordTiming,
       setRecordTiming,
       regenOnEdit,
@@ -411,6 +460,10 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
       setHideDecorations,
       hidePlayerCircles,
       setHidePlayerCircles,
+      highlightCommand,
+      setHighlightCommand,
+      gridLines,
+      setGridLines,
       recordTiming,
       setRecordTiming,
       regenOnEdit,
@@ -466,6 +519,16 @@ export function useHideDecorationsSetting(): boolean {
 /** The hide player circles setting alone, off outside the provider, for the same reason. */
 export function useHidePlayerCirclesSetting(): boolean {
   return useContext(PreviewViewCtx)?.hidePlayerCircles ?? false;
+}
+
+/** The grid line strength alone, "none" outside the provider, for the same reason. */
+export function useGridLinesSetting(): GridLineStrength {
+  return useContext(PreviewViewCtx)?.gridLines ?? "none";
+}
+
+/** The highlight selected command setting alone, off outside the provider. */
+export function useHighlightCommandSetting(): boolean {
+  return useContext(PreviewViewCtx)?.highlightCommand ?? false;
 }
 
 /**

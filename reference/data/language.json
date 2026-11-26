@@ -2016,7 +2016,8 @@
       "arguments": [
         {
           "name": "groupName",
-          "type": "string"
+          "type": "string",
+          "definesName": true
         }
       ],
       "attributes": ["add_object"],

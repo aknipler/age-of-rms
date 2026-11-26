@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { exists, readTextFile } from "@tauri-apps/plugin-fs";
+import languageDataRaw from "../reference/data/language.json";
+import type { LanguageData } from "./parser/language";
+import { definitionNamesIn } from "./parser/installedDefinitions";
 import type { ParseResult } from "./parser/types";
 import {
   includePathsInText,
@@ -10,6 +13,11 @@ import {
   findDeGamedataFolder,
   type FolderProbe,
 } from "./settings/scriptFolder";
+import {
+  chosenInstallFolder,
+  onInstallFolderChange,
+  useInstallFolderVersion,
+} from "./settings/installFolder";
 
 // The game's own `#include_drs` files, read from the user's DE install for
 // the preview (docs/preview-design.md Sec.3, amended 2026-11-02) and for the
@@ -45,8 +53,11 @@ export interface IncludeLoad {
  * install, the same as the Open dialog's use of the same search.
  */
 let gamedataFolder: Promise<string | null> | undefined;
-function findGamedataFolder(): Promise<string | null> {
-  gamedataFolder ??= findDeGamedataFolder(TAURI_PROBE).catch(() => null);
+export function findGamedataFolder(): Promise<string | null> {
+  gamedataFolder ??= findDeGamedataFolder(
+    TAURI_PROBE,
+    chosenInstallFolder(),
+  ).catch(() => null);
   return gamedataFolder;
 }
 
@@ -96,6 +107,8 @@ export function useIncludeLoad(
     [source],
   );
   const [load, setLoad] = useState<IncludeLoad | null | undefined>(undefined);
+  // In the effect's dependencies so a new install folder reads the files again.
+  const installVersion = useInstallFolderVersion();
 
   useEffect(() => {
     if (pathsKey === "") {
@@ -111,7 +124,7 @@ export function useIncludeLoad(
     return () => {
       stale = true;
     };
-  }, [pathsKey]);
+  }, [pathsKey, installVersion]);
 
   return load;
 }
@@ -141,3 +154,66 @@ async function readInclude(
     return undefined;
   }
 }
+
+/**
+ * The names the installed `random_map.def` defines, for RMS0324's rule D
+ * (docs/undefined-name-warning-brief.md Sec.4.2). Read once per session behind
+ * a module-level promise, the same pattern as `findGamedataFolder` above: the
+ * install does not change while the app runs, so no component owns the answer.
+ * `null` means no install, or a file that would not read.
+ */
+let installedDefinitions: Promise<ReadonlySet<string> | null> | undefined;
+function loadInstalledDefinitions(): Promise<ReadonlySet<string> | null> {
+  installedDefinitions ??= (async () => {
+    const folder = await findGamedataFolder();
+    if (folder === null) return null;
+    try {
+      const path = `${folder}\\random_map.def`;
+      if (!(await exists(path))) return null;
+      const text = (await readTextFile(path)).replace(/\r\n/g, "\n");
+      // About 50 K characters, parsed once per session on this thread. The
+      // include files are not (see the note at the top), since a script can
+      // name dozens of them and the set changes with every edit.
+      return definitionNamesIn(
+        text,
+        languageDataRaw as unknown as LanguageData,
+      );
+    } catch {
+      return null;
+    }
+  })();
+  return installedDefinitions;
+}
+
+/**
+ * The installed definitions, or `undefined` while they load and `null` when
+ * no install was found. The two non-set answers both make RMS0324 say rule N
+ * (info), so the warning never claims more than was checked.
+ */
+export function useInstalledDefinitions():
+  ReadonlySet<string> | null | undefined {
+  const [names, setNames] = useState<ReadonlySet<string> | null | undefined>(
+    undefined,
+  );
+  const installVersion = useInstallFolderVersion();
+  useEffect(() => {
+    // Same stale guard as useIncludeLoad, so an unmounted caller is never
+    // set after the fact.
+    let stale = false;
+    void loadInstalledDefinitions().then((loaded) => {
+      if (!stale) setNames(loaded);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [installVersion]);
+  return names;
+}
+
+// A new install folder from Settings drops every cached read. The hooks above
+// read again because the version in their dependencies changed.
+onInstallFolderChange(() => {
+  gamedataFolder = undefined;
+  lastLoad = undefined;
+  installedDefinitions = undefined;
+});

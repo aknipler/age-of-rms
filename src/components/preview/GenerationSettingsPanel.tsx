@@ -9,6 +9,7 @@ import {
 import languageDataRaw from "../../../reference/data/language.json";
 import type { LanguageData } from "../../parser/language";
 import { resolveMapDim } from "../../preview/generator/mapDimensions";
+import { isGridLineStrength } from "../../preview/render/gridLines";
 import { isSidePanelKeyEvent } from "../../settings/focusRegion";
 import { HelpTip } from "../HelpTip";
 import { TeamSection } from "../TeamSection";
@@ -129,6 +130,10 @@ function PreviewOptions() {
     setHideDecorations,
     hidePlayerCircles,
     setHidePlayerCircles,
+    highlightCommand,
+    setHighlightCommand,
+    gridLines,
+    setGridLines,
     recordTiming,
     setRecordTiming,
   } = usePreviewView();
@@ -180,6 +185,13 @@ function PreviewOptions() {
       checked: hidePlayerCircles,
       set: setHidePlayerCircles,
     },
+    {
+      id: "preview-option-highlight-command",
+      helpId: "preview.highlightCommand",
+      label: "Highlight selected command",
+      checked: highlightCommand,
+      set: setHighlightCommand,
+    },
   ];
   const renderRow = (row: (typeof rows)[number]) => (
     <HelpTip key={row.id} id={row.helpId}>
@@ -202,6 +214,26 @@ function PreviewOptions() {
   return (
     <div className={styles.optionList}>
       {rows.map(renderRow)}
+      <HelpTip id="preview.gridLines">
+        <div className={styles.field}>
+          <label htmlFor="preview-option-grid-lines">Grid lines</label>
+          <select
+            id="preview-option-grid-lines"
+            value={gridLines}
+            onChange={(event) => {
+              // The guard narrows the DOM's plain string to the union, so no
+              // cast is needed and a surprise value is simply ignored.
+              const next = event.target.value;
+              if (isGridLineStrength(next)) setGridLines(next);
+            }}
+          >
+            <option value="none">None</option>
+            <option value="light">Light</option>
+            <option value="medium">Medium</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+      </HelpTip>
       <div className={styles.optionHeading}>Performance</div>
       {renderRow({
         id: "preview-option-record-timing",

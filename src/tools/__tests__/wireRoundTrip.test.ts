@@ -120,7 +120,12 @@ describe("(a) an AST containing inf/-inf and an infinite rnd bound", () => {
     // The worker attaches the include index to the parse for the name lookup.
     // The encoder copies named fields only, so it must not reach a tool.
     const parsed = parseRms(SOURCE, lang);
-    parsed.includeIndex = { installFound: true, names: new Map(), missing: [] };
+    parsed.includeIndex = {
+      installFound: true,
+      names: new Map(),
+      missing: [],
+      boundNames: new Set(),
+    };
     const encoded = encodeParseResultForWire(parsed);
     expect("includeIndex" in encoded).toBe(false);
   });

@@ -33,6 +33,7 @@ import {
 } from "../parser/validate";
 import { truncateAst } from "./generator/truncateAst";
 import { packDeObjects } from "./generator/deObjectsWire";
+import { packCommandTiles } from "./commandTilesWire";
 import { generatePreview, type PreviewReferenceData } from "./generator/index";
 import type { ObjectConstant } from "./generator/objects";
 import type { TerrainRestriction } from "./generator/forestTreeSuppression";
@@ -96,7 +97,12 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     colorMood,
     timing,
   } = result;
+  const commandTilesPacked =
+    result.commandTiles === undefined
+      ? undefined
+      : packCommandTiles(result.commandTiles);
   return {
+    commandTilesPacked,
     dim,
     seedUsed,
     snapshots,
@@ -169,6 +175,11 @@ self.onmessage = (event: MessageEvent<PreviewRequest>) => {
   // The transfer list hands the buffer over instead of copying it. The
   // worker's own view of it is emptied, which is fine since it is never
   // read again here.
+  const transfer: ArrayBuffer[] = [];
   const packed = response.result.deObjectsPacked;
-  self.postMessage(response, packed === undefined ? [] : [packed.buffer]);
+  if (packed !== undefined) transfer.push(packed.buffer as ArrayBuffer);
+  const tilesPacked = response.result.commandTilesPacked;
+  if (tilesPacked !== undefined)
+    transfer.push(tilesPacked.tiles.buffer as ArrayBuffer);
+  self.postMessage(response, transfer);
 };

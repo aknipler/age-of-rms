@@ -305,3 +305,44 @@
 .readoutProblem {
   color: var(--danger);
 }
+
+/* The legend for Highlight selected command, beside the tile box. Same look as
+   the tile box, but not interactive. */
+.highlightLegend {
+  max-width: 70%;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legendSwatch {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* The same fixed colours OverlayCanvas fills the sets with. */
+.legendFirst {
+  background: var(--highlight-first);
+}
+
+.legendSecond {
+  background: var(--highlight-second);
+}
+
+.legendCount {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}

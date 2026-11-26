@@ -13,6 +13,7 @@
 // lobby is CREATION_PLAN A.4, and the parser already applies the same rule
 // to a script's own definitions (scope.ts, "any definition counts").
 
+import { boundNamesIn } from "./nameLookup";
 import type { ParseResult, SymbolInfo } from "./types";
 
 /**
@@ -66,6 +67,13 @@ export interface IncludeIndex {
   readonly names: ReadonlyMap<string, readonly IncludedName[]>;
   /** Include paths the install does not have, as written, in the order the script names them. */
   readonly missing: readonly string[];
+  /**
+   * Group names the include files bind (`create_object_group NAME`), which a
+   * later object slot may name. Kept apart from `names` because a group is
+   * not a `#const`, so it has no value, no position test and no hover.
+   * Empty when no install was found. Read by RMS0324.
+   */
+  readonly boundNames: ReadonlySet<string>;
 }
 
 export interface IncludedName {
@@ -170,11 +178,17 @@ export function buildIncludeIndex(
   parseFile: (key: string, text: string) => ParseResult,
 ): IncludeIndex {
   if (files === undefined) {
-    return { installFound: false, names: new Map(), missing: [] };
+    return {
+      installFound: false,
+      names: new Map(),
+      missing: [],
+      boundNames: new Set(),
+    };
   }
   const names = new Map<string, IncludedName[]>();
   const missing: string[] = [];
   const missingKeys = new Set<string>();
+  const boundNames = new Set<string>();
 
   const walk = (
     path: string,
@@ -194,6 +208,7 @@ export function buildIncludeIndex(
     }
     chain.add(key);
     const file = parseFile(key, text);
+    for (const group of boundNamesIn(file)) boundNames.add(group);
     for (const symbol of file.symbols) {
       const entry: IncludedName = {
         name: symbol.name,
@@ -221,5 +236,5 @@ export function buildIncludeIndex(
       new Set(),
     );
   }
-  return { installFound: true, names, missing };
+  return { installFound: true, names, missing, boundNames };
 }

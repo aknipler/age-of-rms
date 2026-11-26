@@ -696,12 +696,12 @@ describe("Sec.5.1 hideHealthy \u2014 the noise filter", () => {
     expect(
       hiddenLine(tablesFor([{ span: SPAN, attempted: 4, placed: 4 }], true)),
     ).toBe(
-      "1 command placed everything it attempted at every player count and is hidden.",
+      "1 command placed or grew everything it attempted at every player count and is hidden.",
     );
     expect(
       hiddenLine(tablesFor([{ span: SPAN, attempted: 0, placed: 0 }], true)),
     ).toBe(
-      "0 commands placed everything they attempted at every player count and are hidden.",
+      "0 commands placed or grew everything they attempted at every player count and are hidden.",
     );
     // Off: no claim either way, rather than a claim of zero.
     expect(
@@ -750,5 +750,132 @@ describe("Sec.5.4 notes passthrough", () => {
     const blocks = buildNotesBlocks(agg.noteGroups(), LINE_OFFSETS);
     const table = blocks.find((b) => b.kind === "table");
     expect(table && table.kind === "table" ? table.rows : []).toHaveLength(2);
+  });
+});
+
+describe("land rows report growth", () => {
+  const land = (target: number, grown: number): CommandReport =>
+    report({
+      stage: "S1",
+      attempted: 1,
+      placed: 1,
+      growth: { target, grown },
+    });
+
+  it("prints the share and the tiles per run, and reads the count where the land grew least", () => {
+    const agg = new MonteCarloAggregate();
+    agg.addGeneration(2, [land(4240, 4240)], []);
+    agg.addGeneration(4, [land(4240, 4231)], []);
+    agg.addGeneration(4, [land(4240, 4231)], []);
+    const blocks = buildFindingTables(agg, {
+      source: SOURCE,
+      selectedCounts: [2, 4],
+      reasonCtx: emptyCtx,
+      suppressedActorAreaMissing: new Set(),
+      hideHealthy: false,
+    });
+    const table = blocks.find((b) => b.kind === "table");
+    expect(table?.kind === "table" && table.columns[1]).toBe("Growth");
+    const rows = tableRows(blocks);
+    expect(rows[0][1]).toBe("99.8%, 4231 of 4240 (−9)");
+    expect(rows[0][2]).toBe("4");
+    expect(table?.kind === "table" && table.bars?.values[0]).toBeCloseTo(
+      4231 / 4240,
+      5,
+    );
+  });
+
+  it("keeps a land that fell short out of the hidden healthy rows", () => {
+    const agg = new MonteCarloAggregate();
+    agg.addGeneration(2, [land(100, 90)], []);
+    const blocks = buildFindingTables(agg, {
+      source: SOURCE,
+      selectedCounts: [2],
+      reasonCtx: emptyCtx,
+      suppressedActorAreaMissing: new Set(),
+      hideHealthy: true,
+    });
+    expect(tableRows(blocks)).toHaveLength(1);
+  });
+
+  it("has no Provenance column, and no worst count column in a one-count tab", () => {
+    const agg = new MonteCarloAggregate();
+    agg.addGeneration(2, [report({ attempted: 2, placed: 1 })], []);
+    const total = buildFindingTables(agg, {
+      source: SOURCE,
+      selectedCounts: [2],
+      reasonCtx: emptyCtx,
+      suppressedActorAreaMissing: new Set(),
+      hideHealthy: false,
+    }).find((b) => b.kind === "table");
+    const tab = buildFindingTables(agg, {
+      source: SOURCE,
+      selectedCounts: [2],
+      reasonCtx: emptyCtx,
+      suppressedActorAreaMissing: new Set(),
+      hideHealthy: false,
+      showWorstCount: false,
+    }).find((b) => b.kind === "table");
+    expect(total?.kind === "table" && total.columns).toEqual([
+      "Command",
+      "Spawn rate",
+      "Worst player count",
+      "Failure buckets (No. of runs)",
+    ]);
+    expect(tab?.kind === "table" && tab.columns).toEqual([
+      "Command",
+      "Spawn rate",
+      "Failure buckets (No. of runs)",
+    ]);
+  });
+});
+
+describe("failure buckets count runs, and the table sorts", () => {
+  it("says how many runs hit each bucket, not how many times", () => {
+    const agg = new MonteCarloAggregate();
+    const failed = report({
+      attempted: 4,
+      placed: 1,
+      failures: [
+        {
+          bucket: "occupancyFull",
+          commandSpan: SPAN,
+          stage: "S6",
+          entity: "DEER",
+          detail: "",
+          occurrences: 3,
+        },
+      ],
+    });
+    agg.addGeneration(2, [failed], []);
+    agg.addGeneration(2, [failed], []);
+    agg.addGeneration(2, [report()], []);
+    const rows = tableRows(
+      buildFindingTables(agg, {
+        source: SOURCE,
+        selectedCounts: [2],
+        reasonCtx: emptyCtx,
+        suppressedActorAreaMissing: new Set(),
+        hideHealthy: false,
+      }),
+    );
+    expect(rows[0][3]).toBe("occupancyFull (2 of 3)");
+  });
+
+  it("gives Command a line-order key and the rate its bar fraction", () => {
+    const agg = new MonteCarloAggregate();
+    agg.addGeneration(2, [report({ attempted: 4, placed: 1 })], []);
+    const table = buildFindingTables(agg, {
+      source: SOURCE,
+      selectedCounts: [2],
+      reasonCtx: emptyCtx,
+      suppressedActorAreaMissing: new Set(),
+      hideHealthy: false,
+    }).find((b) => b.kind === "table");
+    expect(table?.kind === "table" && table.sortKeys).toEqual([
+      { column: 0, values: [SPAN.start] },
+      { column: 1, values: [0.25] },
+    ]);
+    expect(table?.kind === "table" && table.align?.[2]).toBe("center");
   });
 });

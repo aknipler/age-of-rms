@@ -2052,6 +2052,7 @@ export function applyObjects(
     // (simplification 6: this constraint is per-command, not per-run).
     const spacing = createSpacingIndex(dim, spacingDistance ?? 0, "chebyshev");
 
+    const objectsBefore = objects.length;
     frameLoop: for (const frame of frames) {
       const predicates = buildCandidatePredicates({
         grid,
@@ -2359,6 +2360,12 @@ export function applyObjects(
 
       registerActorArea();
     }
+    // This path gives a framed command's objects the land's player as
+    // `player` even under set_gaia_object_only, so that is also the player
+    // they spawned for. A specific land with no player leaves it absent.
+    if (frameKind !== "none")
+      for (let i = objectsBefore; i < objects.length; i++)
+        objects[i].forPlayer = objects[i].player;
 
     if (iterationCapped) {
       pushFailure(failures, {

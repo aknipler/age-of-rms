@@ -17,7 +17,7 @@ import {
   type ValidateReferenceDb,
 } from "../validate";
 import type { Diagnostic } from "../types";
-import { isDismissible } from "../diagnostics";
+import { isDismissible, undefinedSlotName } from "../diagnostics";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
 
 const lang = loadLanguage();
@@ -986,6 +986,52 @@ describe("RMS0318, a <LAND_GENERATION> base_layer with a create_elevation that h
 });
 
 describe("RMS0316, a constants.inc alias the game defines as something else first", () => {
+  // DE patch 2026-10-28 renamed the map types to MAP_BOGLAND and MAP_FORTRESS,
+  // so the shipped data holds no name that random_map.def and constants.inc
+  // both define. The rule is still live for the next collision, so these
+  // tests rebuild the 2026-09-22 shape from synthetic rows.
+  const engineRows = [
+    {
+      constId: 123,
+      idSource: "extracted",
+      rmsConstant: "BOGLAND",
+      descriptiveName: "Bogland",
+      category: "mapType",
+      verified: true,
+    },
+    {
+      constId: 16,
+      idSource: "extracted",
+      rmsConstant: "FORTRESS",
+      descriptiveName: "Fortress",
+      category: "mapType",
+      verified: true,
+    },
+  ];
+  const collidingDb: ValidateReferenceDb = {
+    language: lang,
+    gameConstants: {
+      ...gameConstants,
+      constants: [...gameConstants.constants, ...engineRows],
+    } as GameConstantsForValidate,
+  };
+  function only(source: string, code: string): Diagnostic[] {
+    return validate(parseRms(source, lang), collidingDb).filter(
+      (d) => d.code === code,
+    );
+  }
+  function codes(source: string): string[] {
+    return validate(parseRms(source, lang), collidingDb).map((d) => d.code);
+  }
+
+  it("stays silent on today's data, where the map types are MAP_BOGLAND and MAP_FORTRESS", () => {
+    expect(
+      check(
+        "<TERRAIN_GENERATION>\ncreate_terrain BOGLAND { number_of_clumps 4 }\n<OBJECTS_GENERATION>\ncreate_object FORTRESS\n",
+      ).map((d) => d.code),
+    ).not.toContain("RMS0316");
+  });
+
   it("flags BOGLAND as a terrain, which the game reads as map type 123", () => {
     const found = only(
       "<TERRAIN_GENERATION>\ncreate_terrain BOGLAND { number_of_clumps 4 }\n",
@@ -1430,5 +1476,184 @@ describe("RMS0315 on the find_closest family", () => {
         "<OBJECTS_GENERATION>\ncreate_object GOLD { set_place_for_every_player find_closest_to_map_center }\n",
       ),
     ).not.toContain("RMS0315");
+  });
+});
+
+describe("RMS0324 builder, one message and severity per rule", () => {
+  const token = {
+    text: "MY_GOLD",
+    start: 0,
+    end: 7,
+  } as unknown as Parameters<typeof undefinedSlotName>[0];
+
+  it("rule U is info and says an include may hold it", () => {
+    const found = undefinedSlotName(token, "U");
+    expect(found.severity).toBe("info");
+    expect(found.message).toBe(
+      "\"MY_GOLD\" isn't defined in this file. It may come from an include file Age of RMS couldn't read.",
+    );
+  });
+  it("rule N is info and names the game data", () => {
+    const found = undefinedSlotName(token, "N");
+    expect(found.severity).toBe("info");
+    expect(found.message).toBe(
+      'Age of RMS\'s game data has no "MY_GOLD", and nothing in this script defines it.',
+    );
+  });
+  it("rule I is info and conditional in its wording", () => {
+    const found = undefinedSlotName(token, "I");
+    expect(found.severity).toBe("info");
+    expect(found.message).toContain(
+      "so if this branch runs, this line has no MY_GOLD to use.",
+    );
+  });
+  it("rule C is a warning that names constants.inc", () => {
+    const found = undefinedSlotName(token, "C");
+    expect(found.severity).toBe("warning");
+    expect(found.message).toContain(
+      'Only includes/constants.inc defines "MY_GOLD".',
+    );
+  });
+  it("rule W is a warning, and a suggestion adds the did you mean and the quick fix", () => {
+    const plain = undefinedSlotName(token, "W");
+    expect(plain.severity).toBe("warning");
+    expect(plain.suggestion).toBeUndefined();
+    const fixed = undefinedSlotName(token, "W", "GOLD");
+    expect(fixed.message.endsWith(' Did you mean "GOLD"?')).toBe(true);
+    expect(fixed.suggestion).toBe("GOLD");
+    // Rule C and U never carry a suggestion even when handed one.
+    expect(undefinedSlotName(token, "C", "GOLD").suggestion).toBeUndefined();
+  });
+});
+
+describe("RMS0324 in validate() (undefined-name-warning-brief Sec.4)", () => {
+  const ALL = new Set<string>(); // an install was found and defines nothing extra
+  const OBJECTS = "<OBJECTS_GENERATION>\n";
+
+  function run(
+    source: string,
+    opts: {
+      installed?: ReadonlySet<string> | null;
+      files?: Record<string, string>;
+    } = {},
+  ): Diagnostic[] {
+    const parse = parseRms(source, lang);
+    const resolvedIncludes =
+      opts.files === undefined
+        ? undefined
+        : buildIncludeIndex(
+            parse,
+            new Map(Object.entries(opts.files)),
+            (_key, text) => parseRms(text, lang),
+          );
+    return validate(parse, refDb, {
+      resolvedIncludes,
+      installedDefinitions: "installed" in opts ? opts.installed : ALL,
+    }).filter((x) => x.code === "RMS0324");
+  }
+
+  it("rule W, a name nothing defines is a warning", () => {
+    const found = run(`${OBJECTS}create_object MY_GOLD\n`);
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).toContain("so this line has no MY_GOLD to use.");
+    // Control, a real object name draws nothing.
+    expect(run(`${OBJECTS}create_object GOLD\n`)).toHaveLength(0);
+  });
+
+  it("rule I inside an if is info, inside start_random it is still a warning", () => {
+    const inIf = run(`${OBJECTS}if SOMETHING\n create_object MY_GOLD\nendif\n`);
+    expect(inIf.map((x) => x.severity)).toEqual(["info"]);
+    // The depth must come back down, the same name after the endif is W.
+    const after = run(
+      `${OBJECTS}if SOMETHING\n create_object MY_GOLD\nendif\ncreate_object MY_GOLD\n`,
+    );
+    expect(after.map((x) => x.severity)).toEqual(["info", "warning"]);
+    const inRandom = run(
+      `${OBJECTS}start_random\n percent_chance 50\n create_object MY_GOLD\nend_random\n`,
+    );
+    expect(inRandom.map((x) => x.severity)).toEqual(["warning"]);
+  });
+
+  it("rule G, a group name is silent above or below its use", () => {
+    // GOLD, not COW. COW is a constants.inc alias and would draw rule C.
+    const group = "create_object_group HERD {\n add_object GOLD\n}\n";
+    const use = "create_object HERD\n";
+    expect(run(`${OBJECTS}${group}${use}`)).toHaveLength(0);
+    expect(run(`${OBJECTS}${use}${group}`)).toHaveLength(0);
+    // Control, the same use with no group is a warning.
+    expect(run(`${OBJECTS}${use}`)).toHaveLength(1);
+  });
+
+  it("rule G reads an include's group names", () => {
+    const source = `#include_drs groups.inc\n${OBJECTS}create_object HERD\n`;
+    const files = {
+      "groups.inc": "create_object_group HERD {\n add_object GOLD\n}\n",
+    };
+    expect(run(source, { files })).toHaveLength(0);
+    expect(run(source, { files: { "groups.inc": "" } })).toHaveLength(1);
+  });
+
+  it("rule D and rule N, the installed file settles a name our table lacks", () => {
+    const source = `<PLAYER_SETUP>\nai_info_map_type MAP_NEWTHING 0 0 0\n`;
+    expect(run(source, { installed: new Set(["MAP_NEWTHING"]) })).toHaveLength(
+      0,
+    );
+    // With an install that lacks it, a warning. Without any install, info.
+    expect(run(source).map((x) => x.severity)).toEqual(["warning"]);
+    const noInstall = run(source, { installed: null });
+    expect(noInstall.map((x) => x.severity)).toEqual(["info"]);
+    expect(noInstall[0].message).toContain("game data has no");
+  });
+
+  it("rule C and the constants.inc cases", () => {
+    const use = `${OBJECTS}create_object SEAGULLS\n`;
+    const alone = run(use);
+    expect(alone.map((x) => x.severity)).toEqual(["warning"]);
+    expect(alone[0].message).toContain("Only includes/constants.inc");
+    const withInc = `#include_drs includes/constants.inc\n${use}`;
+    // The read copy defines it, silent.
+    expect(
+      run(withInc, {
+        files: { "includes/constants.inc": "#const SEAGULLS 1500\n" },
+      }),
+    ).toHaveLength(0);
+    // The read copy lacks it (the stale table case), so rule W, not C.
+    const stale = run(withInc, {
+      files: { "includes/constants.inc": "#const OTHER 1\n" },
+    });
+    expect(stale).toHaveLength(1);
+    expect(stale[0].message).not.toContain("Only includes/constants.inc");
+  });
+
+  it("rule U, an include nobody could read says less", () => {
+    // No resolved index at all, any include softens.
+    const found = run(
+      `#include_drs other.inc\n${OBJECTS}create_object MY_GOLD\n`,
+    );
+    expect(found.map((x) => x.severity)).toEqual(["info"]);
+    expect(found[0].message).toContain("couldn't read");
+  });
+
+  it("suggests a near name, and never a family sibling", () => {
+    const typo = run(`<LAND_GENERATION>\ncreate_terrain FORSET\n`);
+    expect(typo).toHaveLength(1);
+    expect(typo[0].suggestion).toBe("FOREST");
+    expect(typo[0].message).toContain('Did you mean "FOREST"?');
+    const sibling = run(`#const BIRD_B 2\n${OBJECTS}create_object BIRD_A\n`);
+    expect(sibling).toHaveLength(1);
+    expect(sibling[0].suggestion).toBeUndefined();
+  });
+
+  it("an rnd() with a #const inside is not a name (Bulls_Eyes)", () => {
+    expect(
+      run("#const VAR rnd(-SOME_UNDEFINED_NAME,SOME_UNDEFINED_NAME)\n"),
+    ).toHaveLength(0);
+  });
+
+  it("rule V, a #const that renames a keyword is not a name slot miss", () => {
+    expect(run("#const RENAME max_distance_to_other_zones\n")).toHaveLength(0);
+    // Control, the same shape with an unknown word is a warning.
+    expect(run("#const RENAME not_a_keyword_anywhere\n")).toHaveLength(1);
   });
 });

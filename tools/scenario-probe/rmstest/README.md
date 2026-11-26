@@ -1046,7 +1046,7 @@ An automated session saves these maps with the editor harness. Its run sheet is 
 
 Side notes. The four GRASS maps each carry 890 objects of id 1358 and the SNOW map has none, so those are probably terrain auto-spawn on grass, not checked. 82a's first save failed (file not written) and the retry saved it, which is why its log line is the second for that map.
 
-## Batch 21 (written 2026-11-25, NOT RUN) — effects the preview draws, or does not
+## Batch 21 (written 2026-11-25, RUN AND READ 2026-11-25, three items not read) — effects the preview draws, or does not
 
 From `docs/preview-de-textures-design.md` Sec.14.3 and a count of the corpus's 2,719 effect lines. These are about pictures, so most are read by looking, in the scenario editor and again in a started game, rather than from a saved map. Each test has a control that differs only by its effect line. Generate every map at Tiny, 2 players, seed 1000.
 
@@ -1068,6 +1068,18 @@ From `docs/preview-de-textures-design.md` Sec.14.3 and a count of the corpus's 2
 How to read. 85 and 86: screenshots in the editor and in a started game, and for 86a `probe_scenario.py`'s object histogram (350 against 351). 87: start each map as a game and note, per map, whether a villager behind a rock (screen above it) shows as an outline through it, and whether the rock fades or outlines. 88a: `probe_scenario.py`'s SNOW count on the editor save, then a started game. 88c: the same seed in a started game beside the preview.
 
 What the answers decide. 85c whether the sprite planner keeps a town centre's annexes under an override. 85d whether forest trees follow a class target. 86 whether sprites should draw an upgraded object as its target. 87 whether the textured view should draw anything for occlusion. 88 whether the object stage should paint effect foundations beyond farms, and whether the preview should show the started game or the editor save.
+
+**Results.** Saved 2026-11-25 (85a to 88b by a Sonnet session with `RMS/editor-automation/batch_21.ps1`, 88b and 88c finished by the Opus session after it paused), captures in `RMS/editor-automation/batch21-shots/`, read 2026-11-25. The game ran at Graphics Low with Map lighting off and the started games at Reveal Map Normal. At Low the game draws buildings as flat tiles with an icon for the graphic they use, which is still readable, but fog hid everything beyond each town centre in the started games.
+
+| Map        | Reading                                                                                                                                         | Prediction it matches                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 85a, 85b   | 85a's houses show the mill's icon (an apple), 85b's the house icon                                                                              | Houses drawn as the mill, so `SET_ATTRIBUTE ... ATTR_STANDING_GRAPHIC` takes on players' objects                                   |
+| 85c        | A mill icon tile where the back piece stood, with the rest of the town centre's shape still drawn behind it                                     | Mill with the annexes still around it (the preview's reading)                                                                      |
+| 85d, 85e   | Not read. No tree is in the editor's centred view, the two captures are identical pixel for pixel, and fog hides the trees in the started games |                                                                                                                                    |
+| 86a, 86b   | The save holds 30 PINETREE (350) and no PALMTREE. In the editor 86a draws a palm where 86b draws a pine at the same spot                        | The save keeps the original object, the picture is the target's. The preview drew a pine, so its sprites should follow the upgrade |
+| 87a to 87d | No villager stands behind a rock in any capture, and the rocks look the same in all four                                                        | Occlusion changes nothing on a freshly generated map. Nothing to draw                                                              |
+| 88a, 88b   | The editor save holds no SNOW (14,400 GRASS). The hay stacks are under fog in the started game                                                  | Editor save as predicted. The started game is not read                                                                             |
+| 88c        | The editor capture shows the map centre and the started game the player's start, so no spot appears in both                                     | Not read                                                                                                                           |
 
 ## Batch 7's scripts — RECOVERED 2026-08-12
 

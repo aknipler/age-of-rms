@@ -103,7 +103,18 @@ describe("buildIncludeIndex", () => {
       installFound: false,
       names: new Map(),
       missing: [],
+      boundNames: new Set(),
     });
+  });
+
+  it("collects the group names an include binds (RMS0324 stays silent on them)", () => {
+    const { index } = indexOf("#include_drs a.inc\n", {
+      "a.inc":
+        "<OBJECTS_GENERATION>\ncreate_object_group HERD {\n add_object COW\n}\n",
+    });
+    expect([...index.boundNames]).toEqual(["HERD"]);
+    // A group is not a #const, so it does not appear among the names.
+    expect(index.names.has("HERD")).toBe(false);
   });
 
   it("keeps a #const's value as written, joining a parenthesised one, and none for a #define", () => {

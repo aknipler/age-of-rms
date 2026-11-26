@@ -2,8 +2,15 @@
    like the Obj. List's, opened by the hourglass beside it. The same compact
    type as the other preview boxes. */
 .panel {
+  box-sizing: border-box;
   padding: 0.3rem 0.45rem 0.4rem;
   font-size: 0.7rem;
+  /* Its own scroller at the height PreviewTimingPanel locks, shrinking below
+     it (min-height 0) when the map leaves the box less room than that. */
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .empty {
@@ -118,4 +125,15 @@
 .other {
   color: var(--text-secondary);
   font-style: italic;
+}
+
+/* The note in brackets is the useful part, so this row wraps rather than
+   cutting it off with an ellipsis on a narrow map. */
+.other .callName {
+  white-space: normal;
+}
+
+/* What "Other work" covers, quieter than the label itself. */
+.otherNote {
+  font-size: 0.62rem;
 }

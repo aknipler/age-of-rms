@@ -16,6 +16,11 @@ import { objectEntry, objectCategory, type ObjectConstant } from "./objects";
 import { resolveTerrainId } from "./grid";
 import { zoneByte } from "./lands";
 import {
+  objectFootprintTiles,
+  recordingCommandTiles,
+  recordTiles,
+} from "./commandTiles";
+import {
   CLASS_CLIFF_ZONE,
   CLASS_FOREST_ZONE,
   ObjectCatalog,
@@ -558,6 +563,12 @@ export function runDeObjectStage(
     // when the command named this very object: a group names its members by
     // table name, and a bare number has no name to keep.
     const desc = b.cmd === undefined ? undefined : descs[b.cmd];
+    if (desc !== undefined && recordingCommandTiles())
+      recordTiles(
+        desc.span.start,
+        "object",
+        objectFootprintTiles(b.x, b.y, b.def.ph, input.dim),
+      );
     const written =
       desc !== undefined &&
       desc.objectId === b.id &&
@@ -576,6 +587,7 @@ export function runDeObjectStage(
       x: Math.floor(b.x),
       y: Math.floor(b.y),
       player: b.owner || undefined,
+      forPlayer: b.forPlayer,
       category: objectCategory(name, constants, script.symbols, script.aliases),
     });
   }
